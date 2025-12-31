@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "endpoint": "[METHOD] /path/to/endpoint",
+    "capturedAt": "YYYY-MM-DDTHH:mm:ssZ",
+    "capturedBy": "HUMAN / AI",
+    "environment": "dev / staging / prod",
+    "version": "v1",
+    "notes": "Mô tả ngắn về snapshot này"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://api.example.com/endpoint",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "field1": "value1",
+      "field2": "value2"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "data": {
+        "id": "123",
+        "field": "value"
+      }
+    }
+  }
+}

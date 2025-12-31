@@ -1,0 +1,47 @@
+{
+  "_description": "Config file để AI có thể tự capture snapshot từ API",
+  "_usage": "AI đọc file này để biết cách gọi API và capture response",
+
+  "endpoint": "/path/to/endpoint",
+  "method": "POST",
+  "baseUrl": {
+    "dev": "https://api-dev.example.com",
+    "staging": "https://api-staging.example.com",
+    "prod": "https://api.example.com"
+  },
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "auth": {
+    "required": false,
+    "type": "bearer",
+    "note": "Nếu cần auth, HUMAN phải cung cấp token trong .env.local"
+  },
+  "testCases": [
+    {
+      "name": "success",
+      "description": "Happy path - request thành công",
+      "requestBody": {
+        "field1": "valid_value",
+        "field2": "valid_value"
+      },
+      "expectedStatus": 200,
+      "outputFile": "success.json"
+    },
+    {
+      "name": "error-validation",
+      "description": "Validation error - thiếu required field",
+      "requestBody": {
+        "field1": ""
+      },
+      "expectedStatus": 400,
+      "outputFile": "error-400.json"
+    }
+  ],
+  "environment": {
+    "note": "Các biến môi trường cần thiết để test",
+    "required": [],
+    "optional": ["API_KEY"]
+  },
+  "_humanNote": "HUMAN: Điền thông tin test credentials vào .env.local nếu cần"
+}

@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "endpoint": "POST /auth/login",
+    "capturedAt": "2025-12-27T03:36:20Z",
+    "capturedBy": "AI",
+    "environment": "dev",
+    "version": "v1"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-identity-api-dev.allianceitsc.com/auth/login",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "identifier": "admin@quoc-nam.com",
+      "password": "WrongPassword123"
+    }
+  },
+  "_response": {
+    "status": 401,
+    "body": {
+      "errorCode": "AUTH_INVALID_CREDENTIALS",
+      "message": "Invalid login credentials",
+      "timestamp": "2025-12-27T03:36:20.2043616+00:00"
+    }
+  }
+}

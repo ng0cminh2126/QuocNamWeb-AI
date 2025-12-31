@@ -1,0 +1,84 @@
+{
+  "_meta": {
+    "capturedAt": "2025-12-30T10:45:00Z",
+    "environment": "development",
+    "endpoint": "GET /api/conversations",
+    "description": "Danh sách Direct Message conversations"
+  },
+  "_request": {
+    "method": "GET",
+    "url": "https://vega-chat-api-dev.allianceitsc.com/api/conversations",
+    "headers": {
+      "Authorization": "Bearer {token}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "e98e12f9-77ec-4460-a99a-c7a02c505367",
+          "type": "DM",
+          "name": "DM: admin@quoc-nam.com <> 84985535345",
+          "description": null,
+          "avatarFileId": null,
+          "createdBy": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "createdByName": "019b48e8",
+          "createdAt": "2025-12-25T01:59:12.452683+00:00",
+          "updatedAt": null,
+          "memberCount": 2,
+          "unreadCount": 0,
+          "lastMessage": null
+        },
+        {
+          "id": "d1af350f-64c6-453f-8833-37e12d886437",
+          "type": "DM",
+          "name": "DM: admin@quoc-nam.com <> 84398664885",
+          "description": null,
+          "avatarFileId": null,
+          "createdBy": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "createdByName": "019b48e8",
+          "createdAt": "2025-12-25T01:59:03.390098+00:00",
+          "updatedAt": null,
+          "memberCount": 2,
+          "unreadCount": 0,
+          "lastMessage": null
+        },
+        {
+          "id": "74e0e67c-ad34-4115-b78b-380cd50c5e8f",
+          "type": "DM",
+          "name": "DM: admin@quoc-nam.com <> user@quoc-nam.com",
+          "description": null,
+          "avatarFileId": null,
+          "createdBy": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "createdByName": "019b48e8",
+          "createdAt": "2025-12-24T05:45:24.809865+00:00",
+          "updatedAt": null,
+          "memberCount": 2,
+          "unreadCount": 0,
+          "lastMessage": {
+            "id": "019b695d-e7dd-79a3-9d72-78baf65a2b65",
+            "conversationId": "74e0e67c-ad34-4115-b78b-380cd50c5e8f",
+            "senderId": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+            "senderName": "019b48e8",
+            "parentMessageId": null,
+            "content": "@019b48e8-0c13-7ff2-b954-10937732c5a4",
+            "contentType": "TXT",
+            "sentAt": "2025-12-29T09:08:40.54161+00:00",
+            "editedAt": null,
+            "linkedTaskId": null,
+            "reactions": [],
+            "attachments": [],
+            "replyCount": 0,
+            "isStarred": false,
+            "isPinned": false,
+            "threadPreview": null,
+            "mentions": []
+          }
+        }
+      ],
+      "nextCursor": null,
+      "hasMore": false
+    }
+  }
+}

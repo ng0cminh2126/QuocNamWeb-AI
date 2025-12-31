@@ -1,0 +1,21 @@
+// Query keys for conversations
+// Using factory pattern for consistent key generation
+
+export const conversationKeys = {
+  // Root key for all conversation-related queries
+  all: ['conversations'] as const,
+
+  // Groups
+  groups: () => [...conversationKeys.all, 'groups'] as const,
+  groupsList: (cursor?: string) =>
+    [...conversationKeys.groups(), { cursor }] as const,
+
+  // Direct Messages
+  directs: () => [...conversationKeys.all, 'directs'] as const,
+  directsList: (cursor?: string) =>
+    [...conversationKeys.directs(), { cursor }] as const,
+
+  // Single conversation detail (for future use)
+  detail: (conversationId: string) =>
+    [...conversationKeys.all, 'detail', conversationId] as const,
+};

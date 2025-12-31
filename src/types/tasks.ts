@@ -1,0 +1,130 @@
+// Task related types
+
+import type { ID, Timestamps } from './common';
+import type { User } from './auth';
+import type { FileAttachment } from './files';
+
+export interface Task extends Timestamps {
+  id: ID;
+  groupId: ID;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string;
+  assigneeId?: ID;
+  assignee?: User;
+  createdById: ID;
+  createdBy: User;
+  checklist?: ChecklistItem[];
+  attachments?: FileAttachment[];
+  tags?: string[];
+  estimatedHours?: number;
+  actualHours?: number;
+  completedAt?: string;
+  workTypeId?: ID;
+  workTypeName?: string;
+}
+
+export type TaskStatus = 
+  | 'todo'
+  | 'in_progress'
+  | 'review'
+  | 'done'
+  | 'cancelled';
+
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface ChecklistItem {
+  id: ID;
+  taskId: ID;
+  content: string;
+  isCompleted: boolean;
+  order: number;
+  completedAt?: string;
+  completedById?: ID;
+}
+
+export interface ChecklistTemplate {
+  id: ID;
+  name: string;
+  description?: string;
+  items: ChecklistTemplateItem[];
+  createdById: ID;
+  isDefault: boolean;
+}
+
+export interface ChecklistTemplateItem {
+  id: ID;
+  content: string;
+  order: number;
+}
+
+// Task Log for conversation view
+export interface TaskLog extends Timestamps {
+  id: ID;
+  taskId: ID;
+  userId: ID;
+  user: User;
+  action: TaskLogAction;
+  content?: string;
+  oldValue?: string;
+  newValue?: string;
+  attachments?: FileAttachment[];
+}
+
+export type TaskLogAction =
+  | 'created'
+  | 'updated'
+  | 'status_changed'
+  | 'assigned'
+  | 'unassigned'
+  | 'comment'
+  | 'attachment_added'
+  | 'attachment_removed'
+  | 'checklist_added'
+  | 'checklist_completed'
+  | 'due_date_changed'
+  | 'priority_changed';
+
+// API Request/Response types
+export interface CreateTaskRequest {
+  groupId: ID;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+  dueDate?: string;
+  assigneeId?: ID;
+  checklistTemplateId?: ID;
+  workTypeId?: ID;
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string | null;
+  assigneeId?: ID | null;
+  workTypeId?: ID;
+}
+
+export interface AddChecklistItemRequest {
+  taskId: ID;
+  content: string;
+}
+
+export interface UpdateChecklistItemRequest {
+  content?: string;
+  isCompleted?: boolean;
+}
+
+export interface TasksQueryParams {
+  groupId?: ID;
+  status?: TaskStatus;
+  assigneeId?: ID;
+  priority?: TaskPriority;
+  workTypeId?: ID;
+  page?: number;
+  pageSize?: number;
+}

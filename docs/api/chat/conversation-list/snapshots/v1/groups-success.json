@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "capturedAt": "2025-12-30T10:45:00Z",
+    "environment": "development",
+    "endpoint": "GET /api/groups",
+    "description": "Danh sách Group conversations"
+  },
+  "_request": {
+    "method": "GET",
+    "url": "https://vega-chat-api-dev.allianceitsc.com/api/groups",
+    "headers": {
+      "Authorization": "Bearer {token}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "019b5d4c-efe0-7956-8f80-211fcca6c935",
+          "type": "GRP",
+          "name": "Group 2",
+          "description": "",
+          "avatarFileId": null,
+          "createdBy": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "createdByName": "019b48e8",
+          "createdAt": "2025-12-27T00:54:41.888429+00:00",
+          "updatedAt": "2025-12-27T00:55:04.729618+00:00",
+          "memberCount": 3,
+          "unreadCount": 0,
+          "lastMessage": {
+            "id": "019b6d4b-a96c-7b62-a4f8-9ec2724ab0ec",
+            "conversationId": "019b5d4c-efe0-7956-8f80-211fcca6c935",
+            "senderId": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+            "senderName": "019b48e8",
+            "parentMessageId": null,
+            "content": "@019b48e8-0c13-7ff2-b954-10937732c5a4",
+            "contentType": "TXT",
+            "sentAt": "2025-12-30T03:27:13.772511+00:00",
+            "editedAt": null,
+            "linkedTaskId": null,
+            "reactions": [],
+            "attachments": [],
+            "replyCount": 0,
+            "isStarred": false,
+            "isPinned": false,
+            "threadPreview": null,
+            "mentions": []
+          }
+        },
+        {
+          "id": "019b59e1-ffeb-70cb-a8da-97f74fe6600d",
+          "type": "GRP",
+          "name": "Group",
+          "description": "",
+          "avatarFileId": null,
+          "createdBy": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "createdByName": "019b48e8",
+          "createdAt": "2025-12-26T08:59:01.995719+00:00",
+          "updatedAt": "2025-12-26T08:59:56.888463+00:00",
+          "memberCount": 4,
+          "unreadCount": 0,
+          "lastMessage": {
+            "id": "019b5d39-de4e-7b85-9d0f-2bf3ee699a26",
+            "conversationId": "019b59e1-ffeb-70cb-a8da-97f74fe6600d",
+            "senderId": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+            "senderName": "019b48e8",
+            "parentMessageId": null,
+            "content": "@019b546e-8f04-76a4-92d3-023e0cc9c7b5",
+            "contentType": "TXT",
+            "sentAt": "2025-12-27T00:33:52.206952+00:00",
+            "editedAt": null,
+            "linkedTaskId": null,
+            "reactions": [],
+            "attachments": [],
+            "replyCount": 0,
+            "isStarred": false,
+            "isPinned": false,
+            "threadPreview": null,
+            "mentions": []
+          }
+        }
+      ],
+      "nextCursor": null,
+      "hasMore": false
+    }
+  }
+}
