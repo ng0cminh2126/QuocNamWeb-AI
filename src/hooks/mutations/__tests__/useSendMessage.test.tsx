@@ -1,175 +1,175 @@
-// Unit tests for useSendMessage hook
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useSendMessage } from '../useSendMessage';
-import * as messagesApi from '@/api/messages.api';
-import type { ChatMessage, SendChatMessageRequest } from '@/types/messages';
+/**
+ * Unit Tests for useSendMessage hook
+ *
+ * NOTE: This hook does NOT use optimistic updates since SignalR handles
+ * realtime message delivery. Tests verify API calls only.
+ */
 
-// Mock the API module
-vi.mock('@/api/messages.api');
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { useSendMessage } from "../useSendMessage";
+import { sendMessage } from "@/api/messages.api";
+import type { ChatMessage } from "@/types/messages";
 
-// Mock the auth store
-vi.mock('@/stores/authStore', () => ({
-  useAuthStore: vi.fn((selector) =>
-    selector({
-      user: { id: 'current-user', identifier: 'Test User' },
-      accessToken: 'test-token',
-    })
-  ),
-}));
+// Mock dependencies
+vi.mock("@/api/messages.api");
 
-const mockSentMessage: ChatMessage = {
-  id: 'msg-new',
-  conversationId: 'conv-123',
-  senderId: 'current-user',
-  senderName: 'Test User',
-  parentMessageId: null,
-  content: 'Hello world!',
-  contentType: 'TXT',
-  sentAt: '2025-12-30T09:00:00Z',
-  editedAt: null,
-  linkedTaskId: null,
-  reactions: [],
-  attachments: [],
-  replyCount: 0,
-  isStarred: false,
-  isPinned: false,
-  threadPreview: null,
-  mentions: [],
-};
+describe("useSendMessage", () => {
+  let queryClient: QueryClient;
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-}
+  const mockConversationId = "conv-123";
 
-describe('useSendMessage', () => {
+  const mockNewMessage: ChatMessage = {
+    id: "msg-new",
+    conversationId: mockConversationId,
+    senderId: "user-123",
+    senderName: "Test User",
+    parentMessageId: null,
+    content: "New message content",
+    contentType: "TXT",
+    sentAt: "2026-01-06T10:00:00Z",
+    editedAt: null,
+    linkedTaskId: null,
+    reactions: [],
+    attachments: [],
+    replyCount: 0,
+    isStarred: false,
+    isPinned: false,
+    threadPreview: null,
+    mentions: [],
+  };
+
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
     vi.clearAllMocks();
   });
 
-  it('should send a message successfully', async () => {
-    vi.mocked(messagesApi.sendMessage).mockResolvedValueOnce(mockSentMessage);
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  // Test Case 1: Success - Send message via API
+  it("should send message successfully via API", async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(mockNewMessage);
+
+    const { result } = renderHook(
+      () => useSendMessage({ conversationId: mockConversationId }),
+      { wrapper }
+    );
+
+    // Send message
+    result.current.mutate({
+      content: "New message content",
+      contentType: "TXT",
+    });
+
+    // Wait for mutation to complete
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Verify API was called correctly
+    expect(sendMessage).toHaveBeenCalledWith(mockConversationId, {
+      content: "New message content",
+      contentType: "TXT",
+    });
+  });
+
+  // Test Case 2: Success callback
+  it("should call onSuccess callback when message is sent", async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(mockNewMessage);
     const onSuccess = vi.fn();
 
     const { result } = renderHook(
-      () =>
-        useSendMessage({
-          conversationId: 'conv-123',
-          onSuccess,
-        }),
-      { wrapper: createWrapper() }
+      () => useSendMessage({ conversationId: mockConversationId, onSuccess }),
+      { wrapper }
     );
 
-    const request: SendChatMessageRequest = {
-      content: 'Hello world!',
-      contentType: 'TXT',
-    };
-
-    await act(async () => {
-      result.current.mutate(request);
+    result.current.mutate({
+      content: "Test message",
+      contentType: "TXT",
     });
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(messagesApi.sendMessage).toHaveBeenCalledWith('conv-123', request);
-    expect(onSuccess).toHaveBeenCalledWith(mockSentMessage);
+    expect(onSuccess).toHaveBeenCalledWith(mockNewMessage);
   });
 
-  it('should handle send message error', async () => {
-    const error = new Error('Failed to send message');
-    vi.mocked(messagesApi.sendMessage).mockRejectedValueOnce(error);
+  // Test Case 3: Error handling
+  it("should handle API error correctly", async () => {
+    const mockError = new Error("Failed to send message");
+    vi.mocked(sendMessage).mockRejectedValueOnce(mockError);
     const onError = vi.fn();
 
     const { result } = renderHook(
-      () =>
-        useSendMessage({
-          conversationId: 'conv-123',
-          onError,
-        }),
-      { wrapper: createWrapper() }
+      () => useSendMessage({ conversationId: mockConversationId, onError }),
+      { wrapper }
     );
 
-    await act(async () => {
-      result.current.mutate({ content: 'test', contentType: 'TXT' });
+    result.current.mutate({
+      content: "Test message",
+      contentType: "TXT",
     });
 
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
 
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(mockError);
+    expect(result.current.error).toBe(mockError);
   });
 
-  it('should send a reply message', async () => {
-    vi.mocked(messagesApi.sendMessage).mockResolvedValueOnce({
-      ...mockSentMessage,
-      parentMessageId: 'msg-parent',
-    });
-
-    const { result } = renderHook(
-      () => useSendMessage({ conversationId: 'conv-123' }),
-      { wrapper: createWrapper() }
-    );
-
-    const request: SendChatMessageRequest = {
-      content: 'Reply message',
-      contentType: 'TXT',
-      parentMessageId: 'msg-parent',
+  // Test Case 4: Message with parent (reply)
+  it("should send reply message with parentMessageId", async () => {
+    const replyMessage: ChatMessage = {
+      ...mockNewMessage,
+      id: "msg-reply",
+      parentMessageId: "msg-parent",
+      content: "This is a reply",
     };
 
-    await act(async () => {
-      result.current.mutate(request);
-    });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(messagesApi.sendMessage).toHaveBeenCalledWith('conv-123', request);
-  });
-
-  it('should have pending state while sending', async () => {
-    let resolvePromise: (value: ChatMessage) => void;
-    const promise = new Promise<ChatMessage>((resolve) => {
-      resolvePromise = resolve;
-    });
-    vi.mocked(messagesApi.sendMessage).mockReturnValueOnce(promise);
+    vi.mocked(sendMessage).mockResolvedValueOnce(replyMessage);
 
     const { result } = renderHook(
-      () => useSendMessage({ conversationId: 'conv-123' }),
-      { wrapper: createWrapper() }
+      () => useSendMessage({ conversationId: mockConversationId }),
+      { wrapper }
     );
 
-    // Start mutation without awaiting
-    act(() => {
-      result.current.mutate({ content: 'test', contentType: 'TXT' });
+    result.current.mutate({
+      content: "This is a reply",
+      contentType: "TXT",
+      parentMessageId: "msg-parent",
     });
 
-    // Check pending state immediately after mutation starts
-    await waitFor(() => {
-      expect(result.current.isPending).toBe(true);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(sendMessage).toHaveBeenCalledWith(mockConversationId, {
+      content: "This is a reply",
+      contentType: "TXT",
+      parentMessageId: "msg-parent",
+    });
+  });
+
+  // Test Case 5: No duplicate API calls
+  it("should not trigger duplicate API calls", async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce(mockNewMessage);
+
+    const { result } = renderHook(
+      () => useSendMessage({ conversationId: mockConversationId }),
+      { wrapper }
+    );
+
+    result.current.mutate({
+      content: "Test message",
+      contentType: "TXT",
     });
 
-    // Resolve the promise
-    await act(async () => {
-      resolvePromise!(mockSentMessage);
-    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.isPending).toBe(false);
+    // Verify sendMessage was called exactly once
+    expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 });

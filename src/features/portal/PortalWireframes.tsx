@@ -1,20 +1,37 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
-import { ToastContainer, CloseNoteModal, FilePreviewModal } from './components';
-import type { LeadThread, Task, TaskStatus, ToastKind, ToastMsg, FileAttachment, PinnedMessage, GroupChat, Message, ReceivedInfo, WorkType, ChecklistItem, TaskLogMessage } from './types';
-import { WorkspaceView } from './workspace/WorkspaceView';
-import { TeamMonitorView } from './lead/TeamMonitorView';
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { ToastContainer, CloseNoteModal, FilePreviewModal } from "./components";
+import type {
+  LeadThread,
+  Task,
+  TaskStatus,
+  ToastKind,
+  ToastMsg,
+  FileAttachment,
+  PinnedMessage,
+  GroupChat,
+  Message,
+  ReceivedInfo,
+  WorkType,
+  ChecklistItem,
+  TaskLogMessage,
+} from "./types";
+import { WorkspaceView } from "./workspace/WorkspaceView";
+import { TeamMonitorView } from "./lead/TeamMonitorView";
 import { MainSidebar } from "./components/MainSidebar";
 import { ViewModeSwitcher } from "@/features/portal/components/ViewModeSwitcher";
-import { mockGroups as sidebarGroups, mockContacts } from "@/data/mockSidebar";
-import { mockGroup_VH_Kho, mockGroup_VH_TaiXe, mockDepartments, mockChecklistTemplatesByVariant } from "@/data/mockOrg";
+import {
+  mockGroup_VH_Kho,
+  mockGroup_VH_TaiXe,
+  mockDepartments,
+  mockChecklistTemplatesByVariant,
+} from "@/data/mockOrg";
 import { mockTasks } from "@/data/mockTasks";
-import { mockMessagesByWorkType } from "@/data/mockMessages";
-import { DepartmentTransferSheet } from '@/components/sheet/DepartmentTransferSheet';
-import { AssignTaskSheet } from '@/components/sheet/AssignTaskSheet';
+import { DepartmentTransferSheet } from "@/components/sheet/DepartmentTransferSheet";
+import { AssignTaskSheet } from "@/components/sheet/AssignTaskSheet";
 import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
-import type { ChecklistTemplateMap, ChecklistTemplateItem } from './types';
+import type { ChecklistTemplateMap, ChecklistTemplateItem } from "./types";
 import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
 
 type PortalMode = "desktop" | "mobile";
@@ -23,22 +40,26 @@ interface PortalWireframesProps {
   portalMode?: PortalMode;
 }
 
-export default function PortalWireframes({ portalMode = "desktop" }: PortalWireframesProps) {
+export default function PortalWireframes({
+  portalMode = "desktop",
+}: PortalWireframesProps) {
   // ---------- auth & navigation ----------
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
 
   // ---------- shared UI state ----------
-  const [tab, setTab] = useState<'info' | 'order' | 'tasks'>('info');
-  const [mode, setMode] = useState<'CSKH' | 'THUMUA'>('CSKH');
-  const [leftTab, setLeftTab] = useState<'contacts' | 'messages'>('messages');
+  const [tab, setTab] = useState<"info" | "order" | "tasks">("info");
+  const [mode, setMode] = useState<"CSKH" | "THUMUA">("CSKH");
+  const [leftTab, setLeftTab] = useState<"contacts" | "messages">("messages");
   const [showAvail, setShowAvail] = useState(false);
   const [showMyWork, setShowMyWork] = useState(false);
-  const [view, setView] = useState<'workspace' | 'lead'>('workspace');
-  const [workspaceMode, setWorkspaceMode] = useState<"default" | "pinned">("default");
+  const [view, setView] = useState<"workspace" | "lead">("workspace");
+  const [workspaceMode, setWorkspaceMode] = useState<"default" | "pinned">(
+    "default"
+  );
   const [showRight, setShowRight] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState("");
   // const [showPinned, setShowPinned] = useState(false);
   const [viewMode, setViewMode] = React.useState<"lead" | "staff">("lead");
 
@@ -46,7 +67,7 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
 
   const [transferSheet, setTransferSheet] = useState({
     open: false,
-    info: undefined as ReceivedInfo | undefined
+    info: undefined as ReceivedInfo | undefined,
   });
 
   const [groupTransferSheet, setGroupTransferSheet] = useState<{
@@ -55,11 +76,10 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
   }>({
     open: false,
   });
- 
 
   // sẽ tính workTypes theo selectedGroup bên dưới
   // const workTypesFull = mockGroup_VH_Kho.workTypes ?? [];
-  // const workTypes = workTypesFull.map(w => ({ id: w.id, name: w.name })); 
+  // const workTypes = workTypesFull.map(w => ({ id: w.id, name: w.name }));
 
   // const [selectedWorkTypeId, setSelectedWorkTypeId] = React.useState<string>(
   //   mockGroup_VH_Kho.defaultWorkTypeId || workTypesFull[0]?.id
@@ -71,31 +91,18 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
   // const mockGroups = [mockGroup_VH_Kho, mockGroup_VH_TaiXe];
 
   // const [selectedGroup, setSelectedGroup] = React.useState(mockGroup_VH_Kho);
-   // hợp nhất 2 nguồn: UI metadata (sidebar)  cấu hình workTypes (org)
+  // Groups will be loaded from API - start with empty array
   const groupsMerged: GroupChat[] = React.useMemo(() => {
-    const orgMap = new Map(
-      [mockGroup_VH_Kho, mockGroup_VH_TaiXe].map(g => [g.id, g])
-    );
-    
-    return sidebarGroups
-    .map(sg => {
-      const org = orgMap.get(sg.id);
-      if (!org) return sg as GroupChat; // fallback nếu chưa có trong org
-      return {
-        ...org,         // ⚠️ giữ nguyên cấu trúc chuẩn GroupChat
-        lastSender: sg.lastSender,
-        lastMessage: sg.lastMessage,
-        lastTime: sg.lastTime,
-        unreadCount: sg.unreadCount,
-      };
-    })
-    .filter(Boolean) as GroupChat[];
+    // TODO: Replace with API data from useGroups() hook
+    // For now, return empty to avoid showing mock data
+    return [];
   }, []);
 
-  const [selectedGroup, setSelectedGroup] = React.useState(groupsMerged[0]);
-  const [selectedWorkTypeId, setSelectedWorkTypeId] = React.useState<string>(
-    selectedGroup?.defaultWorkTypeId ?? selectedGroup?.workTypes?.[0]?.id ?? "wt_default"
-  );
+  const [selectedGroup, setSelectedGroup] = React.useState<
+    GroupChat | undefined
+  >(undefined);
+  const [selectedWorkTypeId, setSelectedWorkTypeId] =
+    React.useState<string>("wt_default");
 
   // Danh sách "dạng checklist" (sub work type) của work type được chọn
   const checklistVariants =
@@ -107,56 +114,26 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
     checklistVariants[0]?.id ||
     undefined;
 
-  /// --- Import mock message data ---
-  // Lấy ra workTypeKey tương ứng từ id (mapping thủ công hoặc từ group)
-  const getWorkTypeKey = (workTypeId?: string) => {
-    switch (workTypeId) {
-      case "wt_nhan_hang":
-        return "nhanHang";
-      case "wt_doi_tra":
-        return "doiTra";
-      case "wt_lich_boc_hang":
-        return "lichBocHang";
-      case "wt_don_boc_hang":
-        return "donBocHang";
-      default:
-        return "nhanHang";
-    }
-  };
-
+  // Messages will be loaded from API - start with empty array
+  // TODO: Replace with useMessages() hook when conversation is selected
   const [messages, setMessages] = React.useState<Message[]>([]);
 
-  React.useEffect(() => {
-    if (!selectedGroup || !selectedWorkTypeId) return;
-
-    const key = getWorkTypeKey(selectedWorkTypeId);
-    const all = mockMessagesByWorkType[key] || [];
-
-    const filtered = all.filter(
-      (m) => m.groupId?.toLowerCase() === selectedGroup.id?.toLowerCase()
-    );
-
-    console.log("🔍 loadMessages", {
-      selectedGroup: selectedGroup.id,
-      selectedWorkTypeId,
-      found: filtered.length,
-    });
-
-    setMessages(filtered);
-  }, [selectedGroup?.id, selectedWorkTypeId]);
-
-  // const [selectedWorkTypeId, setSelectedWorkTypeId] =
-  //   React.useState<string>(defaultWorkTypeId);
-
-  
-
-  // (1) mock data cho sidebar
-  const [groups] = React.useState(groupsMerged);
-  const [contacts] = React.useState(mockContacts);
+  // (1) Groups and contacts will be loaded from API
+  const [groups] = React.useState(groupsMerged); // Empty until API loads
+  const [contacts] = React.useState<
+    Array<{
+      id: string;
+      name: string;
+      role: "Leader" | "Member";
+      online: boolean;
+      lastMessage?: string;
+      lastTime?: string;
+      unreadCount?: number;
+    }>
+  >([]); // Empty until API loads
 
   // --- keyboard refs & shortcuts ---
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-
 
   // --- Toast store ---
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
@@ -166,13 +143,16 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
     taskId?: string;
   }>({ open: false });
 
-  const [taskLogs, setTaskLogs] = useState<Record<string, TaskLogMessage[]>>({});
-  const pushToast = (msg: string, kind: ToastKind = 'info') => {
+  const [taskLogs, setTaskLogs] = useState<Record<string, TaskLogMessage[]>>(
+    {}
+  );
+  const pushToast = (msg: string, kind: ToastKind = "info") => {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, kind, msg }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2500);
   };
-  const removeToast = (id: string) => setToasts((t) => t.filter((x) => x.id !== id));
+  const removeToast = (id: string) =>
+    setToasts((t) => t.filter((x) => x.id !== id));
 
   // const filteredMessages = React.useMemo(
   //   () => messages.filter(m => !selectedWorkTypeId || m.workTypeId === selectedWorkTypeId),
@@ -183,18 +163,22 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
 
   // When useApiChat=true, selectedChat is set by ConversationListSidebar when API data loads
   // Initialize to null so that ConversationListSidebar can auto-select the first API group
-  const [selectedChat, setSelectedChat] = React.useState<{ type: "group" | "dm"; id: string } | null>(null);
+  const [selectedChat, setSelectedChat] = React.useState<{
+    type: "group" | "dm";
+    id: string;
+  } | null>(null);
 
   const onClearSelectedChat = () => setSelectedChat(null);
 
   // Checklist Template theo WorkType + Variant
-  const [checklistTemplates, setChecklistTemplates] = React.useState<ChecklistTemplateMap>(mockChecklistTemplatesByVariant);
+  const [checklistTemplates, setChecklistTemplates] =
+    React.useState<ChecklistTemplateMap>(mockChecklistTemplatesByVariant);
 
   const [tasks, setTasks] = React.useState(() => structuredClone(mockTasks));
 
-  const currentUser = 'Diễm Chi';
-  const currentUserId = 'u_diem_chi';
-  const members = ['Thu An', 'Lệ Bình', 'Diễm Chi'];
+  const currentUser = "Diễm Chi";
+  const currentUserId = "u_diem_chi";
+  const members = ["Thu An", "Lệ Bình", "Diễm Chi"];
   //const now = new Date().toISOString();
   const nowIso = () => new Date().toISOString();
 
@@ -254,29 +238,45 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
   //   { id: 'CSKH001', title: 'CSKH – Lên đơn', status: 'waiting', updatedAt: '15 phút trước' },
   // ]);
 
-
   const [leadThreads, setLeadThreads] = useState<LeadThread[]>([
-    { id: 'PO1245', t: 'PO#1245 – Nhận hàng', type: 'Nội bộ', owner: 'Lê Chi', st: 'Đang xử lý', at: '2 phút trước' },
-    { id: 'CSKH001', t: 'CSKH – Lên đơn', type: 'POS', owner: 'Nguyễn An', st: 'Chờ phản hồi', at: '10 phút trước' },
-    { id: 'TEL302', t: 'Vận Hành Kho - Đổi Trả #302', type: 'Nội bộ', owner: 'Trần Bình', st: 'Đã chốt', at: '1 phút trước' },
+    {
+      id: "PO1245",
+      t: "PO#1245 – Nhận hàng",
+      type: "Nội bộ",
+      owner: "Lê Chi",
+      st: "Đang xử lý",
+      at: "2 phút trước",
+    },
+    {
+      id: "CSKH001",
+      t: "CSKH – Lên đơn",
+      type: "POS",
+      owner: "Nguyễn An",
+      st: "Chờ phản hồi",
+      at: "10 phút trước",
+    },
+    {
+      id: "TEL302",
+      t: "Vận Hành Kho - Đổi Trả #302",
+      type: "Nội bộ",
+      owner: "Trần Bình",
+      st: "Đã chốt",
+      at: "1 phút trước",
+    },
   ]);
-
 
   const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
 
-
   // --- Close note modal state ---
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [closeNote, setCloseNote] = useState('');
+  const [closeNote, setCloseNote] = useState("");
   const [closeTargetId, setCloseTargetId] = useState<string | null>(null);
-
 
   // --- File preview modal state ---
   const [showPreview, setShowPreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
 
-
-  // -- Pinned messages (mock) ---  
+  // -- Pinned messages (mock) ---
   const [showPinnedToast, setShowPinnedToast] = useState(false);
 
   const onShowPinnedToast = () => {
@@ -315,8 +315,9 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
   ]);
   // Xử lý mở tin nhắn đã ghim
 
-
-  const [scrollToMessageId, setScrollToMessageId] = React.useState<string | undefined>(undefined);
+  const [scrollToMessageId, setScrollToMessageId] = React.useState<
+    string | undefined
+  >(undefined);
 
   const handleUnpinMessage = (id: string) => {
     setPinnedMessages((prev) => prev.filter((m) => m.id !== id));
@@ -338,14 +339,11 @@ export default function PortalWireframes({ portalMode = "desktop" }: PortalWiref
     if (targetId) setScrollToMessageId(targetId);
   };
 
-// Dùng chung cho các nơi muốn "xem tin nhắn gốc"
-// (pinned message, xem từ tab Thông tin, v.v.)
-const handleOpenSourceMessage = React.useCallback(
-  (messageId: string) => {
+  // Dùng chung cho các nơi muốn "xem tin nhắn gốc"
+  // (pinned message, xem từ tab Thông tin, v.v.)
+  const handleOpenSourceMessage = React.useCallback((messageId: string) => {
     setScrollToMessageId(messageId);
-  },
-  []
-);
+  }, []);
 
   // Khi scrollToMessageId thay đổi -> cuộn tới tin nhắn tương ứng
   React.useEffect(() => {
@@ -369,19 +367,25 @@ const handleOpenSourceMessage = React.useCallback(
 
   // helpers
   const setThreadOwner = (id: string, owner: string) =>
-    setLeadThreads((rows) => rows.map((r) => (r.id === id ? { ...r, owner, at: 'vừa xong' } : r)));
-  const setThreadStatus = (id: string, label: LeadThread['st']) =>
-    setLeadThreads((rows) => rows.map((r) => (r.id === id ? { ...r, st: label, at: 'vừa xong' } : r)));
+    setLeadThreads((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, owner, at: "vừa xong" } : r))
+    );
+  const setThreadStatus = (id: string, label: LeadThread["st"]) =>
+    setLeadThreads((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, st: label, at: "vừa xong" } : r))
+    );
 
   function enrichTasks(tasks: Task[], workTypes: WorkType[]) {
-    return tasks.map(t => {
-      const wt = workTypes.find(w => w.id === t.workTypeId);
+    return tasks.map((t) => {
+      const wt = workTypes.find((w) => w.id === t.workTypeId);
       return {
         ...t,
-        workTypeName: wt?.name ?? t.workTypeId,  // fallback ID
+        workTypeName: wt?.name ?? t.workTypeId, // fallback ID
         progressText: t.checklist?.length
-          ? `${t.checklist.filter(c => c.done).length}/${t.checklist.length} mục`
-          : "Không có checklist"
+          ? `${t.checklist.filter((c) => c.done).length}/${
+              t.checklist.length
+            } mục`
+          : "Không có checklist",
       };
     });
   }
@@ -391,21 +395,27 @@ const handleOpenSourceMessage = React.useCallback(
   // }, [selectedGroup]);
 
   React.useEffect(() => {
-    setTasks(prev =>
-      prev.map(t => {
-        const wt = selectedGroup?.workTypes?.find(w => w.id === t.workTypeId);
+    setTasks((prev) =>
+      prev.map((t) => {
+        const wt = selectedGroup?.workTypes?.find((w) => w.id === t.workTypeId);
         return {
           ...t,
           workTypeName: wt?.name ?? t.workTypeId,
           progressText: t.checklist?.length
-            ? `${t.checklist.filter(c => c.done).length}/${t.checklist.length} mục`
+            ? `${t.checklist.filter((c) => c.done).length}/${
+                t.checklist.length
+              } mục`
             : "Không có checklist",
         };
       })
     );
   }, [selectedGroup]);
 
-  const groupMembers: { id: string; name: string; role?: "Leader" | "Member" | undefined; }[] = [
+  const groupMembers: {
+    id: string;
+    name: string;
+    role?: "Leader" | "Member" | undefined;
+  }[] = [
     { id: "u_thanh_truc", name: "Thanh Trúc", role: "Leader" },
     { id: "u_thu_an", name: "Thu An" },
     { id: "u_diem_chi", name: "Diễm Chi" },
@@ -436,31 +446,42 @@ const handleOpenSourceMessage = React.useCallback(
   });
 
   // Handlers cập nhật Task (status & checklist)
-  const handleChangeTaskStatus = (id: string, next: "todo"|"in_progress"|"awaiting_review"|"done") => {
-    setTasks(prev =>
-      prev.map(t => t.id === id
-        ? { ...t, status: next, updatedAt: new Date().toISOString() }
-        : t
+  const handleChangeTaskStatus = (
+    id: string,
+    next: "todo" | "in_progress" | "awaiting_review" | "done"
+  ) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, status: next, updatedAt: new Date().toISOString() }
+          : t
       )
     );
   };
 
-  const handleToggleChecklist = (taskId: string, itemId: string, done: boolean) => {
-    setTasks(prev =>
-      prev.map(t => t.id === taskId
-        ? {
-          ...t,
-          checklist: t.checklist?.map(c => c.id === itemId ? { ...c, done } : c),
-          updatedAt: new Date().toISOString(),
-        }
-        : t
+  const handleToggleChecklist = (
+    taskId: string,
+    itemId: string,
+    done: boolean
+  ) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              checklist: t.checklist?.map((c) =>
+                c.id === itemId ? { ...c, done } : c
+              ),
+              updatedAt: new Date().toISOString(),
+            }
+          : t
       )
     );
   };
 
   const handleUpdateTaskChecklist = (taskId: string, next: ChecklistItem[]) => {
-    setTasks(prev => {
-      return prev.map(t => {
+    setTasks((prev) => {
+      return prev.map((t) => {
         if (t.id !== taskId) return t;
 
         const updated = {
@@ -470,37 +491,42 @@ const handleOpenSourceMessage = React.useCallback(
         };
 
         // enrich progressText ngay lập tức
-        const wt = selectedGroup?.workTypes?.find(w => w.id === updated.workTypeId);
+        const wt = selectedGroup?.workTypes?.find(
+          (w) => w.id === updated.workTypeId
+        );
         return {
           ...updated,
           workTypeName: wt?.name ?? updated.workTypeId,
           progressText: updated.checklist.length
-            ? `${updated.checklist.filter(c => c.done).length}/${updated.checklist.length} mục`
+            ? `${updated.checklist.filter((c) => c.done).length}/${
+                updated.checklist.length
+              } mục`
             : "Không có checklist",
         };
       });
     });
   };
 
-
   // Áp dụng template mới cho tất cả Task.todo thuộc workType
-  const applyTemplateToTasks = (workTypeId: string, tpl: ChecklistTemplateItem[]) => {
-    setTasks(prev =>
-      prev.map(t =>
+  const applyTemplateToTasks = (
+    workTypeId: string,
+    tpl: ChecklistTemplateItem[]
+  ) => {
+    setTasks((prev) =>
+      prev.map((t) =>
         t.workTypeId === workTypeId && t.status === "todo"
           ? {
-            ...t,
-            checklist: tpl.map(it => ({
-              id: "chk_" + Math.random().toString(36).slice(2),
-              label: it.label,
-              done: false,
-            })),
-          }
+              ...t,
+              checklist: tpl.map((it) => ({
+                id: "chk_" + Math.random().toString(36).slice(2),
+                label: it.label,
+                done: false,
+              })),
+            }
           : t
       )
     );
   };
-
 
   const handleClaim = (task: Task) => {
     const updated: Task = {
@@ -509,15 +535,20 @@ const handleOpenSourceMessage = React.useCallback(
       updatedAt: new Date().toISOString(),
       history: [
         ...(task.history ?? []),
-        { at: new Date().toISOString(), byId: "staff-an", type: "status_change", payload: { from: task.status, to: "in_progress" } },
+        {
+          at: new Date().toISOString(),
+          byId: "staff-an",
+          type: "status_change",
+          payload: { from: task.status, to: "in_progress" },
+        },
       ],
     };
     setMyWork((prev) => [...prev, updated]);
-    setAvailable((prev) => prev.filter((t) => t.id !== task.id));    
-    pushToast(`Đã nhận: ${task.title}`, 'success');
+    setAvailable((prev) => prev.filter((t) => t.id !== task.id));
+    pushToast(`Đã nhận: ${task.title}`, "success");
   };
 
-  const handleTransfer = (id: string, newOwner: string, title?: string) => {    
+  const handleTransfer = (id: string, newOwner: string, title?: string) => {
     setThreadOwner(id, newOwner);
     if (newOwner !== currentUser) {
       // chuyển đi
@@ -526,9 +557,9 @@ const handleOpenSourceMessage = React.useCallback(
         prev.some((x) => x.id === id)
           ? prev
           : [
-            ...prev,
-            createMockTask(id, title || id, "todo", currentUser, newOwner),
-          ]
+              ...prev,
+              createMockTask(id, title || id, "todo", currentUser, newOwner),
+            ]
       );
       pushToast(`Đã chuyển ${title || id} → ${newOwner}`, "info");
     } else {
@@ -537,27 +568,27 @@ const handleOpenSourceMessage = React.useCallback(
         prev.some((x) => x.id === id)
           ? prev
           : [
-            createMockTask(id, title || id, "in_progress", currentUser),
-            ...prev,
-          ]
+              createMockTask(id, title || id, "in_progress", currentUser),
+              ...prev,
+            ]
       );
       setAvailable((prev) => prev.filter((x) => x.id !== id));
       pushToast(`Đã nhận lại ${title || id}`, "success");
     }
   };
 
-
   const handleClose = (id: string) => {
     setMyWork((prev) =>
       prev.map((t) =>
-        t.id === id ? { ...t, status: "done", updatedAt: new Date().toISOString() } : t
+        t.id === id
+          ? { ...t, status: "done", updatedAt: new Date().toISOString() }
+          : t
       )
     );
-    pushToast(`Đã đóng: ${id}`, 'success');
+    pushToast(`Đã đóng: ${id}`, "success");
   };
 
-
-  const handleLeadAssign = (id: string, newOwner: string, title?: string) => {    
+  const handleLeadAssign = (id: string, newOwner: string, title?: string) => {
     setThreadOwner(id, newOwner);
     setAssignOpenId(null);
 
@@ -566,10 +597,7 @@ const handleOpenSourceMessage = React.useCallback(
       setMyWork((prev) =>
         prev.some((x) => x.id === id)
           ? prev
-          : [
-            createMockTask(id, title || id, "todo", currentUser),
-            ...prev,
-          ]
+          : [createMockTask(id, title || id, "todo", currentUser), ...prev]
       );
       setAvailable((prev) => prev.filter((x) => x.id !== id));
     } else {
@@ -579,9 +607,9 @@ const handleOpenSourceMessage = React.useCallback(
         prev.some((x) => x.id === id)
           ? prev
           : [
-            ...prev,
-            createMockTask(id, title || id, "todo", currentUser, newOwner),
-          ]
+              ...prev,
+              createMockTask(id, title || id, "todo", currentUser, newOwner),
+            ]
       );
     }
 
@@ -611,11 +639,11 @@ const handleOpenSourceMessage = React.useCallback(
     localStorage.setItem("viewMode", viewMode);
   }, [viewMode]);
 
-//   React.useEffect(() => {
-//   if (selectedChat?.type === "group" && selectedChat.id === mockGroup_VH_Kho.id) {
-//     setSelectedWorkTypeId(mockGroup_VH_Kho.defaultWorkTypeId);
-//   }
-// }, [selectedChat]);
+  //   React.useEffect(() => {
+  //   if (selectedChat?.type === "group" && selectedChat.id === mockGroup_VH_Kho.id) {
+  //     setSelectedWorkTypeId(mockGroup_VH_Kho.defaultWorkTypeId);
+  //   }
+  // }, [selectedChat]);
 
   // React.useEffect(() => {
   //   if (selectedChat?.type === "group" && selectedChat.id === mockGroup_VH_Kho.id) {
@@ -625,27 +653,26 @@ const handleOpenSourceMessage = React.useCallback(
   //   }
   // }, [selectedChat, workTypesFull, defaultWorkTypeId]);
 
-
   // --- Keyboard shortcuts ---
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
         e.preventDefault();
         setShowSearch(true);
         requestAnimationFrame(() => searchInputRef.current?.focus());
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         // focus message input — để simple: bật search (tùy bạn gắn ref input chat sau)
         setShowSearch(false);
       }
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         setShowCloseModal(false);
         setShowPreview(false);
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // --- Close modal handlers ---
@@ -656,13 +683,13 @@ const handleOpenSourceMessage = React.useCallback(
   const confirmClose = () => {
     if (closeTargetId) {
       handleClose(closeTargetId);
-      if (closeNote.trim()) console.log('[close-note]', closeTargetId, closeNote);
+      if (closeNote.trim())
+        console.log("[close-note]", closeTargetId, closeNote);
     }
-    setCloseNote('');
+    setCloseNote("");
     setCloseTargetId(null);
     setShowCloseModal(false);
   };
-
 
   // --- Preview handlers ---
   const openPreview = (file: FileAttachment) => {
@@ -674,14 +701,14 @@ const handleOpenSourceMessage = React.useCallback(
     setSelectedChat(target);
     // TODO: nếu muốn: load messages theo group/dm tại đây
     // setMessages(messagesByTarget[target.type][target.id] ?? []);
-  }; 
+  };
 
   // Hàm xử lý khi Leader nhấn “Tiếp nhận thông tin”
   const handleReceiveInfo = (message: Message) => {
     const nowIso = new Date().toISOString();
 
     // ĐÃ TIẾP NHẬN RỒI THÌ THÔI
-    const existed = receivedInfos.some(info => info.messageId === message.id);
+    const existed = receivedInfos.some((info) => info.messageId === message.id);
     if (existed) {
       pushToast("Tin nhắn này đã được tiếp nhận trước đó.", "info");
       return;
@@ -698,19 +725,20 @@ const handleOpenSourceMessage = React.useCallback(
       status: "waiting",
     };
 
-    setReceivedInfos(prev => [...prev, info]);
+    setReceivedInfos((prev) => [...prev, info]);
 
     // 2) Add system message
     const excerpt =
       (message.content ?? "").length > 40
         ? (message.content ?? "").slice(0, 40) + "…"
-        : (message.content ?? "");
+        : message.content ?? "";
 
     const systemMsg: Message = {
       id: "sys_" + Date.now(),
       type: "system",
-      content: `${excerpt} được tiếp nhận bởi ${currentUser} lúc ${new Date(nowIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        }`,
+      content: `${excerpt} được tiếp nhận bởi ${currentUser} lúc ${new Date(
+        nowIso
+      ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       sender: "system",
       senderId: "system",
       groupId: message.groupId,
@@ -721,7 +749,7 @@ const handleOpenSourceMessage = React.useCallback(
       isSystem: true,
     };
 
-    setMessages(prev => [...prev, systemMsg]);
+    setMessages((prev) => [...prev, systemMsg]);
 
     // 3) Auto open RightPanel + switch tab
     setShowRight(true);
@@ -763,13 +791,15 @@ const handleOpenSourceMessage = React.useCallback(
   };
 
   const handleTransferInfo = (infoId: string, departmentId: string) => {
-    setReceivedInfos(prev =>
-      prev.map(i =>
-        i.id === infoId ? { ...i, status: "transferred", transferredTo: departmentId } : i
+    setReceivedInfos((prev) =>
+      prev.map((i) =>
+        i.id === infoId
+          ? { ...i, status: "transferred", transferredTo: departmentId }
+          : i
       )
     );
 
-    pushToast("Đã chuyển thông tin sang phòng ban.", 'success');
+    pushToast("Đã chuyển thông tin sang phòng ban.", "success");
   };
 
   const handleCreateTask = ({
@@ -784,17 +814,19 @@ const handleOpenSourceMessage = React.useCallback(
     assigneeId?: string;
     checklistVariantId?: string;
     checklistVariantName?: string;
-  }): void => {        
-        
+  }): void => {
     // Xác định WorkType & variant (ưu tiên variant được chọn từ AssignTaskSheet)
-    const wt = selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId);
+    const wt = selectedGroup?.workTypes?.find(
+      (w) => w.id === selectedWorkTypeId
+    );
 
     let variantId = checklistVariantId;
     let variantName = checklistVariantName;
 
     if (!variantId) {
       const defaultVariant =
-        wt?.checklistVariants?.find((v) => v.isDefault) ?? wt?.checklistVariants?.[0];
+        wt?.checklistVariants?.find((v) => v.isDefault) ??
+        wt?.checklistVariants?.[0];
 
       variantId = defaultVariant?.id;
       variantName = defaultVariant?.name;
@@ -828,7 +860,6 @@ const handleOpenSourceMessage = React.useCallback(
       updatedAt: new Date().toISOString(),
     };
 
-
     setTasks((prev) => [...prev, newTask]);
     setTab("tasks");
     setShowRight(true);
@@ -838,13 +869,11 @@ const handleOpenSourceMessage = React.useCallback(
       [newTask.id]: [],
     }));
 
-    // Liên kết task mới với message gốc (nếu có)    
-    if (sourceMessageId) {      
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === sourceMessageId
-            ? { ...m, taskId: newTask.id }
-            : m
+    // Liên kết task mới với message gốc (nếu có)
+    if (sourceMessageId) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === sourceMessageId ? { ...m, taskId: newTask.id } : m
         )
       );
     }
@@ -853,14 +882,12 @@ const handleOpenSourceMessage = React.useCallback(
     if (assignSheet.source === "receivedInfo" && assignSheet.info) {
       setReceivedInfos((prev) =>
         prev.map((i) =>
-          i.id === assignSheet.info!.id
-            ? { ...i, status: "assigned" }
-            : i
+          i.id === assignSheet.info!.id ? { ...i, status: "assigned" } : i
         )
       );
     }
-    
-    pushToast("Đã giao công việc.", 'success');
+
+    pushToast("Đã giao công việc.", "success");
   };
 
   const handleGroupTransferConfirm = ({
@@ -881,7 +908,13 @@ const handleOpenSourceMessage = React.useCallback(
     setReceivedInfos((prev) =>
       prev.map((inf) =>
         inf.id === infoId
-          ? { ...inf, status: "transferred", transferredTo: toGroupId, transferredToGroupName: toGroupName, transferredWorkTypeName: toWorkTypeName }
+          ? {
+              ...inf,
+              status: "transferred",
+              transferredTo: toGroupId,
+              transferredToGroupName: toGroupName,
+              transferredWorkTypeName: toWorkTypeName,
+            }
           : inf
       )
     );
@@ -889,7 +922,7 @@ const handleOpenSourceMessage = React.useCallback(
     pushToast("Đã chuyển thông tin sang nhóm mới.", "success");
   };
 
-    const handleSendTaskLogMessage = ({
+  const handleSendTaskLogMessage = ({
     content,
     replyToId,
   }: {
@@ -904,10 +937,12 @@ const handleOpenSourceMessage = React.useCallback(
 
     let replyTo: TaskLogMessage["replyTo"] | undefined;
     if (replyToId) {
-      const original = existing.find(m => m.id === replyToId);
+      const original = existing.find((m) => m.id === replyToId);
       if (original) {
         const type =
-          original.type === "text" || original.type === "file" || original.type === "image"
+          original.type === "text" ||
+          original.type === "file" ||
+          original.type === "image"
             ? original.type
             : "text";
         replyTo = {
@@ -922,7 +957,11 @@ const handleOpenSourceMessage = React.useCallback(
     }
 
     const newMsg: TaskLogMessage = {
-      id: "tlog_" + now.getTime().toString(36) + "_" + Math.random().toString(36).slice(2, 6),
+      id:
+        "tlog_" +
+        now.getTime().toString(36) +
+        "_" +
+        Math.random().toString(36).slice(2, 6),
       taskId,
       senderId: currentUserId,
       sender: currentUser,
@@ -936,7 +975,7 @@ const handleOpenSourceMessage = React.useCallback(
       replyTo,
     };
 
-    setTaskLogs(prev => ({
+    setTaskLogs((prev) => ({
       ...prev,
       [taskId]: [...(prev[taskId] ?? []), newMsg],
     }));
@@ -944,13 +983,16 @@ const handleOpenSourceMessage = React.useCallback(
 
   // --- Task log sheet: task + message gốc + danh sách log ---
   const activeTaskLogTask = React.useMemo(
-    () => (taskLogSheet.taskId ? tasks.find(t => t.id === taskLogSheet.taskId) : undefined),
+    () =>
+      taskLogSheet.taskId
+        ? tasks.find((t) => t.id === taskLogSheet.taskId)
+        : undefined,
     [tasks, taskLogSheet.taskId]
   );
 
   const activeTaskLogSourceMessage = React.useMemo(() => {
     if (!activeTaskLogTask?.sourceMessageId) return undefined;
-    return messages.find(m => m.id === activeTaskLogTask.sourceMessageId);
+    return messages.find((m) => m.id === activeTaskLogTask.sourceMessageId);
   }, [messages, activeTaskLogTask?.sourceMessageId]);
 
   const activeTaskLogMessages: TaskLogMessage[] =
@@ -1012,17 +1054,15 @@ const handleOpenSourceMessage = React.useCallback(
               pendingUntil: "2025-11-14T17:00:00Z",
             },
           ]}
-
           showPinnedToast={showPinnedToast}
           currentUserName={currentUser}
         />
       )}
-      
+
       {/* Nội dung chính */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {view === 'workspace' ? (
+        {view === "workspace" ? (
           <WorkspaceView
-            useApiChat={true}
             layoutMode={portalMode === "mobile" ? "mobile" : "desktop"}
             groups={groupsMerged}
             selectedGroup={selectedGroup}
@@ -1055,7 +1095,6 @@ const handleOpenSourceMessage = React.useCallback(
             openPreview={openPreview}
             tab={tab}
             setTab={setTab}
-            
             // showPinned={showPinned}
             // setShowPinned={setShowPinned}
             workspaceMode={workspaceMode}
@@ -1067,13 +1106,14 @@ const handleOpenSourceMessage = React.useCallback(
             onUnpinMessage={handleUnpinMessage}
             onOpenPinnedMessage={handleOpenPinnedMessage}
             onShowPinnedToast={onShowPinnedToast}
-
-            workTypes={(selectedGroup?.workTypes ?? []).map(w => ({ id: w.id, name: w.name }))}
+            workTypes={(selectedGroup?.workTypes ?? []).map((w) => ({
+              id: w.id,
+              name: w.name,
+            }))}
             selectedWorkTypeId={selectedWorkTypeId}
             onChangeWorkType={setSelectedWorkTypeId}
             currentUserId={currentUserId}
             currentUserName={currentUser}
-
             // Tasks & callbacks để RightPanel dùng thật
             tasks={tasks}
             onChangeTaskStatus={handleChangeTaskStatus}
@@ -1083,7 +1123,6 @@ const handleOpenSourceMessage = React.useCallback(
             applyTemplateToTasks={applyTemplateToTasks}
             checklistTemplates={checklistTemplates}
             setChecklistTemplates={setChecklistTemplates}
-
             // Tiếp nhận thông tin
             onReceiveInfo={handleReceiveInfo}
             onTransferInfo={handleTransferInfo}
@@ -1091,7 +1130,6 @@ const handleOpenSourceMessage = React.useCallback(
             onAssignInfo={onAssignInfo}
             onAssignFromMessage={onAssignFromMessage}
             openTransferSheet={openTransferSheet}
-
             onOpenTaskLog={(taskId) => {
               setTaskLogSheet({ open: true, taskId });
             }}
@@ -1099,22 +1137,25 @@ const handleOpenSourceMessage = React.useCallback(
             onOpenSourceMessage={handleOpenSourceMessage}
             onOpenQuickMsg={() => {
               // Mobile: tạm hiển thị toast, có thể thay bằng mở QuickMessageManager khi bạn muốn mount ở mobile
-              pushToast("Tin nhắn nhanh: tính năng đang phát triển cho mobile.", "info");
+              pushToast(
+                "Tin nhắn nhanh: tính năng đang phát triển cho mobile.",
+                "info"
+              );
             }}
             onOpenPinned={() => {
               setWorkspaceMode("pinned");
             }}
             onOpenTodoList={() => {
-              pushToast("Việc cần làm: tính năng đang phát triển cho mobile.", "info");
+              pushToast(
+                "Việc cần làm: tính năng đang phát triển cho mobile.",
+                "info"
+              );
             }}
-
             checklistVariants={checklistVariants}
             defaultChecklistVariantId={defaultChecklistVariantId}
             onCreateTaskFromMessage={handleCreateTask}
-            
-            onReassignTask={undefined}  // hoặc implement nếu cần           
-            
-          />          
+            onReassignTask={undefined} // hoặc implement nếu cần
+          />
         ) : (
           <TeamMonitorView
             leadThreads={leadThreads}
@@ -1135,7 +1176,11 @@ const handleOpenSourceMessage = React.useCallback(
           onConfirm={confirmClose}
           onOpenChange={setShowCloseModal}
         />
-        <FilePreviewModal open={showPreview} file={previewFile} onOpenChange={setShowPreview} />
+        <FilePreviewModal
+          open={showPreview}
+          file={previewFile}
+          onOpenChange={setShowPreview}
+        />
 
         <AssignTaskSheet
           open={assignSheet.open}
@@ -1171,11 +1216,9 @@ const handleOpenSourceMessage = React.useCallback(
           onSend={handleSendTaskLogMessage}
         />
 
-
         {/* Toasts */}
         <ToastContainer toasts={toasts} onClose={removeToast} />
       </div>
     </div>
   );
-
 }

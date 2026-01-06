@@ -1,15 +1,9 @@
-// useSendMessage hook - Send message mutation with optimistic updates
+// useSendMessage hook - Send message mutation via SignalR
+// NOTE: No optimistic updates - SignalR will handle realtime message delivery
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sendMessage } from '@/api/messages.api';
-import { messageKeys } from '../queries/keys/messageKeys';
-import { conversationKeys } from '../queries/keys/conversationKeys';
-import type {
-  SendChatMessageRequest,
-  ChatMessage,
-  GetMessagesResponse,
-} from '@/types/messages';
-import { useAuthStore } from '@/stores/authStore';
+import { useMutation } from "@tanstack/react-query";
+import { sendMessage } from "@/api/messages.api";
+import type { SendChatMessageRequest, ChatMessage } from "@/types/messages";
 
 interface UseSendMessageOptions {
   conversationId: string;
@@ -19,101 +13,34 @@ interface UseSendMessageOptions {
 
 /**
  * Hook to send a message to a conversation
- * Includes optimistic updates for immediate UI feedback
+ *
+ * NOTE: This hook does NOT use optimistic updates because SignalR handles
+ * realtime message delivery. When you send a message:
+ * 1. API call is made via sendMessage()
+ * 2. Backend sends message via SignalR
+ * 3. useMessageRealtime hook receives and adds message to cache
+ *
+ * This prevents duplicate messages from optimistic update + SignalR.
  */
 export function useSendMessage({
   conversationId,
   onSuccess,
   onError,
 }: UseSendMessageOptions) {
-  const queryClient = useQueryClient();
-  const user = useAuthStore((state) => state.user);
-
   return useMutation({
     mutationFn: (data: SendChatMessageRequest) =>
       sendMessage(conversationId, data),
 
-    // Optimistic update - add message immediately
-    onMutate: async (newMessage) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: messageKeys.conversation(conversationId),
-      });
+    // No optimistic update - SignalR will deliver message in realtime
+    // This prevents duplicate messages
 
-      // Snapshot previous value
-      const previousMessages = queryClient.getQueryData<{
-        pages: GetMessagesResponse[];
-        pageParams: (string | undefined)[];
-      }>(messageKeys.conversation(conversationId));
-
-      // Create optimistic message
-      const optimisticMessage: ChatMessage = {
-        id: `temp-${Date.now()}`,
-        conversationId,
-        senderId: user?.id ?? 'current-user',
-        senderName: user?.identifier ?? 'Bạn',
-        parentMessageId: newMessage.parentMessageId ?? null,
-        content: newMessage.content,
-        contentType: newMessage.contentType,
-        sentAt: new Date().toISOString(),
-        editedAt: null,
-        linkedTaskId: null,
-        reactions: [],
-        attachments: [],
-        replyCount: 0,
-        isStarred: false,
-        isPinned: false,
-        threadPreview: null,
-        mentions: [],
-      };
-
-      // Optimistically add message to cache
-      queryClient.setQueryData<{
-        pages: GetMessagesResponse[];
-        pageParams: (string | undefined)[];
-      }>(messageKeys.conversation(conversationId), (old) => {
-        if (!old || !old.pages.length) return old;
-
-        // Add to the first page (newest messages)
-        const newPages = [...old.pages];
-        newPages[0] = {
-          ...newPages[0],
-          items: [optimisticMessage, ...newPages[0].items],
-        };
-
-        return {
-          ...old,
-          pages: newPages,
-        };
-      });
-
-      // Return context for rollback
-      return { previousMessages };
-    },
-
-    // On error, rollback to previous state
-    onError: (err, _newMessage, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(
-          messageKeys.conversation(conversationId),
-          context.previousMessages
-        );
-      }
+    onError: (err) => {
       onError?.(err as Error);
     },
 
-    // On success, invalidate to get fresh data
     onSuccess: (data) => {
-      // Replace optimistic message with real one
-      queryClient.invalidateQueries({
-        queryKey: messageKeys.conversation(conversationId),
-      });
-
-      // Also invalidate conversation list to update lastMessage
-      queryClient.invalidateQueries({
-        queryKey: conversationKeys.all,
-      });
-
+      // Message will be added by SignalR listener in useMessageRealtime
+      // Just call the success callback if provided
       onSuccess?.(data);
     },
   });

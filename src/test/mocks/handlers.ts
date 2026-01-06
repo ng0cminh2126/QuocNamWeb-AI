@@ -1,20 +1,26 @@
 // MSW handlers for API mocking
-import { http, HttpResponse } from 'msw';
-import type { GetMessagesResponse, ChatMessage, SendChatMessageRequest } from '@/types/messages';
+import { http, HttpResponse } from "msw";
+import type {
+  GetMessagesResponse,
+  ChatMessage,
+  SendChatMessageRequest,
+} from "@/types/messages";
+import type { LoginResponse, LoginErrorResponse } from "@/types/auth";
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = "http://localhost:3000";
+const IDENTITY_API_URL = "https://vega-identity-api-dev.allianceitsc.com";
 
 // Mock data
 export const mockMessages: ChatMessage[] = [
   {
-    id: 'msg-1',
-    conversationId: 'conv-123',
-    senderId: 'user-1',
-    senderName: 'Nguyễn Văn A',
+    id: "msg-1",
+    conversationId: "conv-123",
+    senderId: "user-1",
+    senderName: "Nguyễn Văn A",
     parentMessageId: null,
-    content: 'Xin chào!',
-    contentType: 'TXT',
-    sentAt: '2025-12-30T08:00:00Z',
+    content: "Xin chào!",
+    contentType: "TXT",
+    sentAt: "2025-12-30T08:00:00Z",
     editedAt: null,
     linkedTaskId: null,
     reactions: [],
@@ -26,14 +32,14 @@ export const mockMessages: ChatMessage[] = [
     mentions: [],
   },
   {
-    id: 'msg-2',
-    conversationId: 'conv-123',
-    senderId: 'user-2',
-    senderName: 'Trần Thị B',
+    id: "msg-2",
+    conversationId: "conv-123",
+    senderId: "user-2",
+    senderName: "Trần Thị B",
     parentMessageId: null,
-    content: 'Chào bạn!',
-    contentType: 'TXT',
-    sentAt: '2025-12-30T08:01:00Z',
+    content: "Chào bạn!",
+    contentType: "TXT",
+    sentAt: "2025-12-30T08:01:00Z",
     editedAt: null,
     linkedTaskId: null,
     reactions: [],
@@ -45,14 +51,14 @@ export const mockMessages: ChatMessage[] = [
     mentions: [],
   },
   {
-    id: 'msg-3',
-    conversationId: 'conv-123',
-    senderId: 'user-1',
-    senderName: 'Nguyễn Văn A',
+    id: "msg-3",
+    conversationId: "conv-123",
+    senderId: "user-1",
+    senderName: "Nguyễn Văn A",
     parentMessageId: null,
-    content: 'Hôm nay công việc thế nào?',
-    contentType: 'TXT',
-    sentAt: '2025-12-30T08:02:00Z',
+    content: "Hôm nay công việc thế nào?",
+    contentType: "TXT",
+    sentAt: "2025-12-30T08:02:00Z",
     editedAt: null,
     linkedTaskId: null,
     reactions: [],
@@ -66,47 +72,98 @@ export const mockMessages: ChatMessage[] = [
 ];
 
 export const handlers = [
-  // GET messages for a conversation
-  http.get(`${API_BASE_URL}/api/conversations/:conversationId/messages`, ({ params, request }) => {
-    const { conversationId } = params;
-    const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get('limit') || '50', 10);
-    const cursor = url.searchParams.get('cursor');
+  // ============================================================
+  // AUTH HANDLERS
+  // ============================================================
 
-    // Filter messages by conversation
-    const conversationMessages = mockMessages.filter(
-      (m) => m.conversationId === conversationId
-    );
-
-    // Simulate cursor-based pagination
-    let startIndex = 0;
-    if (cursor) {
-      const cursorIndex = conversationMessages.findIndex((m) => m.id === cursor);
-      startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
-    }
-
-    const items = conversationMessages.slice(startIndex, startIndex + limit);
-    const hasMore = startIndex + limit < conversationMessages.length;
-    const nextCursor = hasMore ? items[items.length - 1]?.id : null;
-
-    const response: GetMessagesResponse = {
-      items,
-      nextCursor,
-      hasMore,
+  // POST login
+  http.post(`${IDENTITY_API_URL}/auth/login`, async ({ request }) => {
+    const body = (await request.json()) as {
+      identifier: string;
+      password: string;
     };
 
-    return HttpResponse.json(response);
+    // Success case - valid credentials
+    if (
+      (body.identifier === "test@example.com" ||
+        body.identifier === "0123456789") &&
+      body.password === "password123"
+    ) {
+      const response: LoginResponse = {
+        requiresMfa: false,
+        mfaToken: null,
+        mfaMethod: null,
+        accessToken: "mock-access-token-123",
+        user: {
+          id: "user-1",
+          identifier: body.identifier,
+          roles: ["workspace"],
+        },
+      };
+      return HttpResponse.json(response);
+    }
+
+    // Error case - invalid credentials
+    const errorResponse: LoginErrorResponse = {
+      message: "Invalid credentials",
+      errorCode: "INVALID_CREDENTIALS",
+      timestamp: new Date().toISOString(),
+    };
+    return HttpResponse.json(errorResponse, { status: 401 });
   }),
+
+  // ============================================================
+  // MESSAGES HANDLERS
+  // ============================================================
+
+  // GET messages for a conversation
+  http.get(
+    `${API_BASE_URL}/api/conversations/:conversationId/messages`,
+    ({ params, request }) => {
+      const { conversationId } = params;
+      const url = new URL(request.url);
+      const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+      const cursor = url.searchParams.get("cursor");
+
+      // Filter messages by conversation
+      const conversationMessages = mockMessages.filter(
+        (m) => m.conversationId === conversationId
+      );
+
+      // Simulate cursor-based pagination
+      let startIndex = 0;
+      if (cursor) {
+        const cursorIndex = conversationMessages.findIndex(
+          (m) => m.id === cursor
+        );
+        startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+      }
+
+      const items = conversationMessages.slice(startIndex, startIndex + limit);
+      const hasMore = startIndex + limit < conversationMessages.length;
+      const nextCursor = hasMore ? items[items.length - 1]?.id : null;
+
+      const response: GetMessagesResponse = {
+        items,
+        nextCursor,
+        hasMore,
+      };
+
+      return HttpResponse.json(response);
+    }
+  ),
 
   // POST send message (new endpoint: /api/messages with conversationId in body)
   http.post(`${API_BASE_URL}/api/messages`, async ({ request }) => {
-    const body = (await request.json()) as SendChatMessageRequest & { conversationId: string };
+    const body = (await request.json()) as SendChatMessageRequest & {
+      conversationId: string;
+    };
 
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
       conversationId: body.conversationId,
-      senderId: 'current-user',
-      senderName: 'Bạn',
+      senderId: "current-user",
+      senderName: "Bạn",
       parentMessageId: body.parentMessageId ?? null,
       content: body.content,
       contentType: body.contentType,

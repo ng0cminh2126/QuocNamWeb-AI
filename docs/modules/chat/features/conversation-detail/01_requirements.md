@@ -221,29 +221,58 @@ Authorization: Bearer {accessToken}
 
 ---
 
-## 📊 Component Naming Convention
+## 📊 Component Architecture (Updated: 2026-01-06)
 
-### Từ Mockup → Production
+### Components Đang Sử Dụng (Production)
 
-| Mockup Name      | Production Name      | Lý do          |
-| ---------------- | -------------------- | -------------- |
-| `ChatMain`       | `ConversationDetail` | Rõ nghĩa hơn   |
-| `MessageBubble`  | `MessageBubble`      | Giữ nguyên     |
-| `Message` (type) | `ChatMessage`        | Tránh conflict |
-| `messages`       | `messages`           | Giữ nguyên     |
-| `selectedGroup`  | `conversation`       | Bao quát hơn   |
+| Component                   | Location                                                    | Description                                                                       | Status    |
+| --------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------- | --------- |
+| **ChatMainContainer**       | `src/features/portal/components/ChatMainContainer.tsx`      | Container chính cho conversation detail với API, TanStack Query, SignalR realtime | ✅ Active |
+| **EmptyChatState**          | `src/features/portal/components/EmptyChatState.tsx`         | Empty state hiển thị khi chưa chọn conversation                                   | ✅ Active |
+| **ConversationListSidebar** | `src/features/portal/workspace/ConversationListSidebar.tsx` | Sidebar danh sách conversations                                                   | ✅ Active |
+| **WorkspaceView**           | `src/features/portal/workspace/WorkspaceView.tsx`           | Layout chứa sidebar + chat container + detail panel                               | ✅ Active |
+
+### Component Features
+
+**ChatMainContainer:**
+
+- ✅ Fetch messages from API (useMessages)
+- ✅ Send messages (useSendMessage)
+- ✅ Realtime updates via SignalR
+- ✅ Typing indicators
+- ✅ Infinite scroll pagination
+- ✅ **Attach buttons (📎 File, 🖼️ Image)** - Added 2026-01-06
+
+**EmptyChatState:**
+
+- ✅ Desktop layout: Icon 16x16 + hướng dẫn chi tiết
+- ✅ Mobile layout: Icon 12x12 + text ngắn gọn
+- ✅ Responsive design
+- ✅ Prop `isMobile` để switch layout
+
+### Component Naming Convention
+
+**Từ Mockup → Production:**
+
+| Mockup Name      | Production Name     | Lý do                           |
+| ---------------- | ------------------- | ------------------------------- |
+| `ChatMain`       | `ChatMainContainer` | Rõ nghĩa hơn, tránh conflict    |
+| `MessageBubble`  | `MessageBubble`     | Giữ nguyên                      |
+| `Message` (type) | `ChatMessage`       | Tránh conflict với Message type |
+| `messages`       | `messages`          | Giữ nguyên                      |
+| `selectedGroup`  | `conversation`      | Bao quát hơn (group + DM)       |
 
 ### File Naming
 
-| Type      | Pattern                  | Example |
-| --------- | ------------------------ | ------- |
-| Component | `ConversationDetail.tsx` |         |
-| Component | `MessageList.tsx`        |         |
-| Component | `MessageInput.tsx`       |         |
-| Hook      | `useMessages.ts`         |         |
-| Hook      | `useSendMessage.ts`      |         |
-| API       | `messages.api.ts`        |         |
-| Types     | `messages.ts`            |         |
+| Type      | Pattern                 | Example          |
+| --------- | ----------------------- | ---------------- |
+| Component | `ChatMainContainer.tsx` | Main container   |
+| Component | `EmptyChatState.tsx`    | Empty state      |
+| Component | `MessageBubble.tsx`     | Message bubble   |
+| Hook      | `useMessages.ts`        | Query hook       |
+| Hook      | `useSendMessage.ts`     | Mutation hook    |
+| API       | `messages.api.ts`       | API client       |
+| Types     | `messages.ts`           | Type definitions |
 
 ---
 
@@ -265,29 +294,23 @@ Authorization: Bearer {accessToken}
 
 ## 📋 IMPACT SUMMARY (Tóm tắt thay đổi)
 
-### Files sẽ tạo mới:
+### Files đã tạo (Implementation Complete):
 
-| File                                                          | Description           |
-| ------------------------------------------------------------- | --------------------- |
-| `src/api/messages.api.ts`                                     | API client            |
-| `src/hooks/queries/useMessages.ts`                            | Query hook (infinite) |
-| `src/hooks/mutations/useSendMessage.ts`                       | Mutation hook         |
-| `src/types/messages.ts`                                       | Update types          |
-| `src/features/chat/ConversationDetail/ConversationDetail.tsx` | Main component        |
-| `src/features/chat/ConversationDetail/MessageList.tsx`        | Message list          |
-| `src/features/chat/ConversationDetail/MessageInput.tsx`       | Input area            |
-| `src/features/chat/ConversationDetail/MessageBubble.tsx`      | Single message        |
-| `src/features/chat/ConversationDetail/TypingIndicator.tsx`    | Typing UI             |
-| `src/features/chat/ConversationDetail/index.ts`               | Barrel export         |
-| `src/features/chat/ConversationDetail/__tests__/*.test.tsx`   | Tests                 |
+| File                                                      | Description           | Status  | Date       |
+| --------------------------------------------------------- | --------------------- | ------- | ---------- |
+| ✅ `src/api/messages.api.ts`                              | API client            | ✅ Done | Earlier    |
+| ✅ `src/hooks/queries/useMessages.ts`                     | Query hook (infinite) | ✅ Done | Earlier    |
+| ✅ `src/hooks/mutations/useSendMessage.ts`                | Mutation hook         | ✅ Done | Earlier    |
+| ✅ `src/types/messages.ts`                                | Message types         | ✅ Done | Earlier    |
+| ✅ `src/features/portal/components/ChatMainContainer.tsx` | Main container        | ✅ Done | Earlier    |
+| ✅ `src/features/portal/components/EmptyChatState.tsx`    | Empty state component | ✅ Done | 2026-01-06 |
 
-### Files sẽ sửa đổi:
+### Files đã sửa đổi:
 
-| File                                              | Changes                   |
-| ------------------------------------------------- | ------------------------- |
-| `src/features/portal/workspace/WorkspaceView.tsx` | Import ConversationDetail |
-| `src/lib/signalr.ts`                              | Thêm message events       |
-| `src/types/index.ts`                              | Export message types      |
+| File                                                 | Changes                                               | Status  | Date       |
+| ---------------------------------------------------- | ----------------------------------------------------- | ------- | ---------- |
+| ✅ `src/features/portal/workspace/WorkspaceView.tsx` | Import EmptyChatState, removed inline empty state JSX | ✅ Done | 2026-01-06 |
+| ✅ `src/lib/signalr.ts`                              | Message events                                        | ✅ Done | Earlier    |
 
 ### Files sẽ xoá:
 

@@ -55,7 +55,7 @@ docs/api/[module]/[feature-name]/
 
 ## 📝 BƯỚC 1: Requirements Gathering
 
-**File:** `docs/modules/[module]/features/[feature]/requirements.md`
+**File:** `docs/modules/[module]/features/[feature]/01_requirements.md`
 
 **Mục đích:** Thu thập và xác nhận yêu cầu nghiệp vụ
 
@@ -74,7 +74,7 @@ docs/api/[module]/[feature-name]/
 - [ ] Điền các Pending Decisions
 - [ ] ✅ APPROVED để chuyển sang BƯỚC 2
 
-**Output:** requirements.md với status ✅ READY
+**Output:** 01_requirements.md với status ✅ READY
 
 ---
 
@@ -207,15 +207,37 @@ docs/api/[module]/[feature-name]/
 - ✅ wireframe.md APPROVED (nếu có UI)
 - ✅ flow.md APPROVED (nếu tạo)
 - ✅ contract.md + snapshots READY (nếu có API)
+  **Reference Files:**
+- `04_implementation-plan.md` (What to build)
+- `06_testing.md` (What to test)
+
+**Pre-requisites:**
+
 - ✅ implementation-plan.md APPROVED
+- ✅ 06_testing.md APPROVED (NEW!)
 
 **AI sẽ:**
 
 1. Implement theo checklist trong implementation-plan.md
-2. **Tạo test files cho MỌI code file (BẮT BUỘC)**
-3. Update progress.md sau mỗi task hoàn thành
-4. Run tests và fix errors
-5. Commit code với conventional commit messages
+2. **Tạo test files theo mapping trong 06_testing.md (BẮT BUỘC)**
+3. Viết code và tests ĐỒNG THỜI (song song)
+4. Update progress.md sau mỗi task hoàn thành
+5. Run tests và fix errors
+6. Commit code với conventional commit messages
+
+**Testing Workflow:**
+
+```
+1. Tạo implementation file (e.g., messages.api.ts)
+   ↓
+2. Tạo test file (e.g., messages.api.test.ts) NGAY SAU ĐÓ
+   ↓
+3. Viết test cases theo 06_testing.md
+   ↓
+4. Viết implementation code để tests pass
+   ↓
+5. Verify coverage: npm run test:coverage
+```
 
 **Progress tracking:** AI tự động update progress.md
 
@@ -223,31 +245,59 @@ docs/api/[module]/[feature-name]/
 
 - Mỗi file implementation PHẢI có file test tương ứng
 - Tests được viết song song với code, không phải sau
+- Reference 06_testing.md để biết test cases nào cần viết
 
 ---
 
-## 🧪 BƯỚC 6: Unit Testing (BẮT BUỘC)
+## ✅ BƯỚC 6: Test Verification & Documentation
 
-**File:** `docs/modules/[module]/features/[feature]/06_testing.md`
+**File:** `docs/modules/[module]/features/[feature]/06_testing.md` (update status)
 
-**Mục đích:** Document testing requirements và track test coverage
+**Mục đích:** Verify toàn bộ tests pass và coverage đạt target
 
-**AI sẽ tạo:**
+**AI sẽ:**
 
-1. Test files mapping (implementation → test file)
-2. Required test cases cho mỗi file
-3. Testing checklist
-4. Coverage targets (≥80% unit tests)
-5. **HUMAN CONFIRMATION** (tests passing before deployment)
+1. Chạy toàn bộ tests: `npm run test:run`
+2. Chạy coverage report: `npm run test:coverage`
+3. Update 06_testing.md với actual coverage numbers
+4. Update test status: ⏳ PENDING → ✅ PASSED
+5. Tạo test summary report
 
-**Testing Requirements:**
+**Coverage Targets:**
 
-| Implementation Type  | Test Cases Required | Example                               |
-| -------------------- | ------------------- | ------------------------------------- |
-| API clients          | 4 cases minimum     | Success, error, validation, network   |
-| Query/Mutation hooks | 5 cases minimum     | Loading, success, error, key, refetch |
-| Components           | 4-6 cases           | Render, events, states, accessibility |
-| Utilities            | 3+ cases            | Happy path, edge cases, errors        |
+| Test Type    | Minimum Coverage | Status     |
+| ------------ | ---------------- | ---------- |
+| Unit Tests   | ≥80%             | Must meet  |
+| Integration  | ≥60%             | Must meet  |
+| E2E Critical | 100%             | Must cover |
+
+**Test Report Format:**
+
+```markdown
+## Test Results Summary
+
+### Coverage Report
+
+- Unit Tests: 85% (✅ Passed)
+- Integration Tests: 65% (✅ Passed)
+- E2E Tests: 3/3 scenarios (✅ Passed)
+
+### Test Files Executed
+
+| Test File               | Tests | Passed | Failed |
+| ----------------------- | ----- | ------ | ------ |
+| messages.api.test.ts    | 4     | 4      | 0      |
+| useSendMessage.test.tsx | 5     | 5      | 0      |
+```
+
+**HUMAN cần làm:**
+
+- [ ] Review test results
+- [ ] Verify coverage meets targets
+- [ ] Check no critical tests skipped
+- [ ] ✅ APPROVED tests before deployment
+
+**Output:** 06_testing.md updated với actual results
 
 **HUMAN cần làm:**
 

@@ -4,6 +4,7 @@ import { ChatMessagePanel } from "./ChatMessagePanel";
 import { ConversationDetailPanel } from "./ConversationDetailPanel";
 import { PinnedMessagesPanel } from "../components/PinnedMessagesPanel";
 import { ChatMainContainer } from "../components/ChatMainContainer";
+import { EmptyChatState } from "../components/EmptyChatState";
 
 import type {
   Task,
@@ -15,13 +16,9 @@ import type {
   ChecklistItem,
   ChecklistTemplateItem,
   ChecklistTemplateMap,
-  TaskLogMessage,  
+  TaskLogMessage,
 } from "../types";
-import {
-  MessageSquareIcon,
-  ClipboardListIcon,
-  UserIcon,
-} from "lucide-react";
+import { MessageSquareIcon, ClipboardListIcon, UserIcon } from "lucide-react";
 
 type ChatTarget = { type: "group" | "dm"; id: string; name?: string };
 
@@ -81,9 +78,16 @@ interface WorkspaceViewProps {
   // onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
   // onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   // onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
-  applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
+  applyTemplateToTasks?: (
+    workTypeId: string,
+    template: ChecklistTemplateItem[]
+  ) => void;
   // checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
-  setChecklistTemplates: React.Dispatch<React.SetStateAction<Record<string, Record<string, ChecklistTemplateItem[]>>>>;
+  setChecklistTemplates: React.Dispatch<
+    React.SetStateAction<
+      Record<string, Record<string, ChecklistTemplateItem[]>>
+    >
+  >;
 
   workspaceMode: "default" | "pinned";
   setWorkspaceMode: (v: "default" | "pinned") => void;
@@ -125,7 +129,7 @@ interface WorkspaceViewProps {
 
   checklistVariants?: { id: string; name: string; isDefault?: boolean }[];
   defaultChecklistVariantId?: string;
-  onCreateTaskFromMessage?: (payload: {title: string; }) => void;
+  onCreateTaskFromMessage?: (payload: { title: string }) => void;
 
   // Task management
   onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
@@ -135,9 +139,6 @@ interface WorkspaceViewProps {
 
   // Checklist templates
   checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
-
-  // Use API mode for chat (fetches from API instead of using mock data)
-  useApiChat?: boolean;
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -211,32 +212,43 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onToggleChecklist,
     onUpdateTaskChecklist,
     checklistTemplates,
-    useApiChat = false,
   } = props;
 
   const isMobile = layoutMode === "mobile";
   const bottomItems = [
-    { key: "messages", label: "Tin nhắn", icon: <MessageSquareIcon className="w-5 h-5" /> },
+    {
+      key: "messages",
+      label: "Tin nhắn",
+      icon: <MessageSquareIcon className="w-5 h-5" />,
+    },
     // { key: "work", label: "Công việc", icon: <ClipboardListIcon className="w-5 h-5" /> },
-    { key: "profile", label: "Cá nhân", icon: <UserIcon className="w-5 h-5" /> },
+    {
+      key: "profile",
+      label: "Cá nhân",
+      icon: <UserIcon className="w-5 h-5" />,
+    },
   ];
 
-  const [mobileTab, setMobileTab] = React.useState<"messages" | "work" | "profile">("messages");
+  const [mobileTab, setMobileTab] = React.useState<
+    "messages" | "work" | "profile"
+  >("messages");
 
-  // Track API conversation name separately (when useApiChat is enabled)
-  const [apiConversationName, setApiConversationName] = React.useState<string | null>(null);
+  // Track conversation name
+  const [apiConversationName, setApiConversationName] = React.useState<
+    string | null
+  >(null);
 
   // Header expand toggle (still available)
   const [rightExpanded, setRightExpanded] = React.useState(false);
 
   // Desktop resizable RightPanel
-  const containerRef = React.useRef<HTMLDivElement | null>(null);  
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Constants
-  const LEFT_WIDTH = 360;       // px
-  const MIN_RIGHT_WIDTH = 360;  // px
-  const DIVIDER_WIDTH = 8;      // px (w-2)
-  const MIN_LEFT_TOTAL = 600;   // px — lock when the whole left side (Left + Chat + Divider) would be < 500
+  const LEFT_WIDTH = 360; // px
+  const MIN_RIGHT_WIDTH = 360; // px
+  const DIVIDER_WIDTH = 8; // px (w-2)
+  const MIN_LEFT_TOTAL = 600; // px — lock when the whole left side (Left + Chat + Divider) would be < 500
 
   // State
   const [rightPanelWidth, setRightPanelWidth] = React.useState<number>(360);
@@ -261,14 +273,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   }, []);
 
   // Clamp: allow dragging until (Left + Chat + Divider) reaches 500px
-  const clampRightWidth = React.useCallback((candidate: number) => {
-    const contentWidth = readContentWidth();
-    // grid columns when showRight: 360px | 1fr | 8px | rightPanelWidth
-    // leftTotal = contentWidth - rightPanelWidth
-    const maxRight = contentWidth - MIN_LEFT_TOTAL; // stop when leftTotal == 500
-    const minRight = MIN_RIGHT_WIDTH;
-    return Math.max(minRight, Math.min(candidate, Math.max(minRight, maxRight)));
-  }, [readContentWidth]);
+  const clampRightWidth = React.useCallback(
+    (candidate: number) => {
+      const contentWidth = readContentWidth();
+      // grid columns when showRight: 360px | 1fr | 8px | rightPanelWidth
+      // leftTotal = contentWidth - rightPanelWidth
+      const maxRight = contentWidth - MIN_LEFT_TOTAL; // stop when leftTotal == 500
+      const minRight = MIN_RIGHT_WIDTH;
+      return Math.max(
+        minRight,
+        Math.min(candidate, Math.max(minRight, maxRight))
+      );
+    },
+    [readContentWidth]
+  );
 
   // Keep width valid on resize/toggles
   React.useEffect(() => {
@@ -287,7 +305,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     if (!showRight || !containerRef.current) return;
     draggingRef.current = true;
     startXRef.current = e.clientX;
-    startRightRef.current = rightPanelWidth;    
+    startRightRef.current = rightPanelWidth;
     window.addEventListener("mousemove", onWindowMouseMove);
     window.addEventListener("mouseup", onWindowMouseUp);
     document.body.style.userSelect = "none";
@@ -303,7 +321,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
 
   const onWindowMouseUp = () => {
     if (!draggingRef.current) return;
-    draggingRef.current = false;    
+    draggingRef.current = false;
     window.removeEventListener("mousemove", onWindowMouseMove);
     window.removeEventListener("mouseup", onWindowMouseUp);
     document.body.style.userSelect = "";
@@ -337,30 +355,36 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     if (isMobile) setMobileTab("messages");
   };
 
-  // When using API chat, use apiConversationName if available
+  // Use apiConversationName if available
   const chatTitle = React.useMemo(() => {
-    if (useApiChat && apiConversationName) {
+    if (apiConversationName) {
       return apiConversationName;
     }
     if (selectedChat?.type === "group") {
       return groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm";
     }
     if (selectedChat?.type === "dm") {
-      return contacts.find((c) => c.id === selectedChat.id)?.name ?? "Trò chuyện";
+      return (
+        contacts.find((c) => c.id === selectedChat.id)?.name ?? "Trò chuyện"
+      );
     }
     return "Trò chuyện";
-  }, [useApiChat, apiConversationName, selectedChat, groups, contacts]);
+  }, [apiConversationName, selectedChat, groups, contacts]);
 
   // Handler to update conversation name when selecting from API
-  const handleApiSelectChat = React.useCallback((target: ChatTarget, name?: string) => {
-    onSelectChat(target);
-    if (name) {
-      setApiConversationName(name);
-    }
-  }, [onSelectChat]);
+  const handleApiSelectChat = React.useCallback(
+    (target: ChatTarget, name?: string) => {
+      onSelectChat(target);
+      if (name) {
+        setApiConversationName(name);
+      }
+    },
+    [onSelectChat]
+  );
 
   const resolvePinnedTime = (msg: Message) => {
-    if (msg.createdAt && !isNaN(Date.parse(msg.createdAt))) return msg.createdAt;
+    if (msg.createdAt && !isNaN(Date.parse(msg.createdAt)))
+      return msg.createdAt;
     if (typeof msg.time === "string" && /^\d{2}:\d{2}$/.test(msg.time)) {
       const [hh, mm] = msg.time.split(":").map(Number);
       const d = new Date();
@@ -372,14 +396,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
 
   if (isMobile) {
     return (
-      <div className={`relative flex h-full flex-col bg-gray-50 ${mobileTab === "messages" && selectedChat ? "pb-0" : "pb-12"}`}>
+      <div
+        className={`relative flex h-full flex-col bg-gray-50 ${
+          mobileTab === "messages" && selectedChat ? "pb-0" : "pb-12"
+        }`}
+      >
         <div className="flex-1 min-h-0">
           {mobileTab === "messages" && (
             <div className="h-full min-h-0 overflow-hidden flex flex-col">
               {workspaceMode === "pinned" ? (
                 <PinnedMessagesPanel
                   messages={pinnedMessages ?? []}
-                  onClose={onClosePinned || (() => props.setWorkspaceMode("default"))}
+                  onClose={
+                    onClosePinned || (() => props.setWorkspaceMode("default"))
+                  }
                   onOpenChat={(pin) => {
                     handleMobileSelectChat({ type: "group", id: pin.chatId });
                     onOpenSourceMessage?.(pin.id);
@@ -407,12 +437,14 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 </div>
               ) : (
                 <div className="h-full min-h-0">
-                  {useApiChat && selectedChat ? (
+                  {selectedChat ? (
                     // API-based chat using ChatMainContainer (conversation-detail)
                     <ChatMainContainer
                       conversationId={selectedChat.id}
                       conversationName={chatTitle}
-                      conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
+                      conversationType={
+                        selectedChat.type === "group" ? "GRP" : "DM"
+                      }
                       memberCount={selectedGroup?.members?.length}
                       isMobile={true}
                       onBack={() => {
@@ -421,82 +453,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                       }}
                     />
                   ) : (
-                    // Legacy mockup ChatMessagePanel
-                    <ChatMessagePanel
-                      selectedGroup={selectedGroup as any}
-                      isMobile={true}
-                      onBack={() => {
-                        onClearSelectedChat?.();
-                        setMobileTab("messages");
-                      }}
-                      messages={messages}
-                      setMessages={setMessages}
-                      myWork={[]}
-                      showRight={showRight}
-                      setShowRight={setShowRight}
-                      showSearch={showSearch}
-                      setShowSearch={setShowSearch}
-                      q={q}
-                      setQ={setQ}
-                      searchInputRef={searchInputRef}
-                      onOpenCloseModalFor={() => {}}
-                      openPreview={openPreview}
-                      onTogglePin={(msg) => {
-                        setPinnedMessages((prev) => {
-                          const exists = prev.some((p) => p.id === msg.id);
-                          if (exists) return prev.filter((p) => p.id !== msg.id);
-                          const isImage = msg.fileInfo?.type === "image" || msg.files?.[0]?.type === "image";
-                          const pinnedType: "text" | "image" | "file" =
-                            isImage ? "image" : (msg.fileInfo?.type || msg.files?.[0]?.type) ? "file" : "text";
-                          return [
-                            ...prev,
-                            {
-                              id: msg.id,
-                              chatId: msg.groupId,
-                              groupName: selectedGroup?.name ?? "",
-                              workTypeName:
-                                selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ?? "",
-                              sender: msg.sender,
-                              type: pinnedType,
-                              content: msg.type === "text" ? msg.content : undefined,
-                              preview: msg.type === "text" ? msg.content?.slice(0, 100) : "[Đính kèm]",
-                              fileInfo: msg.fileInfo ?? msg.files?.[0] ?? undefined,
-                              time: resolvePinnedTime(msg),
-                            },
-                          ];
-                        });
-                      }}
-                      title={chatTitle}
-                      currentWorkTypeId={selectedWorkTypeId}
-                      workTypes={workTypes}
-                      onChangeWorkType={onChangeWorkType}
-                      currentUserId={currentUserId}
-                      currentUserName={currentUserName}
-                      selectedChat={selectedChat}
-                      onReceiveInfo={onReceiveInfo}
-                      onAssignFromMessage={onAssignFromMessage}
-                      setTab={setTab}                    
-                      receivedInfos={receivedInfos}
-                      viewMode={viewMode}
-                      tasks={tasks}
-                      onOpenTaskLog={onOpenTaskLog}
-                      taskLogs={taskLogs}
-
-                      // mobile assign data
-                      mobileMembers={groupMembers}
-                      mobileChecklistVariants={checklistVariants}
-                      defaultChecklistVariantId={defaultChecklistVariantId}
-                      onCreateTaskFromMessage={onCreateTaskFromMessage}
-
-                      // Mobile Task callbacks
-                      onChangeTaskStatus={onChangeTaskStatus}
-                      onReassignTask={onReassignTask}
-                      onToggleChecklist={onToggleChecklist}
-                      onUpdateTaskChecklist={onUpdateTaskChecklist}
-
-                      checklistTemplates={checklistTemplates}
-                      setChecklistTemplates={setChecklistTemplates}
-                    />
+                    <EmptyChatState isMobile={true} />
                   )}
                 </div>
               )}
@@ -511,12 +468,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 groupId={selectedGroup?.id}
                 groupName={
                   selectedChat?.type === "group"
-                    ? groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm"
+                    ? groups.find((g) => g.id === selectedChat.id)?.name ??
+                      "Nhóm"
                     : "Trò chuyện"
                 }
-                workTypeName={workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ?? "—"}
+                workTypeName={
+                  workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ??
+                  "—"
+                }
                 checklistVariants={
-                  selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)?.checklistVariants
+                  selectedGroup?.workTypes?.find(
+                    (w) => w.id === selectedWorkTypeId
+                  )?.checklistVariants
                 }
                 viewMode={viewMode}
                 selectedWorkTypeId={selectedWorkTypeId}
@@ -544,7 +507,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           {mobileTab === "profile" && (
             <div className="p-4 space-y-4 text-sm">
               <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="font-medium text-gray-900">Thông tin cá nhân</div>
+                <div className="font-medium text-gray-900">
+                  Thông tin cá nhân
+                </div>
                 <div className="mt-2 text-gray-700">
                   <div>Họ và tên: {currentUserName}</div>
                   <div>Phòng ban: {currentUserDepartment ?? "—"} </div>
@@ -561,9 +526,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           )}
         </div>
 
-        {!(
-          mobileTab === "messages" && !!selectedChat
-        ) && (
+        {!(mobileTab === "messages" && !!selectedChat) && (
           <div className="absolute bottom-0 left-0 right-0 bg-white border-t">
             <nav className="grid grid-cols-2">
               {bottomItems.map((item) => (
@@ -591,7 +554,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
       ref={containerRef}
       style={
         showRight
-          ? { gridTemplateColumns: `360px 1fr ${DIVIDER_WIDTH}px ${rightPanelWidth}px` }
+          ? {
+              gridTemplateColumns: `360px 1fr ${DIVIDER_WIDTH}px ${rightPanelWidth}px`,
+            }
           : { gridTemplateColumns: `360px 1fr` }
       }
       className="grid h-full"
@@ -621,19 +586,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             contacts={contacts}
             onSelectChat={(target) => {
               onSelectChat(target);
-              if (useApiChat && target.name) {
+              if (target.name) {
                 setApiConversationName(target.name);
               }
             }}
-            useApiData={useApiChat}
             selectedConversationId={selectedChat?.id}
           />
         )}
       </div>
 
-      {/* Center (ChatMessagePanel) — IMPORTANT: allow shrinking by setting min-w-0 */}
+      {/* Center (Chat Container) — IMPORTANT: allow shrinking by setting min-w-0 */}
       <div className="h-full min-h-0 min-w-0">
-        {useApiChat && selectedChat ? (
+        {selectedChat ? (
           // API-based chat using ChatMainContainer (conversation-detail)
           <ChatMainContainer
             conversationId={selectedChat.id}
@@ -643,82 +607,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             isMobile={false}
           />
         ) : (
-          // Legacy mockup ChatMessagePanel
-          <ChatMessagePanel
-            selectedGroup={selectedGroup as any}
-            isMobile={false}
-            messages={messages}
-            setMessages={setMessages}
-            myWork={[]}
-            showRight={showRight}
-            setShowRight={setShowRight}
-            showSearch={showSearch}
-            setShowSearch={setShowSearch}
-            q={q}
-            setQ={setQ}
-            searchInputRef={searchInputRef}
-            onOpenCloseModalFor={() => {}}
-            openPreview={openPreview}
-            onTogglePin={(msg) => {
-              setPinnedMessages((prev) => {
-                const exists = prev.some((p) => p.id === msg.id);
-                if (exists) return prev.filter((p) => p.id !== msg.id);
-                onShowPinnedToast();
-                const isImage =
-                  msg.fileInfo?.type === "image" || msg.files?.[0]?.type === "image";
-                const pinnedType: "text" | "image" | "file" =
-                  isImage
-                    ? "image"
-                    : (msg.fileInfo?.type || msg.files?.[0]?.type)
-                      ? "file"
-                      : "text";
-                return [
-                  ...prev,
-                  {
-                    id: msg.id,
-                    chatId: msg.groupId,
-                    groupName: selectedGroup?.name ?? "",
-                    workTypeName:
-                      selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ?? "",
-                    sender: msg.sender,
-                    type: pinnedType,
-                    content: msg.type === "text" ? msg.content : undefined,
-                    preview:
-                      msg.type === "text" ? msg.content?.slice(0, 100) : "[Đính kèm]",
-                    fileInfo: msg.fileInfo ?? msg.files?.[0] ?? undefined,
-                    time: resolvePinnedTime(msg),
-                  },
-                ];
-              });
-            }}
-            currentWorkTypeId={selectedWorkTypeId}
-            title={chatTitle}
-            workTypes={selectedGroup?.workTypes ?? []}
-            selectedWorkTypeId={selectedWorkTypeId}
-            onChangeWorkType={onChangeWorkType}
-            currentUserId={currentUserId}
-            currentUserName={currentUserName}
-            selectedChat={selectedChat}
-            onReceiveInfo={onReceiveInfo}
-            onAssignFromMessage={onAssignFromMessage}
-            setTab={setTab}
-            receivedInfos={receivedInfos}
-            viewMode={viewMode}
-            tasks={tasks}
-            onOpenTaskLog={onOpenTaskLog}
-            taskLogs={taskLogs}
-            rightExpanded={rightExpanded}
-            onToggleRightExpand={handleToggleRightExpand}
-
-            // Mobile Task callbacks
-            onChangeTaskStatus={onChangeTaskStatus}
-            onReassignTask={onReassignTask}
-            onToggleChecklist={onToggleChecklist}
-            onUpdateTaskChecklist={onUpdateTaskChecklist}
-
-            checklistTemplates={checklistTemplates}
-            setChecklistTemplates={setChecklistTemplates}
-          />
+          <EmptyChatState isMobile={false} />
         )}
       </div>
 
@@ -746,14 +635,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             groupId={selectedGroup?.id}
             groupName={
               selectedChat?.type === "group"
-                ? (groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm")
+                ? groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm"
                 : "Trò chuyện"
             }
             workTypeName={
-              (workTypes?.find((w) => w.id === selectedWorkTypeId)?.name) ?? "—"
+              workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ?? "—"
             }
             checklistVariants={
-              selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)?.checklistVariants
+              selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)
+                ?.checklistVariants
             }
             viewMode={viewMode}
             selectedWorkTypeId={selectedWorkTypeId}
