@@ -35,6 +35,7 @@ import type {
 } from "../types";
 import { MessageBubble } from "@/features/portal/components/MessageBubble";
 import { LinearTabs } from "../components/LinearTabs";
+import ChatInput from "@/features/portal/components/ChatInput";
 import {
   Sheet,
   SheetContent,
@@ -846,18 +847,13 @@ export const ChatMessagePanel: React.FC<{
           </div>
         ) : (
           <div className="border-t p-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <input
-                className="flex-1 rounded-lg border px-3 py-2 text-sm border-brand-200"
-                placeholder="Nhập tin nhắn…"
+            <div className="flex items-start gap-2">
+              <ChatInput
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
+                onChange={setInputValue}
+                onSend={handleSend}
+                autoFocus
+                className="flex-1"
               />
               <IconButton
                 label="Tin nhắn mẫu"
@@ -868,6 +864,7 @@ export const ChatMessagePanel: React.FC<{
               <button
                 onClick={handleSend}
                 className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+                data-testid="chat-send-button"
               >
                 <SendHorizonal className="h-4 w-4" />
               </button>

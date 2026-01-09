@@ -209,10 +209,10 @@ export function useMessageRealtime({
       return;
     }
 
-    console.log(
-      "useMessageRealtime: SignalR connected, setting up listeners for conversation:",
-      conversationId
-    );
+    // console.log(
+    //   "useMessageRealtime: SignalR connected, setting up listeners for conversation:",
+    //   conversationId
+    // );
 
     // Subscribe to MESSAGE_SENT event (primary event from backend)
     // Backend sends data as { message: ChatMessage }
@@ -229,7 +229,6 @@ export function useMessageRealtime({
     // Join the conversation group
     chatHub.joinGroup(conversationId).then(() => {
       hasJoinedGroupRef.current = true;
-      console.log("useMessageRealtime: Joined conversation", conversationId);
     });
 
     // Cleanup

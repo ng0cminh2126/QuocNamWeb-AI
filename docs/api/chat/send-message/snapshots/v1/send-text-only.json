@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "apiVersion": "v1",
+    "endpoint": "POST /api/messages",
+    "description": "Send text message only - no file attachment"
+  },
+  "_request": {
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "conversationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "content": "Hello team! Cuộc họp lúc 3pm nhé.",
+      "parentMessageId": null,
+      "mentions": null,
+      "attachment": null
+    }
+  },
+  "_response": {
+    "status": 201,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "location": "/api/messages/1a95f64c-4567-8901-def0-4567890123de"
+    },
+    "body": {
+      "id": "1a95f64c-4567-8901-def0-4567890123de",
+      "conversationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "senderId": "b285f64d-5678-9012-ef01-5678901234ef",
+      "senderName": "nguyenvana",
+      "senderIdentifier": "NVA001",
+      "senderFullName": "Nguyễn Văn A",
+      "senderRoles": "User",
+      "parentMessageId": null,
+      "content": "Hello team! Cuộc họp lúc 3pm nhé.",
+      "contentType": "TXT",
+      "sentAt": "2026-01-07T10:30:00Z",
+      "editedAt": null,
+      "linkedTaskId": null,
+      "reactions": [],
+      "attachments": [],
+      "replyCount": 0,
+      "isStarred": false,
+      "isPinned": false,
+      "threadPreview": null,
+      "mentions": []
+    }
+  }
+}

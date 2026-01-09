@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "method": "GET",
+    "endpoint": "/api/Files/{id}/watermarked-thumbnail?size=small",
+    "note": "MOCK DATA - Success response metadata (actual response is binary JPEG image)",
+    "imageType": "Binary JPEG data with watermark",
+    "expectedSize": "~8-15 KB",
+    "dimensions": "100x100px (max)"
+  },
+  "_request": {
+    "fileId": "019b97b5-ba65-7867-90a6-2acbbacc5b44",
+    "query": {
+      "size": "small"
+    },
+    "headers": {
+      "Authorization": "Bearer {TOKEN}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "Content-Type": "image/jpeg",
+      "Content-Length": "12847",
+      "Content-Disposition": "inline; filename=\"thumbnail-small.jpg\"",
+      "Cache-Control": "public, max-age=86400"
+    },
+    "body": "[BINARY IMAGE DATA - JPEG with diagonal watermark 'QUOC NAM PORTAL']",
+    "description": "Watermarked thumbnail image, 100px max dimension, JPEG compressed"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "description": "Successful file upload response",
+    "status": 201,
+    "capturedAt": "2026-01-06T00:00:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/Files?sourceModule=1"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-file-api-dev.allianceitsc.com/api/Files?sourceModule=1",
+    "headers": {
+      "Authorization": "Bearer <jwt_token>",
+      "Content-Type": "multipart/form-data"
+    },
+    "body": {
+      "file": "test-document.pdf (binary)"
+    }
+  },
+  "_response": {
+    "status": 201,
+    "statusText": "Created",
+    "body": {
+      "fileId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "storagePath": "chat/2024/01/06/3fa85f64-5717-4562-b3fc-2c963f66afa6.pdf",
+      "fileName": "test-document.pdf",
+      "contentType": "application/pdf",
+      "size": 1048576
+    }
+  }
+}

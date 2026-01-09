@@ -1,9 +1,9 @@
 // useDirectMessages hook - Fetch DM conversations with infinite scroll
 
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { getConversations } from '@/api/conversations.api';
-import { conversationKeys } from './keys/conversationKeys';
-import type { DirectConversation } from '@/types/conversations';
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getConversations } from "@/api/conversations.api";
+import { conversationKeys } from "./keys/conversationKeys";
+import type { DirectConversation } from "@/types/conversations";
 
 interface UseDirectMessagesOptions {
   enabled?: boolean;
@@ -24,6 +24,8 @@ export function useDirectMessages(options: UseDirectMessagesOptions = {}) {
     initialPageParam: undefined as string | undefined,
     staleTime: 1000 * 30, // 30 seconds (from requirements)
     enabled,
+    // Force component re-render when cache updates (important for realtime)
+    notifyOnChangeProps: ["data", "dataUpdatedAt"],
   });
 }
 
@@ -31,7 +33,7 @@ export function useDirectMessages(options: UseDirectMessagesOptions = {}) {
  * Helper function to flatten direct messages from infinite query pages
  */
 export function flattenDirectMessages(
-  data: ReturnType<typeof useDirectMessages>['data']
+  data: ReturnType<typeof useDirectMessages>["data"]
 ): DirectConversation[] {
   return data?.pages.flatMap((page) => page.items) ?? [];
 }

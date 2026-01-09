@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "capturedAt": "2025-12-30T10:45:00Z",
+    "environment": "development",
+    "endpoint": "GET /api/conversations/{guid}/messages?limit=50",
+    "description": "Danh sách messages trong conversation"
+  },
+  "_request": {
+    "method": "GET",
+    "url": "https://vega-chat-api-dev.allianceitsc.com/api/conversations/019b5d4c-efe0-7956-8f80-211fcca6c935/messages?limit=50",
+    "headers": {
+      "Authorization": "Bearer {token}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "019b6d4b-a96c-7b62-a4f8-9ec2724ab0ec",
+          "conversationId": "019b5d4c-efe0-7956-8f80-211fcca6c935",
+          "senderId": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "senderName": "019b48e8",
+          "parentMessageId": null,
+          "content": "@019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "contentType": "TXT",
+          "sentAt": "2025-12-30T03:27:13.772511+00:00",
+          "editedAt": null,
+          "linkedTaskId": null,
+          "reactions": [],
+          "attachments": [],
+          "replyCount": 0,
+          "isStarred": false,
+          "isPinned": false,
+          "threadPreview": null,
+          "mentions": []
+        },
+        {
+          "id": "019b6923-37d3-7eb6-866b-4a68860049ad",
+          "conversationId": "019b5d4c-efe0-7956-8f80-211fcca6c935",
+          "senderId": "019b48e8-0c13-7ff2-b954-10937732c5a4",
+          "senderName": "019b48e8",
+          "parentMessageId": null,
+          "content": "@019b48e8-0ce8-748e-9ebb-f260ff23a319 '",
+          "contentType": "TXT",
+          "sentAt": "2025-12-29T08:04:34.387809+00:00",
+          "editedAt": null,
+          "linkedTaskId": null,
+          "reactions": [],
+          "attachments": [],
+          "replyCount": 0,
+          "isStarred": false,
+          "isPinned": false,
+          "threadPreview": null,
+          "mentions": []
+        }
+      ],
+      "nextCursor": null,
+      "hasMore": false
+    }
+  }
+}

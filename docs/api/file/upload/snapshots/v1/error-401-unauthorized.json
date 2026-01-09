@@ -1,0 +1,30 @@
+{
+  "_meta": {
+    "description": "Unauthorized - Missing or invalid Bearer token",
+    "status": 401,
+    "capturedAt": "2026-01-06T00:00:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/Files?sourceModule=1"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-file-api-dev.allianceitsc.com/api/Files?sourceModule=1",
+    "headers": {
+      "Content-Type": "multipart/form-data"
+    },
+    "body": {
+      "file": "test-document.pdf (binary)"
+    },
+    "note": "No Authorization header provided"
+  },
+  "_response": {
+    "status": 401,
+    "statusText": "Unauthorized",
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7235#section-3.1",
+      "title": "Unauthorized",
+      "status": 401,
+      "detail": "Authorization has been denied for this request."
+    }
+  }
+}

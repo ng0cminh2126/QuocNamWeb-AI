@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:35:00Z",
+    "environment": "dev",
+    "apiVersion": "v1",
+    "endpoint": "POST /api/messages",
+    "description": "Send message with ONE file attachment",
+    "prerequisite": "File must be uploaded first via POST /api/Files"
+  },
+  "_request": {
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "conversationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "content": "Báo cáo tháng 12, anh em review giúp em.",
+      "parentMessageId": null,
+      "mentions": null,
+      "attachment": {
+        "fileId": "8f85d64a-1234-5678-abcd-1234567890ab",
+        "fileName": "bao-cao-thang-12.pdf",
+        "fileSize": 2621440,
+        "contentType": "application/pdf"
+      }
+    }
+  },
+  "_response": {
+    "status": 201,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "location": "/api/messages/2b95f64c-5678-9012-ef01-5678901234ef"
+    },
+    "body": {
+      "id": "2b95f64c-5678-9012-ef01-5678901234ef",
+      "conversationId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "senderId": "b285f64d-5678-9012-ef01-5678901234ef",
+      "senderName": "nguyenvana",
+      "senderIdentifier": "NVA001",
+      "senderFullName": "Nguyễn Văn A",
+      "senderRoles": "User",
+      "parentMessageId": null,
+      "content": "Báo cáo tháng 12, anh em review giúp em.",
+      "contentType": "TXT",
+      "sentAt": "2026-01-07T10:35:00Z",
+      "editedAt": null,
+      "linkedTaskId": null,
+      "reactions": [],
+      "attachments": [
+        {
+          "id": "c195f64e-6789-0123-f012-6789012345f0",
+          "fileId": "8f85d64a-1234-5678-abcd-1234567890ab",
+          "fileName": "bao-cao-thang-12.pdf",
+          "fileSize": 2621440,
+          "contentType": "application/pdf",
+          "createdAt": "2026-01-07T10:35:00Z"
+        }
+      ],
+      "replyCount": 0,
+      "isStarred": false,
+      "isPinned": false,
+      "threadPreview": null,
+      "mentions": []
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "description": "Payload Too Large - File exceeds server size limit",
+    "status": 413,
+    "capturedAt": "2026-01-06T00:00:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/Files?sourceModule=1"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-file-api-dev.allianceitsc.com/api/Files?sourceModule=1",
+    "headers": {
+      "Authorization": "Bearer <jwt_token>",
+      "Content-Type": "multipart/form-data"
+    },
+    "body": {
+      "file": "large-file.pdf (binary, 15MB)"
+    },
+    "note": "File size exceeds server limit"
+  },
+  "_response": {
+    "status": 413,
+    "statusText": "Payload Too Large",
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.11",
+      "title": "Payload Too Large",
+      "status": 413,
+      "detail": "The uploaded file exceeds the maximum allowed size."
+    }
+  }
+}

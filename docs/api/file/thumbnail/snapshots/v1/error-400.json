@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "method": "GET",
+    "endpoint": "/api/Files/{id}/watermarked-thumbnail",
+    "note": "MOCK DATA - Invalid size parameter scenario"
+  },
+  "_request": {
+    "fileId": "019b97b5-ba65-7867-90a6-2acbbacc5b44",
+    "query": {
+      "size": "invalid"
+    },
+    "headers": {
+      "Authorization": "Bearer {TOKEN}"
+    }
+  },
+  "_response": {
+    "status": 400,
+    "statusText": "Bad Request",
+    "headers": {
+      "Content-Type": "application/problem+json"
+    },
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+      "title": "Bad Request",
+      "status": 400,
+      "detail": "Invalid value 'invalid' for parameter 'size'. Allowed values: small, medium, large.",
+      "errors": {
+        "size": ["Must be one of: small, medium, large"]
+      },
+      "traceId": "00-def456abc789-123-00"
+    }
+  }
+}

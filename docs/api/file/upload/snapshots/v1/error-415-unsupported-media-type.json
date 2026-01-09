@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "description": "Unsupported Media Type - Invalid file type",
+    "status": 415,
+    "capturedAt": "2026-01-06T00:00:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/Files?sourceModule=1"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-file-api-dev.allianceitsc.com/api/Files?sourceModule=1",
+    "headers": {
+      "Authorization": "Bearer <jwt_token>",
+      "Content-Type": "multipart/form-data"
+    },
+    "body": {
+      "file": "malicious-file.exe (binary)"
+    },
+    "note": "File type not allowed by server"
+  },
+  "_response": {
+    "status": 415,
+    "statusText": "Unsupported Media Type",
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.13",
+      "title": "Unsupported Media Type",
+      "status": 415,
+      "detail": "The uploaded file type is not supported."
+    }
+  }
+}

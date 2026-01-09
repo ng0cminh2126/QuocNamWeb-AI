@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "status": "PLACEHOLDER",
+    "note": "Real error response needs to be captured",
+    "captureInstructions": "See CAPTURE_INSTRUCTIONS.md"
+  },
+  "_expectedStructure": {
+    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+    "title": "Not Found",
+    "status": 404,
+    "detail": "Page 999 does not exist. PDF has only 5 pages.",
+    "traceId": "00-abc123-def456-00"
+  },
+  "_captureCommand": "curl -i -X GET \"https://vega-file-api-dev.allianceitsc.com/api/pdf/YOUR_FILE_ID/pages/999/render?dpi=300\" -H \"Authorization: Bearer YOUR_TOKEN\""
+}

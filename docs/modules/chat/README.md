@@ -17,10 +17,10 @@ Module Chat xử lý tất cả chức năng liên quan đến nhắn tin trong 
 
 Module này được chia thành **2 features chính**:
 
-| Feature                                                          | Description                        | Status          |
-| ---------------------------------------------------------------- | ---------------------------------- | --------------- |
-| [conversation-list](features/conversation-list/00_README.md)     | Danh sách đoạn chat (Groups + DMs) | ✅ Implemented  |
-| [conversation-detail](features/conversation-detail/00_README.md) | Chi tiết đoạn chat + messaging     | ✅ Implemented  |
+| Feature                                                                            | Description                        | Status         |
+| ---------------------------------------------------------------------------------- | ---------------------------------- | -------------- |
+| [conversation-list](features/conversation-list/00_README.md)                       | Danh sách đoạn chat (Groups + DMs) | ✅ Implemented |
+| [conversation-details-phase-1](features/conversation-details-phase-1/00_README.md) | Chi tiết đoạn chat + messaging     | ✅ Implemented |
 
 ### Feature 1: Conversation List (Danh sách đoạn chat)
 
@@ -68,7 +68,7 @@ docs/modules/chat/
 │   │   ├── 05_progress.md
 │   │   └── 06_testing.md
 │   │
-│   └── conversation-detail/     # Feature 2
+│   └── conversation-details-phase-1/     # Feature 2
 │       ├── 00_README.md
 │       ├── 01_requirements.md
 │       ├── 02a_wireframe.md
@@ -83,7 +83,7 @@ docs/api/chat/
 │   ├── contract.md
 │   └── snapshots/v1/
 │
-└── conversation-detail/         # API docs feature 2
+└── conversation-details-phase-1/         # API docs feature 2
     ├── contract.md
     └── snapshots/v1/
 ```
@@ -141,12 +141,12 @@ src/
 
 ## 🎯 Naming Convention Changes (Implemented)
 
-| Mockup (Cũ)       | Production (Mới)            | Lý do                           |
-| ----------------- | --------------------------- | ------------------------------- |
-| `LeftSidebar`     | `ConversationListSidebar`   | Rõ nghĩa hơn                    |
-| `ChatMain`        | `ChatMessagePanel`          | Rõ nghĩa hơn                    |
-| `RightPanel`      | `ConversationDetailPanel`   | Rõ nghĩa hơn                    |
-| N/A               | `ChatMainContainer`         | API-integrated version          |
+| Mockup (Cũ)   | Production (Mới)          | Lý do                  |
+| ------------- | ------------------------- | ---------------------- |
+| `LeftSidebar` | `ConversationListSidebar` | Rõ nghĩa hơn           |
+| `ChatMain`    | `ChatMessagePanel`        | Rõ nghĩa hơn           |
+| `RightPanel`  | `ConversationDetailPanel` | Rõ nghĩa hơn           |
+| N/A           | `ChatMainContainer`       | API-integrated version |
 
 ---
 
@@ -155,7 +155,7 @@ src/
 ### Documentation
 
 - [API Contract - Conversation List](../../api/chat/conversation-list/contract.md)
-- [API Contract - Conversation Detail](../../api/chat/conversation-detail/contract.md)
+- [API Contract - Conversation Detail](../../api/chat/conversation-details-phase-1/contract.md)
 
 ### Source Files
 

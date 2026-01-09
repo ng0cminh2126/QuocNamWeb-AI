@@ -8,7 +8,7 @@ export const AUTH_CONFIG = {
   // API endpoint for identity service
   identityApiUrl:
     import.meta.env.VITE_IDENTITY_API_URL ||
-    'https://vega-identity-api-dev.allianceitsc.com',
+    "https://vega-identity-api-dev.allianceitsc.com",
 
   // Token refresh timing (10 minutes before expiry)
   tokenRefreshBeforeExpireMs: 10 * 60 * 1000,
@@ -18,15 +18,15 @@ export const AUTH_CONFIG = {
 
   // Storage keys
   storageKeys: {
-    accessToken: 'accessToken',
-    user: 'auth-storage', // Zustand persist key
+    accessToken: "accessToken",
+    user: "auth-storage", // Zustand persist key
   },
 
   // Routes
   routes: {
-    login: '/login',
-    portal: '/portal',
-    home: '/',
+    login: "/login",
+    portal: "/",
+    home: "/",
   },
 } as const;
 
