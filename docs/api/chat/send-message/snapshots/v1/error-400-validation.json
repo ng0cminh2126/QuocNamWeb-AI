@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:40:00Z",
+    "environment": "dev",
+    "apiVersion": "v1",
+    "endpoint": "POST /api/messages",
+    "description": "Validation error - missing required conversationId"
+  },
+  "_request": {
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "content": "This should fail - no conversationId",
+      "attachment": null
+    }
+  },
+  "_response": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/problem+json; charset=utf-8"
+    },
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+      "title": "One or more validation errors occurred.",
+      "status": 400,
+      "detail": "The ConversationId field is required.",
+      "instance": "/api/messages",
+      "errors": {
+        "ConversationId": ["The ConversationId field is required."]
+      }
+    }
+  }
+}

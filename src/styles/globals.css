@@ -9,12 +9,12 @@
   --accent-foreground: 0 0% 100%;
 }
 
-.dark {
+/* .dark {
   --primary: 142 52% 45%;
   --primary-foreground: 0 0% 100%;
   --border: 142 52% 45%;
   --ring: 142 52% 45%;
-}
+} */
 
 .btn-primary {
   background-color: hsl(var(--primary));

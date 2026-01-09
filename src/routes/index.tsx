@@ -1,10 +1,14 @@
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
-import { ROUTES } from './routes';
-import { ProtectedRoute } from './ProtectedRoute';
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
+import { ROUTES } from "./routes";
+import { ProtectedRoute } from "./ProtectedRoute";
 
 // Import pages/components
-import { LoginPage } from '@/pages/LoginPage';
-import { PortalPage } from '@/pages/PortalPage';
+import { LoginPage } from "@/pages/LoginPage";
+import { PortalPage } from "@/pages/PortalPage";
 
 function NotFoundPage() {
   return (
@@ -19,14 +23,6 @@ function NotFoundPage() {
 
 // Create router
 const router = createBrowserRouter([
-  {
-    path: ROUTES.HOME,
-    element: (
-      <ProtectedRoute>
-        <Navigate to={ROUTES.PORTAL} replace />
-      </ProtectedRoute>
-    ),
-  },
   {
     path: ROUTES.LOGIN,
     element: <LoginPage />,
@@ -44,11 +40,11 @@ const router = createBrowserRouter([
         element: <Navigate to={ROUTES.WORKSPACE} replace />,
       },
       {
-        path: 'workspace',
+        path: "workspace",
         element: null, // Handled by PortalPage internal state
       },
       {
-        path: 'lead',
+        path: "lead",
         element: null, // Handled by PortalPage internal state
       },
     ],
@@ -58,7 +54,7 @@ const router = createBrowserRouter([
     element: <NotFoundPage />,
   },
   {
-    path: '*',
+    path: "*",
     element: <Navigate to={ROUTES.NOT_FOUND} replace />,
   },
 ]);

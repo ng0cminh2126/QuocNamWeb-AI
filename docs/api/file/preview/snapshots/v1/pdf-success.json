@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "method": "GET",
+    "endpoint": "/api/Files/{id}/preview",
+    "note": "MOCK DATA - PDF first page preview (actual response is binary JPEG image)",
+    "imageType": "Binary JPEG data - First page of PDF converted to image with watermark",
+    "expectedSize": "~150-400 KB",
+    "dimensions": "A4 aspect ratio, max 1920x1080px"
+  },
+  "_request": {
+    "fileId": "019b97b7-ef01-7890-abcd-9876543210cd",
+    "headers": {
+      "Authorization": "Bearer {TOKEN}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "Content-Type": "image/jpeg",
+      "Content-Length": "287456",
+      "Content-Disposition": "inline; filename=\"preview-document-page1.jpg\"",
+      "Cache-Control": "public, max-age=3600",
+      "X-Original-Format": "PDF",
+      "X-Page-Number": "1"
+    },
+    "body": "[BINARY IMAGE DATA - PDF first page rendered as JPEG with diagonal watermark 'QUOC NAM PORTAL']",
+    "description": "First page of PDF rendered as watermarked JPEG image, useful for document preview"
+  }
+}

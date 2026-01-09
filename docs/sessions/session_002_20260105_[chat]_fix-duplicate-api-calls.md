@@ -240,7 +240,7 @@ TODO: Add unit tests for:
 ## 🔗 Related
 
 - Feature: Chat Messages ([docs/modules/chat/features/messages.md](../../modules/chat/features/messages.md))
-- API: Chat Messages ([docs/api/chat/conversation-detail/contract.md](../../api/chat/conversation-detail/contract.md))
+- API: Chat Messages ([docs/api/chat/conversation-details-phase-1/contract.md](../../api/chat/conversation-details-phase-1/contract.md))
 
 ---
 

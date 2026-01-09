@@ -1,26 +1,26 @@
 // Route definitions
 export const ROUTES = {
   // Root
-  HOME: '/',
-  
+  HOME: "/",
+
   // Auth
-  LOGIN: '/login',
-  LOGOUT: '/logout',
-  
+  LOGIN: "/login",
+  LOGOUT: "/logout",
+
   // Portal
-  PORTAL: '/portal',
-  WORKSPACE: '/portal/workspace',
-  LEAD: '/portal/lead',
-  SETTINGS: '/portal/settings',
-  
+  PORTAL: "/",
+  WORKSPACE: "/workspace",
+  LEAD: "/lead",
+  SETTINGS: "/settings",
+
   // Mobile
-  MOBILE: '/mobile',
-  MOBILE_CHAT: '/mobile/chat',
-  MOBILE_CHAT_DETAIL: '/mobile/chat/:groupId',
-  MOBILE_TASK_LOG: '/mobile/task-log/:taskId',
-  
+  MOBILE: "/mobile",
+  MOBILE_CHAT: "/mobile/chat",
+  MOBILE_CHAT_DETAIL: "/mobile/chat/:groupId",
+  MOBILE_TASK_LOG: "/mobile/task-log/:taskId",
+
   // Utils
-  NOT_FOUND: '/404',
+  NOT_FOUND: "/404",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "description": "Bad Request - Missing sourceModule parameter",
+    "status": 400,
+    "capturedAt": "2026-01-06T00:00:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/Files"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "https://vega-file-api-dev.allianceitsc.com/api/Files",
+    "headers": {
+      "Authorization": "Bearer <jwt_token>",
+      "Content-Type": "multipart/form-data"
+    },
+    "body": {
+      "file": "test-document.pdf (binary)"
+    },
+    "note": "Missing required query parameter: sourceModule"
+  },
+  "_response": {
+    "status": 400,
+    "statusText": "Bad Request",
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+      "title": "One or more validation errors occurred.",
+      "status": 400,
+      "detail": "The sourceModule field is required.",
+      "instance": "/api/Files",
+      "errors": {
+        "sourceModule": ["The sourceModule field is required."]
+      }
+    }
+  }
+}

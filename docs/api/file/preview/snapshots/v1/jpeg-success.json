@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "method": "GET",
+    "endpoint": "/api/Files/{id}/preview",
+    "note": "MOCK DATA - JPEG image preview (actual response is binary JPEG image)",
+    "imageType": "Binary JPEG data with watermark",
+    "expectedSize": "~200-500 KB (optimized for preview)",
+    "dimensions": "Original aspect ratio, max 1920x1080px"
+  },
+  "_request": {
+    "fileId": "019b97b5-ba65-7867-90a6-2acbbacc5b44",
+    "headers": {
+      "Authorization": "Bearer {TOKEN}"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "Content-Type": "image/jpeg",
+      "Content-Length": "384729",
+      "Content-Disposition": "inline; filename=\"preview-image.jpg\"",
+      "Cache-Control": "public, max-age=3600",
+      "X-Original-Format": "JPEG"
+    },
+    "body": "[BINARY IMAGE DATA - Full-size JPEG with diagonal watermark 'QUOC NAM PORTAL']",
+    "description": "Watermarked preview image, optimized for display, maintains aspect ratio, max 1920x1080"
+  }
+}

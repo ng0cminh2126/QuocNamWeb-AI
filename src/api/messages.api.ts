@@ -1,12 +1,12 @@
 // Messages API client
 // Handles API calls for chat messages
 
-import { apiClient } from './client';
+import { apiClient } from "./client";
 import type {
   GetMessagesResponse,
   SendChatMessageRequest,
   SendChatMessageResponse,
-} from '@/types/messages';
+} from "@/types/messages";
 
 interface GetMessagesParams {
   conversationId: string;
@@ -38,18 +38,18 @@ export const getMessages = async ({
 /**
  * POST /api/messages
  * Send a new message to a conversation
- * Note: conversationId is passed in the request body, not URL path
+ * Note: conversationId is in the request body (data.conversationId)
+ *
+ * Updated 2026-01-07: Signature changed to match Swagger API
+ * - conversationId is now part of SendChatMessageRequest
+ * - No longer a separate parameter
  */
 export const sendMessage = async (
-  conversationId: string,
   data: SendChatMessageRequest
 ): Promise<SendChatMessageResponse> => {
   const response = await apiClient.post<SendChatMessageResponse>(
     `/api/messages`,
-    {
-      conversationId,
-      ...data,
-    }
+    data
   );
   return response.data;
 };
@@ -63,14 +63,14 @@ export const uploadAttachment = async (
   file: File
 ): Promise<{ id: string; url: string }> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   const response = await apiClient.post<{ id: string; url: string }>(
     `/api/conversations/${conversationId}/attachments`,
     formData,
     {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     }
   );

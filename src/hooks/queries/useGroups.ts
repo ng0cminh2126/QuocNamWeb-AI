@@ -1,9 +1,9 @@
 // useGroups hook - Fetch group conversations with infinite scroll
 
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { getGroups } from '@/api/conversations.api';
-import { conversationKeys } from './keys/conversationKeys';
-import type { GroupConversation } from '@/types/conversations';
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getGroups } from "@/api/conversations.api";
+import { conversationKeys } from "./keys/conversationKeys";
+import type { GroupConversation } from "@/types/conversations";
 
 interface UseGroupsOptions {
   enabled?: boolean;
@@ -24,6 +24,8 @@ export function useGroups(options: UseGroupsOptions = {}) {
     initialPageParam: undefined as string | undefined,
     staleTime: 1000 * 30, // 30 seconds (from requirements)
     enabled,
+    // Force component re-render when cache updates (important for realtime)
+    notifyOnChangeProps: ["data", "dataUpdatedAt"],
   });
 }
 
@@ -31,7 +33,7 @@ export function useGroups(options: UseGroupsOptions = {}) {
  * Helper function to flatten groups from infinite query pages
  */
 export function flattenGroups(
-  data: ReturnType<typeof useGroups>['data']
+  data: ReturnType<typeof useGroups>["data"]
 ): GroupConversation[] {
   return data?.pages.flatMap((page) => page.items) ?? [];
 }

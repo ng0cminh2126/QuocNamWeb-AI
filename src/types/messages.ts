@@ -1,8 +1,8 @@
 // Message related types
 
-import type { ID, Timestamps, InfiniteScrollResponse } from './common';
-import type { User } from './auth';
-import type { FileAttachment } from './files';
+import type { ID, Timestamps, InfiniteScrollResponse } from "./common";
+import type { User } from "./auth";
+import type { FileAttachment } from "./files";
 
 // =============================================================
 // Legacy Message Types (used by mockup components)
@@ -26,7 +26,7 @@ export interface Message extends Timestamps {
   receivedInfo?: MessageReceivedInfo[];
 }
 
-export type MessageContentType = 'text' | 'image' | 'file' | 'system' | 'task';
+export type MessageContentType = "text" | "image" | "file" | "system" | "task";
 
 export interface MessageReaction {
   emoji: string;
@@ -86,9 +86,43 @@ export interface TypingIndicator {
 // =============================================================
 
 // Content Types from API
-export type ChatMessageContentType = 'TXT' | 'IMG' | 'FILE' | 'TASK';
+export type ChatMessageContentType =
+  | "TXT"
+  | "IMG"
+  | "FILE"
+  | "TASK"
+  | "SYS"
+  | "VID";
 
-// Message Attachment from API
+// ========== Attachment Types from Swagger API ==========
+
+// AttachmentInputDto - Used in REQUEST when sending message
+export interface AttachmentInputDto {
+  fileId: string; // UUID from file upload
+  fileName: string | null;
+  fileSize: number; // int64 (bytes)
+  contentType: string | null; // MIME type
+}
+
+// AttachmentDto - Used in RESPONSE from API
+export interface AttachmentDto {
+  id: string; // Database attachment ID
+  fileId: string; // File storage ID
+  fileName: string | null;
+  fileSize: number;
+  contentType: string | null;
+  createdAt: string; // ISO datetime
+}
+
+// MentionInputDto - Used in REQUEST
+export interface MentionInputDto {
+  userId: string; // UUID
+  startIndex: number; // int32
+  length: number; // int32
+  mentionText: string | null;
+}
+
+// Message Attachment from API (Legacy - kept for compatibility)
 export interface ChatMessageAttachment {
   id: string;
   name: string;
@@ -104,20 +138,23 @@ export interface ChatMessageReaction {
   userName: string;
 }
 
-// Chat Message from API (matches API contract)
+// Chat Message from API (matches API contract from Swagger)
 export interface ChatMessage {
   id: string;
   conversationId: string;
   senderId: string;
   senderName: string;
+  senderIdentifier: string | null;
+  senderFullName: string | null;
+  senderRoles: string | null;
   parentMessageId: string | null;
-  content: string;
+  content: string | null;
   contentType: ChatMessageContentType;
   sentAt: string; // ISO datetime
   editedAt: string | null;
   linkedTaskId: string | null;
   reactions: ChatMessageReaction[];
-  attachments: ChatMessageAttachment[];
+  attachments: AttachmentDto[]; // Updated to use AttachmentDto from Swagger
   replyCount: number;
   isStarred: boolean;
   isPinned: boolean;
@@ -132,12 +169,13 @@ export interface GetMessagesResponse {
   hasMore: boolean;
 }
 
-// API Request for POST message
+// API Request for POST message (Updated to match Swagger SendMessageRequest)
 export interface SendChatMessageRequest {
-  content: string;
-  contentType: ChatMessageContentType;
+  conversationId: string; // Required - in request body
+  content: string | null; // Nullable - optional if attachment exists
   parentMessageId?: string | null;
-  attachments?: string[]; // File IDs
+  mentions?: MentionInputDto[] | null;
+  attachment?: AttachmentInputDto | null; // SINGULAR - only 1 file per message
 }
 
 // API Response for POST message (same as ChatMessage)
@@ -148,19 +186,19 @@ export type SendChatMessageResponse = ChatMessage;
 // =============================================================
 
 export function isTextMessage(msg: ChatMessage): boolean {
-  return msg.contentType === 'TXT';
+  return msg.contentType === "TXT";
 }
 
 export function isImageMessage(msg: ChatMessage): boolean {
-  return msg.contentType === 'IMG';
+  return msg.contentType === "IMG";
 }
 
 export function isFileMessage(msg: ChatMessage): boolean {
-  return msg.contentType === 'FILE';
+  return msg.contentType === "FILE";
 }
 
 export function isTaskMessage(msg: ChatMessage): boolean {
-  return msg.contentType === 'TASK';
+  return msg.contentType === "TASK";
 }
 
 // =============================================================
@@ -168,33 +206,37 @@ export function isTaskMessage(msg: ChatMessage): boolean {
 // =============================================================
 
 // Map API content type to legacy content type (for UI compatibility)
-export function mapContentTypeToLegacy(contentType: ChatMessageContentType): MessageContentType {
+export function mapContentTypeToLegacy(
+  contentType: ChatMessageContentType
+): MessageContentType {
   switch (contentType) {
-    case 'TXT':
-      return 'text';
-    case 'IMG':
-      return 'image';
-    case 'FILE':
-      return 'file';
-    case 'TASK':
-      return 'task';
+    case "TXT":
+      return "text";
+    case "IMG":
+      return "image";
+    case "FILE":
+      return "file";
+    case "TASK":
+      return "task";
     default:
-      return 'text';
+      return "text";
   }
 }
 
 // Map legacy content type to API content type
-export function mapContentTypeToAPI(contentType: MessageContentType): ChatMessageContentType {
+export function mapContentTypeToAPI(
+  contentType: MessageContentType
+): ChatMessageContentType {
   switch (contentType) {
-    case 'text':
-      return 'TXT';
-    case 'image':
-      return 'IMG';
-    case 'file':
-      return 'FILE';
-    case 'task':
-      return 'TASK';
+    case "text":
+      return "TXT";
+    case "image":
+      return "IMG";
+    case "file":
+      return "FILE";
+    case "task":
+      return "TASK";
     default:
-      return 'TXT';
+      return "TXT";
   }
 }

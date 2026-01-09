@@ -62,7 +62,7 @@ docs/api/chat/conversation-list/
 
 ### Related Features
 
-- [Conversation Detail](../conversation-detail/00_README.md)
+- [Conversation Detail](../conversation-details-phase-1/00_README.md)
 
 ---
 

@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-07T10:30:00Z",
+    "environment": "dev",
+    "method": "GET",
+    "endpoint": "/api/Files/{id}/watermarked-thumbnail",
+    "note": "MOCK DATA - File not found scenario"
+  },
+  "_request": {
+    "fileId": "00000000-0000-0000-0000-000000000000",
+    "query": {
+      "size": "medium"
+    },
+    "headers": {
+      "Authorization": "Bearer {TOKEN}"
+    }
+  },
+  "_response": {
+    "status": 404,
+    "statusText": "Not Found",
+    "headers": {
+      "Content-Type": "application/problem+json"
+    },
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+      "title": "Not Found",
+      "status": 404,
+      "detail": "File with ID '00000000-0000-0000-0000-000000000000' not found.",
+      "traceId": "00-abc123def456-789-00"
+    }
+  }
+}

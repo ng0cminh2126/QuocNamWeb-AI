@@ -1,0 +1,10 @@
+{
+  "_meta": {
+    "status": "PLACEHOLDER",
+    "note": "Binary PNG file should be saved here after capture",
+    "captureInstructions": "See CAPTURE_INSTRUCTIONS.md"
+  },
+  "_captureCommand": "curl -X GET \"https://vega-file-api-dev.allianceitsc.com/api/pdf/YOUR_FILE_ID/pages/2/render?dpi=300\" -H \"Authorization: Bearer YOUR_TOKEN\" --output render-page2-success.png",
+  "_expectedFileType": "image/png",
+  "_note": "Replace this JSON file with actual PNG binary after capture"
+}

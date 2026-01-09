@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "status": "PLACEHOLDER",
+    "note": "This is a placeholder. Real response needs to be captured from API.",
+    "captureInstructions": "See CAPTURE_INSTRUCTIONS.md"
+  },
+  "_expectedStructure": {
+    "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+    "title": "Not Found",
+    "status": 404,
+    "detail": "File with ID 00000000-0000-0000-0000-000000000000 not found.",
+    "traceId": "00-abc123-def456-00"
+  },
+  "_captureCommand": "curl -i -X GET \"https://vega-file-api-dev.allianceitsc.com/api/Files/00000000-0000-0000-0000-000000000000/preview\" -H \"Authorization: Bearer YOUR_TOKEN\""
+}

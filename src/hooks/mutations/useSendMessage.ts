@@ -6,7 +6,6 @@ import { sendMessage } from "@/api/messages.api";
 import type { SendChatMessageRequest, ChatMessage } from "@/types/messages";
 
 interface UseSendMessageOptions {
-  conversationId: string;
   onSuccess?: (message: ChatMessage) => void;
   onError?: (error: Error) => void;
 }
@@ -21,15 +20,21 @@ interface UseSendMessageOptions {
  * 3. useMessageRealtime hook receives and adds message to cache
  *
  * This prevents duplicate messages from optimistic update + SignalR.
+ *
+ * @example
+ * const sendMsg = useSendMessage({
+ *   onSuccess: (msg) => console.log('Sent:', msg.id)
+ * });
+ *
+ * sendMsg.mutate({
+ *   conversationId: 'conv-123',
+ *   content: 'Hello',
+ *   attachment: { fileId: 'file-1', fileName: 'doc.pdf', fileSize: 1024, contentType: 'application/pdf' }
+ * });
  */
-export function useSendMessage({
-  conversationId,
-  onSuccess,
-  onError,
-}: UseSendMessageOptions) {
+export function useSendMessage({ onSuccess, onError }: UseSendMessageOptions) {
   return useMutation({
-    mutationFn: (data: SendChatMessageRequest) =>
-      sendMessage(conversationId, data),
+    mutationFn: (data: SendChatMessageRequest) => sendMessage(data),
 
     // No optimistic update - SignalR will deliver message in realtime
     // This prevents duplicate messages

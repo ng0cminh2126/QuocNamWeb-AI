@@ -1,5 +1,5 @@
-import * as signalR from '@microsoft/signalr';
-import type { ChatMessage } from '@/types/messages';
+import * as signalR from "@microsoft/signalr";
+import type { ChatMessage } from "@/types/messages";
 
 // Get SignalR Hub URL based on environment
 // Development: VITE_DEV_SIGNALR_HUB_URL
@@ -8,18 +8,18 @@ const getSignalRHubUrl = (): string => {
   const isDev = import.meta.env.DEV;
   const devUrl = import.meta.env.VITE_DEV_SIGNALR_HUB_URL;
   const prodUrl = import.meta.env.VITE_PROD_SIGNALR_HUB_URL;
-  
+
   const hubUrl = isDev ? devUrl : prodUrl;
-  
+
   if (!hubUrl) {
-    console.warn('SignalR Hub URL not configured, using fallback');
+    console.warn("SignalR Hub URL not configured, using fallback");
     // Fallback: construct from Chat API URL
-    const chatApiUrl = isDev 
-      ? import.meta.env.VITE_DEV_CHAT_API_URL 
+    const chatApiUrl = isDev
+      ? import.meta.env.VITE_DEV_CHAT_API_URL
       : import.meta.env.VITE_PROD_CHAT_API_URL;
-    return `${chatApiUrl || ''}/hubs/chat`;
+    return `${chatApiUrl || ""}/hubs/chat`;
   }
-  
+
   return hubUrl;
 };
 
@@ -30,32 +30,32 @@ const HUB_URL = getSignalRHubUrl();
 export const SIGNALR_EVENTS = {
   // Receive events (from server)
   // Backend sends 'MessageSent' when a message is sent (case-insensitive in SignalR)
-  MESSAGE_SENT: 'MessageSent',
-  RECEIVE_MESSAGE: 'ReceiveMessage',  // Legacy/alternative
-  NEW_MESSAGE: 'NewMessage',  // Legacy/alternative
-  MESSAGE_UPDATED: 'MessageUpdated',
-  MESSAGE_DELETED: 'MessageDeleted',
-  USER_TYPING: 'UserTyping',
-  MESSAGE_READ: 'MessageRead',
-  USER_PRESENCE_CHANGED: 'UserPresenceChanged',
-  USER_ONLINE: 'UserOnline',
-  USER_OFFLINE: 'UserOffline',
-  CONVERSATION_UPDATED: 'ConversationUpdated',
-  
+  MESSAGE_SENT: "MessageSent",
+  RECEIVE_MESSAGE: "ReceiveMessage", // Legacy/alternative
+  NEW_MESSAGE: "NewMessage", // Legacy/alternative
+  MESSAGE_UPDATED: "MessageUpdated",
+  MESSAGE_DELETED: "MessageDeleted",
+  USER_TYPING: "UserTyping",
+  MESSAGE_READ: "MessageRead",
+  USER_PRESENCE_CHANGED: "UserPresenceChanged",
+  USER_ONLINE: "UserOnline",
+  USER_OFFLINE: "UserOffline",
+  CONVERSATION_UPDATED: "ConversationUpdated",
+
   // Send events (to server)
-  SEND_TYPING: 'SendTyping',
-  JOIN_CONVERSATION: 'JoinConversation',  // Correct method name
-  LEAVE_CONVERSATION: 'LeaveConversation',
-  JOIN_GROUP: 'JoinGroup',  // Legacy
-  LEAVE_GROUP: 'LeaveGroup',  // Legacy
+  SEND_TYPING: "SendTyping",
+  JOIN_CONVERSATION: "JoinConversation", // Correct method name
+  LEAVE_CONVERSATION: "LeaveConversation",
+  JOIN_GROUP: "JoinGroup", // Legacy
+  LEAVE_GROUP: "LeaveGroup", // Legacy
 } as const;
 
-export type SignalRConnectionState = 
-  | 'Disconnected'
-  | 'Connecting' 
-  | 'Connected'
-  | 'Disconnecting'
-  | 'Reconnecting';
+export type SignalRConnectionState =
+  | "Disconnected"
+  | "Connecting"
+  | "Connected"
+  | "Disconnecting"
+  | "Reconnecting";
 
 export interface TypingData {
   userId: string;
@@ -91,45 +91,49 @@ class ChatHubConnection {
   private maxReconnectAttempts = 5;
 
   get state(): SignalRConnectionState {
-    if (!this.connection) return 'Disconnected';
-    
+    if (!this.connection) return "Disconnected";
+
     switch (this.connection.state) {
       case signalR.HubConnectionState.Connected:
-        return 'Connected';
+        return "Connected";
       case signalR.HubConnectionState.Connecting:
-        return 'Connecting';
+        return "Connecting";
       case signalR.HubConnectionState.Disconnected:
-        return 'Disconnected';
+        return "Disconnected";
       case signalR.HubConnectionState.Disconnecting:
-        return 'Disconnecting';
+        return "Disconnecting";
       case signalR.HubConnectionState.Reconnecting:
-        return 'Reconnecting';
+        return "Reconnecting";
       default:
-        return 'Disconnected';
+        return "Disconnected";
     }
   }
 
   async start(accessToken?: string): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
-      console.log('SignalR: Already connected');
+      console.log("SignalR: Already connected");
       return;
     }
 
     if (this.isConnecting) {
-      console.log('SignalR: Connection already in progress');
+      console.log("SignalR: Connection already in progress");
       return;
     }
 
     this.isConnecting = true;
-    console.log('SignalR: Connecting to hub:', HUB_URL);
+    console.log("SignalR: Connecting to hub:", HUB_URL);
 
     try {
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(HUB_URL, {
-          accessTokenFactory: () => accessToken || localStorage.getItem('accessToken') || '',
+          accessTokenFactory: () =>
+            accessToken || localStorage.getItem("accessToken") || "",
           // Enable detailed logs for debugging
           skipNegotiation: false,
-          transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling,
+          transport:
+            signalR.HttpTransportType.WebSockets |
+            signalR.HttpTransportType.ServerSentEvents |
+            signalR.HttpTransportType.LongPolling,
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(signalR.LogLevel.Information)
@@ -137,31 +141,33 @@ class ChatHubConnection {
 
       // Setup reconnection handlers
       this.connection.onreconnecting((error) => {
-        console.warn('SignalR: Reconnecting...', error);
+        console.warn("SignalR: Reconnecting...", error);
         this.reconnectAttempts++;
       });
 
       this.connection.onreconnected((connectionId) => {
-        console.log('SignalR: Reconnected with ID:', connectionId);
+        console.log("SignalR: Reconnected with ID:", connectionId);
         this.reconnectAttempts = 0;
       });
 
       this.connection.onclose((error) => {
-        console.log('SignalR: Connection closed', error);
+        console.log("SignalR: Connection closed", error);
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error('SignalR: Max reconnect attempts reached');
+          console.error("SignalR: Max reconnect attempts reached");
         }
       });
 
       await this.connection.start();
-      console.log('SignalR: Connected successfully');
+      console.log("SignalR: Connected successfully");
       this.reconnectAttempts = 0;
     } catch (error) {
       // Don't log AbortError as it's expected when connection is stopped during negotiation
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('SignalR: Connection aborted (likely due to unmount or auth change)');
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(
+          "SignalR: Connection aborted (likely due to unmount or auth change)"
+        );
       } else {
-        console.error('SignalR: Connection failed', error);
+        console.error("SignalR: Connection failed", error);
       }
       throw error;
     } finally {
@@ -174,10 +180,10 @@ class ChatHubConnection {
     if (this.connection) {
       try {
         await this.connection.stop();
-        console.log('SignalR: Disconnected');
+        console.log("SignalR: Disconnected");
       } catch (error) {
         // Ignore errors during stop
-        console.log('SignalR: Stop completed with warning', error);
+        console.log("SignalR: Stop completed with warning", error);
       }
       this.connection = null;
     }
@@ -186,20 +192,26 @@ class ChatHubConnection {
   // Group/Conversation management
   async joinGroup(conversationId: string): Promise<void> {
     if (this.connection?.state !== signalR.HubConnectionState.Connected) {
-      console.warn('SignalR: Cannot join conversation - not connected');
+      console.warn("SignalR: Cannot join conversation - not connected");
       return;
     }
     try {
       // Try JoinConversation first (correct method name from backend)
-      await this.connection.invoke(SIGNALR_EVENTS.JOIN_CONVERSATION, conversationId);
-      console.log(`SignalR: Joined conversation ${conversationId}`);
+      await this.connection.invoke(
+        SIGNALR_EVENTS.JOIN_CONVERSATION,
+        conversationId
+      );
+      // console.log(`SignalR: Joined conversation ${conversationId}`);
     } catch (error) {
       // Fallback to JoinGroup if JoinConversation doesn't exist
       try {
         await this.connection.invoke(SIGNALR_EVENTS.JOIN_GROUP, conversationId);
-        console.log(`SignalR: Joined group ${conversationId} (fallback)`);
+        // console.log(`SignalR: Joined group ${conversationId} (fallback)`);
       } catch (fallbackError) {
-        console.warn('SignalR: Could not join conversation/group', fallbackError);
+        console.warn(
+          "SignalR: Could not join conversation/group",
+          fallbackError
+        );
       }
     }
   }
@@ -209,11 +221,16 @@ class ChatHubConnection {
       return;
     }
     try {
-      await this.connection.invoke(SIGNALR_EVENTS.LEAVE_CONVERSATION, conversationId);
-      console.log(`SignalR: Left conversation ${conversationId}`);
+      await this.connection.invoke(
+        SIGNALR_EVENTS.LEAVE_CONVERSATION,
+        conversationId
+      );
     } catch {
       try {
-        await this.connection.invoke(SIGNALR_EVENTS.LEAVE_GROUP, conversationId);
+        await this.connection.invoke(
+          SIGNALR_EVENTS.LEAVE_GROUP,
+          conversationId
+        );
       } catch {
         // Ignore errors when leaving
       }

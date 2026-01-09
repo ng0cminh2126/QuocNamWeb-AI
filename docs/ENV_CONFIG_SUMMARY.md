@@ -84,19 +84,21 @@ API_ENDPOINTS.task; // string
 
 ### Development Environment
 
-| Service | URL                                              |
-| ------- | ------------------------------------------------ |
-| Chat    | `https://vega-chat-api-dev.allianceitsc.com`     |
-| Auth    | `https://vega-identity-api-dev.allianceitsc.com` |
-| Task    | `https://vega-task-api-dev.allianceitsc.com`     |
+| Service  | URL                                              |
+| -------- | ------------------------------------------------ |
+| Chat     | `https://vega-chat-api-dev.allianceitsc.com`     |
+| Auth     | `https://vega-identity-api-dev.allianceitsc.com` |
+| Task     | `https://vega-task-api-dev.allianceitsc.com`     |
+| **File** | `https://vega-file-api-dev.allianceitsc.com`     |
 
 ### Production Environment
 
-| Service | URL                                          |
-| ------- | -------------------------------------------- |
-| Chat    | `https://vega-chat-api.allianceitsc.com`     |
-| Auth    | `https://vega-identity-api.allianceitsc.com` |
-| Task    | `https://vega-task-api.allianceitsc.com`     |
+| Service  | URL                                          |
+| -------- | -------------------------------------------- |
+| Chat     | `https://vega-chat-api.allianceitsc.com`     |
+| Auth     | `https://vega-identity-api.allianceitsc.com` |
+| Task     | `https://vega-task-api.allianceitsc.com`     |
+| **File** | `https://vega-file-api.allianceitsc.com`     |
 
 ---
 
@@ -154,7 +156,8 @@ console.log(ENV_CONFIG);
   "api": {
     "chat": "https://vega-chat-api-dev.allianceitsc.com",
     "auth": "https://vega-identity-api-dev.allianceitsc.com",
-    "task": "https://vega-task-api-dev.allianceitsc.com"
+    "task": "https://vega-task-api-dev.allianceitsc.com",
+    "file": "https://vega-file-api-dev.allianceitsc.com"
   }
 }
 ```
@@ -169,7 +172,8 @@ console.log(ENV_CONFIG);
   "api": {
     "chat": "https://vega-chat-api.allianceitsc.com",
     "auth": "https://vega-identity-api.allianceitsc.com",
-    "task": "https://vega-task-api.allianceitsc.com"
+    "task": "https://vega-task-api.allianceitsc.com",
+    "file": "https://vega-file-api.allianceitsc.com"
   }
 }
 ```

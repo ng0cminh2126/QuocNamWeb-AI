@@ -1,0 +1,38 @@
+# Snapshot Placeholder
+
+> **⚠️ PLACEHOLDER:** This is a placeholder file. Real snapshot needs to be captured from API.
+
+---
+
+## How to Capture
+
+Follow instructions in [`CAPTURE_INSTRUCTIONS.md`](./CAPTURE_INSTRUCTIONS.md)
+
+**Specific command for this snapshot:**
+
+```bash
+curl -i -X GET \
+  "https://vega-file-api-dev.allianceitsc.com/api/Files/YOUR_FILE_ID/preview" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  > preview-success-headers.txt
+```
+
+---
+
+## Expected Content
+
+```
+HTTP/1.1 200 OK
+Date: Wed, 08 Jan 2026 10:30:00 GMT
+Content-Type: image/png
+X-Total-Pages: 5
+X-Current-Page: 1
+Content-Length: 123456
+Connection: keep-alive
+Server: Kestrel
+```
+
+---
+
+**Status:** ⏳ PENDING CAPTURE  
+**Created:** 2026-01-08

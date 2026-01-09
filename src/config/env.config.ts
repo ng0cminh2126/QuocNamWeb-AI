@@ -22,6 +22,7 @@ interface ApiEndpoints {
   chat: string;
   auth: string;
   task: string;
+  file: string;
 }
 
 /**
@@ -37,6 +38,9 @@ const DEV_API_ENDPOINTS: ApiEndpoints = {
   task:
     import.meta.env.VITE_DEV_TASK_API_URL ||
     "https://vega-task-api-dev.allianceitsc.com",
+  file:
+    import.meta.env.VITE_DEV_FILE_API_URL ||
+    "https://vega-file-api-dev.allianceitsc.com",
 };
 
 /**
@@ -52,6 +56,9 @@ const PROD_API_ENDPOINTS: ApiEndpoints = {
   task:
     import.meta.env.VITE_PROD_TASK_API_URL ||
     "https://vega-task-api.allianceitsc.com",
+  file:
+    import.meta.env.VITE_PROD_FILE_API_URL ||
+    "https://vega-file-api.allianceitsc.com",
 };
 
 /**

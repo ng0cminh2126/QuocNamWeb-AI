@@ -429,10 +429,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     }}
                     contacts={contacts}
                     onSelectChat={handleMobileSelectChat}
+                    onClearSelectedChat={onClearSelectedChat}
                     isMobile={true}
                     onOpenQuickMsg={onOpenQuickMsg}
                     onOpenPinned={onOpenPinned}
                     onOpenTodoList={onOpenTodoList}
+                    useApiData={true}
                   />
                 </div>
               ) : (
@@ -440,6 +442,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   {selectedChat ? (
                     // API-based chat using ChatMainContainer (conversation-detail)
                     <ChatMainContainer
+                      key={selectedChat.id}
                       conversationId={selectedChat.id}
                       conversationName={chatTitle}
                       conversationType={
@@ -590,7 +593,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 setApiConversationName(target.name);
               }
             }}
+            onClearSelectedChat={onClearSelectedChat}
             selectedConversationId={selectedChat?.id}
+            useApiData={true}
           />
         )}
       </div>
@@ -600,6 +605,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
         {selectedChat ? (
           // API-based chat using ChatMainContainer (conversation-detail)
           <ChatMainContainer
+            key={selectedChat.id}
             conversationId={selectedChat.id}
             conversationName={chatTitle}
             conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
