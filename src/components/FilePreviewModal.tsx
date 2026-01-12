@@ -11,6 +11,16 @@ import { FILE_TYPE_ICONS, FILE_TYPE_LABELS } from "@/types/files";
 import type { SupportedPreviewFileType } from "@/types/files";
 import { getFileType } from "@/utils/fileUtils";
 
+// Phase 5: Import Word/Excel preview components
+import WordPreview from "@/features/portal/components/file-sheet/WordPreview";
+import ExcelPreview from "@/features/portal/components/file-sheet/ExcelPreview";
+
+// Helper to get file extension
+function getFileExtension(fileName: string): string {
+  const parts = fileName.split(".");
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+}
+
 export interface FilePreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,7 +37,44 @@ export default function FilePreviewModal({
   const backdropRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Phase 3.2: Use generic file preview hook
+  // Phase 5: Check if this is Word/Excel file
+  const extension = getFileExtension(fileName);
+  const isWordFile = extension === "docx";
+  const isExcelFile = extension === "xlsx" || extension === "xls";
+  const isPhase5File = isWordFile || isExcelFile;
+
+  // Phase 5: Render Word/Excel preview (different UI)
+  if (isPhase5File && isOpen) {
+    return (
+      <div
+        ref={backdropRef}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        onClick={(e) => {
+          if (e.target === backdropRef.current) onClose();
+        }}
+        data-testid="file-preview-backdrop"
+      >
+        <div className="relative h-[90vh] w-[90vw] max-w-7xl overflow-hidden rounded-xl bg-white shadow-2xl">
+          {isWordFile && (
+            <WordPreview
+              fileId={fileId}
+              fileName={fileName}
+              onClose={onClose}
+            />
+          )}
+          {isExcelFile && (
+            <ExcelPreview
+              fileId={fileId}
+              fileName={fileName}
+              onClose={onClose}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 3.2: Use generic file preview hook (for PDF/Image)
   const {
     currentPage,
     totalPages,

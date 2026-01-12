@@ -1,24 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
+interface AvatarProps {
+  name?: string;
+  small?: boolean;
+  avatarUrl?: string; // URL from API
+}
 
-const avatarCandidate = (seed: string) => [
-  `https://avatar-placeholder.iran.liara.run/face?username=${encodeURIComponent(seed)}`,
-  `https://i.pravatar.cc/64?u=${encodeURIComponent(seed)}`,
-];
+/**
+ * Get first letter from name for fallback avatar
+ */
+const getInitial = (name: string): string => {
+  if (!name) return "U";
+  // Remove "DM: " prefix if exists
+  const cleanName = name.replace(/^DM:\s*/, "");
+  // Get first character, uppercase
+  return cleanName.charAt(0).toUpperCase();
+};
 
+export const Avatar: React.FC<AvatarProps> = ({
+  name = "User",
+  small = false,
+  avatarUrl,
+}) => {
+  const [imageError, setImageError] = useState(false);
+  const size = small ? "h-5 w-5" : "h-7 w-7";
+  const textSize = small ? "text-[10px]" : "text-sm";
+  const initial = getInitial(name);
 
-export const Avatar: React.FC<{ name?: string; small?: boolean }> = ({ name = 'User', small = false }) => {
-  const [srcIdx, setSrcIdx] = useState(0);
-  const size = small ? 'h-5 w-5' : 'h-7 w-7';
-  const src = avatarCandidate(name)[srcIdx];
+  // If no avatarUrl or image failed to load, show initial
+  if (!avatarUrl || imageError) {
+    return (
+      <div
+        className={`${size} rounded-full bg-gradient-to-tr from-brand-500 to-brand-600 shadow-sm grid place-items-center ${textSize} font-semibold text-white`}
+        data-testid="avatar-initial"
+      >
+        {initial}
+      </div>
+    );
+  }
+
+  // Show image avatar
   return (
-    <div className={`${size} rounded-full overflow-hidden bg-gradient-to-tr from-gray-200 to-gray-300 shadow-inner grid place-items-center text-[10px] text-gray-600`}>
+    <div
+      className={`${size} rounded-full overflow-hidden bg-gradient-to-tr from-gray-200 to-gray-300 shadow-sm grid place-items-center`}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={avatarUrl}
         alt={name}
         className="h-full w-full object-cover"
-        onError={() => setSrcIdx((i) => Math.min(i + 1, avatarCandidate(name).length - 1))}
+        onError={() => setImageError(true)}
+        data-testid="avatar-image"
       />
     </div>
   );

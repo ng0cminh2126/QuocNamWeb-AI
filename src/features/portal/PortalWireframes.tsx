@@ -33,6 +33,9 @@ import { AssignTaskSheet } from "@/components/sheet/AssignTaskSheet";
 import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 import type { ChecklistTemplateMap, ChecklistTemplateItem } from "./types";
 import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
+import { usePinnedMessages } from "@/hooks/queries/usePinnedMessages";
+import { usePinMessage, useUnpinMessage } from "@/hooks/mutations/usePinMessage";
+import { useStarMessage, useUnstarMessage } from "@/hooks/mutations/useStarMessage";
 
 type PortalMode = "desktop" | "mobile";
 
@@ -276,7 +279,7 @@ export default function PortalWireframes({
   const [showPreview, setShowPreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
 
-  // -- Pinned messages (mock) ---
+  // -- Pinned messages (API integration) ---
   const [showPinnedToast, setShowPinnedToast] = useState(false);
 
   const onShowPinnedToast = () => {
@@ -284,43 +287,124 @@ export default function PortalWireframes({
     setTimeout(() => setShowPinnedToast(false), 2000);
   };
 
-  const [pinnedMessages, setPinnedMessages] = React.useState<PinnedMessage[]>([
-    {
-      // dùng luôn id của message gốc trong mockMessages.ts
-      id: "msg_0008",
-      chatId: "grp_vh_kho",
-      groupName: "Vận hành – Kho Hàng",
-      workTypeName: "Nhận hàng",
-      sender: "Thu An",
-      type: "text",
-      content: "Đã nhận đủ hàng PO-2025-002, không chênh lệch.",
-      preview: "Đã nhận đủ hàng PO-2025-002, không chênh lệch.",
-      time: new Date().toISOString(),
-    },
-    {
-      id: "msg_0012",
-      chatId: "grp_vh_kho",
-      groupName: "Vận hành – Kho Hàng",
-      workTypeName: "Nhận hàng",
-      sender: "Diễm Chi",
-      type: "image",
-      preview: "[Hình ảnh] kiện hàng số 12",
-      time: new Date().toISOString(),
-      fileInfo: {
-        name: "kien_hang_12.jpg",
-        type: "image",
-        url: "/mock/img/kien_hang_12.jpg",
-      },
-    },
-  ]);
-  // Xử lý mở tin nhắn đã ghim
+  // Get current conversation ID for pinned messages query
+  const currentConversationId = selectedChat?.type === "group" ? selectedChat.id : undefined;
 
+  // Fetch pinned messages from API
+  const { data: pinnedMessagesData } = usePinnedMessages({
+    conversationId: currentConversationId || "",
+    enabled: !!currentConversationId,
+  });
+
+  // Transform API data to legacy PinnedMessage format for UI compatibility
+  const pinnedMessages: PinnedMessage[] = React.useMemo(() => {
+    if (!pinnedMessagesData || !selectedGroup) return [];
+    
+    return pinnedMessagesData.map((pinned) => ({
+      id: pinned.messageId,
+      chatId: selectedGroup.id,
+      groupName: selectedGroup.name,
+      workTypeName: "", // Can be derived from message if needed
+      sender: pinned.message.senderName,
+      type: pinned.message.contentType === "IMG" ? "image" : 
+            pinned.message.contentType === "FILE" ? "file" : "text",
+      content: pinned.message.content || "",
+      preview: pinned.message.content || "",
+      time: pinned.pinnedAt,
+      fileInfo: pinned.message.attachments?.[0] ? {
+        name: pinned.message.attachments[0].fileName || "",
+        type: pinned.message.contentType === "IMG" ? "image" : "other",
+        url: `/api/files/${pinned.message.attachments[0].fileId}`, // Construct file URL
+        size: pinned.message.attachments[0].fileSize.toString(),
+      } : undefined,
+    }));
+  }, [pinnedMessagesData, selectedGroup]);
+
+  // Pin/Unpin mutations
+  const pinMessageMutation = usePinMessage({
+    conversationId: currentConversationId || "",
+    onSuccess: () => {
+      pushToast("Đã ghim tin nhắn", "success");
+      onShowPinnedToast();
+    },
+    onError: (error) => {
+      pushToast(`Lỗi khi ghim tin nhắn: ${error.message}`, "error");
+    },
+  });
+
+  const unpinMessageMutation = useUnpinMessage({
+    conversationId: currentConversationId || "",
+    onSuccess: () => {
+      pushToast("Đã bỏ ghim tin nhắn", "success");
+    },
+    onError: (error) => {
+      pushToast(`Lỗi khi bỏ ghim: ${error.message}`, "error");
+    },
+  });
+
+  // Star/Unstar mutations
+  const starMessageMutation = useStarMessage({
+    conversationId: currentConversationId,
+    onSuccess: () => {
+      pushToast("Đã đánh dấu tin nhắn", "success");
+    },
+    onError: (error) => {
+      pushToast(`Lỗi khi đánh dấu: ${error.message}`, "error");
+    },
+  });
+
+  const unstarMessageMutation = useUnstarMessage({
+    conversationId: currentConversationId,
+    onSuccess: () => {
+      pushToast("Đã bỏ đánh dấu tin nhắn", "success");
+    },
+    onError: (error) => {
+      pushToast(`Lỗi khi bỏ đánh dấu: ${error.message}`, "error");
+    },
+  });
+
+  // Xử lý mở tin nhắn đã ghim
   const [scrollToMessageId, setScrollToMessageId] = React.useState<
     string | undefined
   >(undefined);
 
   const handleUnpinMessage = (id: string) => {
-    setPinnedMessages((prev) => prev.filter((m) => m.id !== id));
+    unpinMessageMutation.mutate({ messageId: id });
+  };
+
+  // Handle pin/unpin toggle from message bubble
+  const handleTogglePin = (msg: Message) => {
+    if (msg.isPinned) {
+      unpinMessageMutation.mutate({ messageId: msg.id });
+    } else {
+      pinMessageMutation.mutate({ messageId: msg.id });
+    }
+  };
+
+  // Handle star/unstar toggle from message bubble
+  const handleToggleStar = (msg: Message) => {
+    if (msg.isStarred) {
+      unstarMessageMutation.mutate({ messageId: msg.id });
+    } else {
+      starMessageMutation.mutate({ messageId: msg.id });
+    }
+  };
+
+  // Simple handlers for API-based components (accept messageId and current state)
+  const handleTogglePinById = (messageId: string, isPinned: boolean) => {
+    if (isPinned) {
+      unpinMessageMutation.mutate({ messageId });
+    } else {
+      pinMessageMutation.mutate({ messageId });
+    }
+  };
+
+  const handleToggleStarById = (messageId: string, isStarred: boolean) => {
+    if (isStarred) {
+      unstarMessageMutation.mutate({ messageId });
+    } else {
+      starMessageMutation.mutate({ messageId });
+    }
   };
 
   const handleOpenPinnedMessage = (pin: PinnedMessage) => {
@@ -1102,10 +1186,11 @@ export default function PortalWireframes({
             viewMode={viewMode}
             pinnedMessages={pinnedMessages}
             onClosePinned={() => setWorkspaceMode("default")}
-            setPinnedMessages={setPinnedMessages}
             onUnpinMessage={handleUnpinMessage}
             onOpenPinnedMessage={handleOpenPinnedMessage}
             onShowPinnedToast={onShowPinnedToast}
+            onTogglePin={handleTogglePin}
+            onToggleStar={handleToggleStar}
             workTypes={(selectedGroup?.workTypes ?? []).map((w) => ({
               id: w.id,
               name: w.name,

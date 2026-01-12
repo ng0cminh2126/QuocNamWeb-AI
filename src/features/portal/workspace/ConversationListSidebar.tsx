@@ -24,7 +24,12 @@ import ConversationItem from "../components/ConversationItem";
 import { sortConversationsByLatest } from "@/utils/sortConversationsByLatest";
 
 /* ===================== Types (props mới) ===================== */
-type ChatTarget = { type: "group" | "dm"; id: string; name?: string };
+type ChatTarget = {
+  type: "group" | "dm";
+  id: string;
+  name?: string;
+  memberCount?: number;
+};
 
 export interface LeftSidebarProps {
   currentUserId: string;
@@ -203,7 +208,12 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   const handleGroupSelect = React.useCallback(
     (group: GroupConversation) => {
       onSelectGroup?.(group.id);
-      onSelectChat({ type: "group", id: group.id, name: group.name });
+      onSelectChat({
+        type: "group",
+        id: group.id,
+        name: group.name,
+        memberCount: group.memberCount,
+      });
     },
     [onSelectGroup, onSelectChat]
   );
