@@ -26,6 +26,11 @@ docs/api/
 ├── task/                        # Task module
 │
 └── file/                        # File module
+    ├── upload/
+    ├── preview/                 # Generic file preview
+    ├── preview-word/            # Word file preview
+    ├── preview-excel/           # Excel file preview
+    └── thumbnail/
 ```
 
 ---
@@ -45,6 +50,16 @@ docs/api/
 | Feature  | Endpoint    | Method | Contract | Snapshots | Status     |
 | -------- | ----------- | ------ | -------- | --------- | ---------- |
 | Messages | `/messages` | GET    | TBD      | -         | 📋 Planned |
+
+### File Module
+
+| Feature           | Endpoint                        | Method | Contract                                     | Snapshots                                | Status     |
+| ----------------- | ------------------------------- | ------ | -------------------------------------------- | ---------------------------------------- | ---------- |
+| Upload            | `/api/Files`                    | POST   | [contract](./file/upload/contract.md)        | [v1](./file/upload/snapshots/v1/)        | ✅ Ready   |
+| Preview (Generic) | `/api/Files/{id}/preview`       | GET    | [contract](./file/preview/contract.md)       | [v1](./file/preview/snapshots/v1/)       | ✅ Ready   |
+| Preview Word      | `/api/Files/{id}/preview/word`  | GET    | [contract](./file/preview-word/contract.md)  | [v1](./file/preview-word/snapshots/v1/)  | ⏳ Pending |
+| Preview Excel     | `/api/Files/{id}/preview/excel` | GET    | [contract](./file/preview-excel/contract.md) | [v1](./file/preview-excel/snapshots/v1/) | ⏳ Pending |
+| Thumbnail         | `/api/Files/{id}/thumbnail`     | GET    | [contract](./file/thumbnail/contract.md)     | [v1](./file/thumbnail/snapshots/v1/)     | ✅ Ready   |
 
 ---
 

@@ -196,3 +196,134 @@ export function createObjectUrl(blob: Blob): string {
 export function revokeObjectUrl(url: string): void {
   URL.revokeObjectURL(url);
 }
+
+// ========================================
+// Phase 5: Word & Excel Preview APIs
+// ========================================
+
+import type {
+  WordPreviewDto,
+  ExcelPreviewDto,
+  ExcelPreviewOptions,
+} from "@/types/filePreview";
+
+/**
+ * Get Word document preview
+ * Converts .docx to HTML for display
+ *
+ * Backend endpoint: GET /api/Files/{id}/preview/word
+ * Uses Mammoth library for conversion
+ *
+ * @param fileId - File ID (GUID)
+ * @returns Promise with HTML content, CSS styles, and metadata
+ * @throws Error if file not found (404), unsupported format (415), or API error
+ *
+ * @example
+ * try {
+ *   const preview = await previewWordFile("abc-123-def");
+ *   console.log(preview.htmlContent); // <p>Document content...</p>
+ * } catch (error) {
+ *   console.error("Failed to load Word preview:", error.message);
+ * }
+ */
+export async function previewWordFile(fileId: string): Promise<WordPreviewDto> {
+  try {
+    const response = await fileApiClient.get<WordPreviewDto>(
+      `/api/Files/${fileId}/preview/word`,
+      {
+        responseType: "json",
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        throw new Error("Không tìm thấy tệp Word");
+      }
+      if (error.response?.status === 415) {
+        throw new Error("Định dạng tệp không được hỗ trợ. Chỉ hỗ trợ .docx");
+      }
+      if (error.response?.status === 400) {
+        throw new Error("Tệp Word không hợp lệ hoặc bị hỏng");
+      }
+      throw new Error(
+        `Không thể tải xem trước Word: ${
+          error.response?.statusText || error.message
+        }`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get Excel document preview
+ * Parses .xlsx or .xls to JSON structure
+ *
+ * Backend endpoint: GET /api/Files/{id}/preview/excel
+ * Uses EPPlus or ClosedXML library for parsing
+ *
+ * @param fileId - File ID (GUID)
+ * @param options - Optional query parameters
+ * @returns Promise with sheets, columns, rows, and metadata
+ * @throws Error if file not found (404), unsupported format (415), or API error
+ *
+ * @example
+ * try {
+ *   const preview = await previewExcelFile("abc-123-def", { includeStyles: true });
+ *   preview.sheets.forEach(sheet => {
+ *     console.log(`Sheet: ${sheet.name}, Rows: ${sheet.rowCount}`);
+ *   });
+ * } catch (error) {
+ *   console.error("Failed to load Excel preview:", error.message);
+ * }
+ */
+export async function previewExcelFile(
+  fileId: string,
+  options?: ExcelPreviewOptions
+): Promise<ExcelPreviewDto> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.includeStyles !== undefined) {
+      params.append("includeStyles", String(options.includeStyles));
+    }
+
+    const url = `/api/Files/${fileId}/preview/excel${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+
+    console.log("[previewExcelFile] Calling API:", {
+      baseURL: FILE_API_BASE_URL,
+      url,
+      fileId,
+      options,
+    });
+
+    const response = await fileApiClient.get<ExcelPreviewDto>(url, {
+      responseType: "json",
+    });
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 404) {
+        throw new Error("Không tìm thấy tệp Excel");
+      }
+      if (error.response?.status === 415) {
+        throw new Error(
+          "Định dạng tệp không được hỗ trợ. Chỉ hỗ trợ .xlsx và .xls"
+        );
+      }
+      if (error.response?.status === 400) {
+        throw new Error("Tệp Excel không hợp lệ hoặc bị hỏng");
+      }
+      throw new Error(
+        `Không thể tải xem trước Excel: ${
+          error.response?.statusText || error.message
+        }`
+      );
+    }
+    throw error;
+  }
+}

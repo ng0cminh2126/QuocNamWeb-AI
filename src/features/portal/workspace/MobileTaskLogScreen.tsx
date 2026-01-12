@@ -1,12 +1,28 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Task, Message, TaskLogMessage } from "../types";
-import { ChevronLeft, SendHorizonal, PlusCircle, ImageUp, User, Folder, MessageSquareText, Type,
-  Images,  
-  MapPin, } from "lucide-react";
-import { MessageBubble } from "@/features/portal/components/MessageBubble";
+import {
+  ChevronLeft,
+  SendHorizonal,
+  PlusCircle,
+  ImageUp,
+  User,
+  Folder,
+  MessageSquareText,
+  Type,
+  Images,
+  MapPin,
+} from "lucide-react";
+import { MessageBubble } from "@/features/portal/components/task-log";
 import { Badge } from "@/features/portal/components/Badge";
 import { IconButton } from "@/components/ui/icon-button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 /**
  * Helper: lấy title hiển thị cho Nhật ký công việc
@@ -66,14 +82,14 @@ type MobileTaskLogScreenProps = {
 };
 
 const STATUS_BADGE_MAP: Record<
-    Task["status"],
-    { type: "default" | "waiting" | "processing" | "success"; label: string }
-  > = {
-    todo: { type: "default", label: "Chưa xử lý" },
-    in_progress: { type: "processing", label: "Đang xử lý" },
-    awaiting_review: { type: "waiting", label: "Chờ duyệt" },
-    done: { type: "success", label: "Hoàn thành" },
-  };
+  Task["status"],
+  { type: "default" | "waiting" | "processing" | "success"; label: string }
+> = {
+  todo: { type: "default", label: "Chưa xử lý" },
+  in_progress: { type: "processing", label: "Đang xử lý" },
+  awaiting_review: { type: "waiting", label: "Chờ duyệt" },
+  done: { type: "success", label: "Hoàn thành" },
+};
 
 export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
   open,
@@ -88,9 +104,12 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
   const [inputValue, setInputValue] = useState("");
   const [openActions, setOpenActions] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);  
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const selectedChat: { type: 'group' | 'dm'; id: string } = { type: 'group', id: '' }; // Replace with actual selected chat context
+  const selectedChat: { type: "group" | "dm"; id: string } = {
+    type: "group",
+    id: "",
+  }; // Replace with actual selected chat context
   const currentUserName = "Người dùng hiện tại"; // Replace with actual current user name
   const selectedWorkTypeId = null;
   const currentWorkTypeId = "default-work-type"; // Replace with actual current work type id
@@ -99,7 +118,6 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
   const title = getTaskLogTitle(task, sourceMessage);
 
   // const statusBadge = task ? STATUS_BADGE_MAP[task.status] : null;
-  
 
   // Auto-scroll xuống cuối khi có message mới hoặc khi mở screen
   useEffect(() => {
@@ -119,43 +137,49 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
   // };
 
   const resolveThreadId = () => {
-    if (!selectedChat) return 'unknown';
-    if (selectedChat.type === 'group') return selectedChat.id;
+    if (!selectedChat) return "unknown";
+    if (selectedChat.type === "group") return selectedChat.id;
     return `dm:${currentUserId}:${selectedChat.id}`;
   };
 
   const sendMessage = (content: string) => {
-      const nowIso = new Date().toISOString();
-      const threadId = resolveThreadId();
-      const newMsg: TaskLogMessage = {
-        id: Date.now().toString(),
-        type: 'text',
-        sender: currentUserName,
-        content,
-        time: nowIso,
-        createdAt: nowIso,
-        senderId: currentUserId,
-        // workTypeId: selectedWorkTypeId ?? currentWorkTypeId,
-        isMine: true,
-        // isPinned: false,
-        // isSystem: false,
-        taskId: task?.id ?? '',
-      };
-      setMessages((prev) => [...prev, newMsg]);
+    const nowIso = new Date().toISOString();
+    const threadId = resolveThreadId();
+    const newMsg: TaskLogMessage = {
+      id: Date.now().toString(),
+      type: "text",
+      sender: currentUserName,
+      content,
+      time: nowIso,
+      createdAt: nowIso,
+      senderId: currentUserId,
+      // workTypeId: selectedWorkTypeId ?? currentWorkTypeId,
+      isMine: true,
+      // isPinned: false,
+      // isSystem: false,
+      taskId: task?.id ?? "",
     };
-  
-    const handleSend = useCallback(() => {
-      if (!inputValue.trim()) return;
-      sendMessage(inputValue.trim());
-      setInputValue('');
-    }, [inputValue]);
+    setMessages((prev) => [...prev, newMsg]);
+  };
+
+  const handleSend = useCallback(() => {
+    if (!inputValue.trim()) return;
+    sendMessage(inputValue.trim());
+    setInputValue("");
+  }, [inputValue]);
 
   const handlePickImage = () => {
     imageInputRef.current?.click();
   };
   const handlePickFile = () => fileInputRef.current?.click();
-  const handleQuickMessage = () => setInputValue((prev) => (prev ? prev + '\n' : '') + 'Em sẽ xử lý yêu cầu này ngay bây giờ.\nCảm ơn anh/chị đã thông tin!');
-  const handleFormat = () => setInputValue((prev) => (prev ? prev + '\n' : '') + '> Trích dẫn\n');
+  const handleQuickMessage = () =>
+    setInputValue(
+      (prev) =>
+        (prev ? prev + "\n" : "") +
+        "Em sẽ xử lý yêu cầu này ngay bây giờ.\nCảm ơn anh/chị đã thông tin!"
+    );
+  const handleFormat = () =>
+    setInputValue((prev) => (prev ? prev + "\n" : "") + "> Trích dẫn\n");
 
   const handleShareLocation = () => {
     if (!navigator.geolocation) return;
@@ -171,14 +195,14 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
   };
 
   // Get assignee name
-  const assigneeName = task?.assigneeId 
+  const assigneeName = task?.assigneeId
     ? members.find((m) => m.id === task.assigneeId)?.name ?? "Không rõ"
     : "Chưa giao";
 
   // Get status badge type and label
   const getStatusBadge = () => {
     if (!task?.status) return { type: "neutral" as const, label: "—" };
-    
+
     switch (task.status) {
       case "todo":
         return { type: "neutral" as const, label: "Chưa xử lý" };
@@ -218,7 +242,7 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
 
           {task && (
             <>
-              < Badge type={statusBadge.type}>
+              <Badge type={statusBadge.type}>
                 {task.status === "todo" && "Chưa xử lý"}
                 {task.status === "in_progress" && "Đang xử lý"}
                 {task.status === "awaiting_review" && "Chờ duyệt"}
@@ -227,11 +251,13 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
 
               <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 text-xs font-medium">
                 <User className="w-3 h-3" />
-                <span>{members.find((m) => m.id === task.assigneeId)?.name ?? "Không rõ"}</span>
+                <span>
+                  {members.find((m) => m.id === task.assigneeId)?.name ??
+                    "Không rõ"}
+                </span>
               </div>
             </>
           )}
-          
         </div>
 
         {/* Line 2: Task title */}
@@ -282,15 +308,15 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
           {/* PlusCircle - Action selector */}
           <Sheet open={openActions} onOpenChange={setOpenActions}>
             <SheetTrigger asChild>
-              <IconButton 
-                className="bg-white" 
-                icon={<PlusCircle className="h-6 w-6 text-brand-600" />} 
+              <IconButton
+                className="bg-white"
+                icon={<PlusCircle className="h-6 w-6 text-brand-600" />}
               />
             </SheetTrigger>
             <SheetContent
               side="bottom"
               className="rounded-t-2xl p-4 shadow-2xl w-[90%] max-w-[390px] left-1/2 -translate-x-1/2 right-auto top-auto"
-              style={{ 
+              style={{
                 width: "min(90vw, 390px)",
                 left: "50%",
                 right: "auto",
@@ -299,28 +325,65 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
               }}
             >
               <SheetHeader className="px-1">
-                <SheetTitle className="text-sm text-gray-700">Chọn hành động</SheetTitle>
+                <SheetTitle className="text-sm text-gray-700">
+                  Chọn hành động
+                </SheetTitle>
                 <SheetDescription className="text-xs text-gray-500">
                   Thêm nội dung vào nhật ký công việc
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-3 space-y-2">
-                  <button className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition" onClick={() => { setOpenActions(false); handlePickImage(); }}>
-                    <Images className="h-5 w-5 text-emerald-600" /><span className="text-sm text-gray-800">Ảnh</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition" onClick={() => { setOpenActions(false); handlePickFile(); }}>
-                    <Folder className="h-5 w-5 text-green-600" /><span className="text-sm text-gray-800">Tệp tin</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition" onClick={() => { setOpenActions(false); handleShareLocation(); }}>
-                    <MapPin className="h-5 w-5 text-teal-600" /><span className="text-sm text-gray-800">Vị trí</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition" onClick={() => { setOpenActions(false); handleQuickMessage(); }}>
-                    <MessageSquareText className="h-5 w-5 text-lime-600" /><span className="text-sm text-gray-800">Tin nhắn mẫu</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition" onClick={() => { setOpenActions(false); handleFormat(); }}>
-                    <Type className="h-5 w-5 text-emerald-700" /><span className="text-sm text-gray-800">Định dạng</span>
-                  </button>
-                </div>
+                <button
+                  className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition"
+                  onClick={() => {
+                    setOpenActions(false);
+                    handlePickImage();
+                  }}
+                >
+                  <Images className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm text-gray-800">Ảnh</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition"
+                  onClick={() => {
+                    setOpenActions(false);
+                    handlePickFile();
+                  }}
+                >
+                  <Folder className="h-5 w-5 text-green-600" />
+                  <span className="text-sm text-gray-800">Tệp tin</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition"
+                  onClick={() => {
+                    setOpenActions(false);
+                    handleShareLocation();
+                  }}
+                >
+                  <MapPin className="h-5 w-5 text-teal-600" />
+                  <span className="text-sm text-gray-800">Vị trí</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition"
+                  onClick={() => {
+                    setOpenActions(false);
+                    handleQuickMessage();
+                  }}
+                >
+                  <MessageSquareText className="h-5 w-5 text-lime-600" />
+                  <span className="text-sm text-gray-800">Tin nhắn mẫu</span>
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-brand-50 transition"
+                  onClick={() => {
+                    setOpenActions(false);
+                    handleFormat();
+                  }}
+                >
+                  <Type className="h-5 w-5 text-emerald-700" />
+                  <span className="text-sm text-gray-800">Định dạng</span>
+                </button>
+              </div>
             </SheetContent>
           </Sheet>
 
@@ -341,18 +404,18 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
           </div>
 
           {/* ImageUp - Quick image attach */}
-          <IconButton 
-            onClick={handlePickImage} 
-            className="bg-white" 
-            icon={<ImageUp className="h-6 w-6 text-brand-600" />} 
+          <IconButton
+            onClick={handlePickImage}
+            className="bg-white"
+            icon={<ImageUp className="h-6 w-6 text-brand-600" />}
           />
         </div>
 
         {/* Hidden image input */}
-        <input 
-          ref={imageInputRef} 
-          type="file" 
-          accept="image/*" 
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];

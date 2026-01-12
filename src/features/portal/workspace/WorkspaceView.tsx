@@ -3,7 +3,7 @@ import { ConversationListSidebar } from "./ConversationListSidebar";
 import { ChatMessagePanel } from "./ChatMessagePanel";
 import { ConversationDetailPanel } from "./ConversationDetailPanel";
 import { PinnedMessagesPanel } from "../components/PinnedMessagesPanel";
-import { ChatMainContainer } from "../components/ChatMainContainer";
+import { ChatMainContainer } from "../components/chat";
 import { EmptyChatState } from "../components/EmptyChatState";
 
 import type {
@@ -20,7 +20,12 @@ import type {
 } from "../types";
 import { MessageSquareIcon, ClipboardListIcon, UserIcon } from "lucide-react";
 
-type ChatTarget = { type: "group" | "dm"; id: string; name?: string };
+type ChatTarget = {
+  type: "group" | "dm";
+  id: string;
+  name?: string;
+  memberCount?: number;
+};
 
 interface WorkspaceViewProps {
   groups: GroupChat[];
@@ -94,9 +99,10 @@ interface WorkspaceViewProps {
   pinnedMessages?: PinnedMessage[];
   onClosePinned?: () => void;
   onOpenPinnedMessage?: (pin: PinnedMessage) => void;
-  setPinnedMessages: React.Dispatch<React.SetStateAction<PinnedMessage[]>>;
   onUnpinMessage: (id: string) => void;
   onShowPinnedToast: () => void;
+  onTogglePin?: (msg: Message) => void;
+  onToggleStar?: (msg: Message) => void;
 
   viewMode: "lead" | "staff";
 
@@ -185,9 +191,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     pinnedMessages,
     onClosePinned,
     onOpenPinnedMessage,
-    setPinnedMessages,
+    // setPinnedMessages,
     onUnpinMessage,
     onShowPinnedToast,
+    onTogglePin,
+    onToggleStar,
 
     onReceiveInfo,
     receivedInfos,
@@ -441,20 +449,42 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 <div className="h-full min-h-0">
                   {selectedChat ? (
                     // API-based chat using ChatMainContainer (conversation-detail)
-                    <ChatMainContainer
-                      key={selectedChat.id}
-                      conversationId={selectedChat.id}
-                      conversationName={chatTitle}
-                      conversationType={
-                        selectedChat.type === "group" ? "GRP" : "DM"
-                      }
-                      memberCount={selectedGroup?.members?.length}
-                      isMobile={true}
-                      onBack={() => {
-                        onClearSelectedChat?.();
-                        setMobileTab("messages");
-                      }}
-                    />
+                    <>
+                      <ChatMainContainer
+                        key={selectedChat.id}
+                        conversationId={selectedChat.id}
+                        conversationName={chatTitle}
+                        conversationType={
+                          selectedChat.type === "group" ? "GRP" : "DM"
+                        }
+                        memberCount={selectedChat?.memberCount}
+                        isMobile={true}
+                        onBack={() => {
+                          onClearSelectedChat?.();
+                          setMobileTab("messages");
+                        }}
+                        onTogglePin={
+                          onTogglePin
+                            ? (messageId: string, isPinned: boolean) => {
+                                onTogglePin({
+                                  id: messageId,
+                                  isPinned,
+                                } as Message);
+                              }
+                            : undefined
+                        }
+                        onToggleStar={
+                          onToggleStar
+                            ? (messageId: string, isStarred: boolean) => {
+                                onToggleStar({
+                                  id: messageId,
+                                  isStarred,
+                                } as Message);
+                              }
+                            : undefined
+                        }
+                      />
+                    </>
                   ) : (
                     <EmptyChatState isMobile={true} />
                   )}
@@ -604,14 +634,38 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
       <div className="h-full min-h-0 min-w-0">
         {selectedChat ? (
           // API-based chat using ChatMainContainer (conversation-detail)
-          <ChatMainContainer
-            key={selectedChat.id}
-            conversationId={selectedChat.id}
-            conversationName={chatTitle}
-            conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
-            memberCount={selectedGroup?.members?.length}
-            isMobile={false}
-          />
+          <>
+            {console.log(
+              "[WorkspaceView Desktop] selectedChat:",
+              selectedChat,
+              "memberCount:",
+              selectedChat?.memberCount
+            )}
+            <ChatMainContainer
+              key={selectedChat.id}
+              conversationId={selectedChat.id}
+              conversationName={chatTitle}
+              conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
+              memberCount={selectedChat?.memberCount}
+              isMobile={false}
+              onTogglePin={
+                onTogglePin
+                  ? (messageId: string, isPinned: boolean) => {
+                      // Create a minimal Message object for the handler
+                      onTogglePin({ id: messageId, isPinned } as Message);
+                    }
+                  : undefined
+              }
+              onToggleStar={
+                onToggleStar
+                  ? (messageId: string, isStarred: boolean) => {
+                      // Create a minimal Message object for the handler
+                      onToggleStar({ id: messageId, isStarred } as Message);
+                    }
+                  : undefined
+              }
+            />
+          </>
         ) : (
           <EmptyChatState isMobile={false} />
         )}

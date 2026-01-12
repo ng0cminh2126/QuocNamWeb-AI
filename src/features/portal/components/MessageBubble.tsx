@@ -11,6 +11,7 @@ import {
   Inbox,
   Paperclip,
   MessageSquarePlus,
+  Pin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLongPress } from "@/lib/hooks/use-long-press";
@@ -219,7 +220,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const FileBubble = () => {
     if (!data.fileInfo) return null;
     return (
-      <div className={cn("flex flex-col border border-gray-200 bg-white shadow-sm p-3", radiusBySide)} onClick={() => onOpenFile?.(data)}>
+      <div className={cn("flex flex-col border bg-white shadow-sm p-3", data.isPinned ? "border-amber-400" : data.isStarred ? "border-blue-400" : "border-gray-200", radiusBySide)} onClick={() => onOpenFile?.(data)}>
         <div className="text-sm text-gray-700">{data.fileInfo.name}</div>
       </div>
     );
@@ -230,7 +231,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     if (!imgs.length) return null;
     const first = imgs[0];
     return (
-      <div className="overflow-hidden rounded-lg bg-white border border-gray-200 p-0">
+      <div className={cn("overflow-hidden rounded-lg bg-white border p-0", data.isPinned ? "border-amber-400" : data.isStarred ? "border-blue-400" : "border-gray-200")}>
         <img src={first.url} alt={first.name || "image"} className="object-contain max-w-[320px] max-h-[220px] w-auto h-auto rounded-lg" />
       </div>
     );
@@ -319,11 +320,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <div className="flex items-baseline gap-2 mb-0.5 pl-0.5">
               <span className="text-[13px] font-medium text-gray-800">{data.sender}</span>
               <span className="text-[11px] text-gray-500">{data.time}</span>
+              {data.isPinned && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
+                  <Pin size={10} className="fill-amber-600" />
+                  Đã ghim
+                </span>
+              )}
+              {data.isStarred && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-600 font-medium">
+                  <Star size={10} className="fill-blue-600" />
+                  Đã đánh dấu
+                </span>
+              )}
             </div>
           )}
           {data.isMine && isFirstInGroup && (
-            <div className="flex justify-end mb-0.5 pr-1">
+            <div className="flex items-center gap-2 justify-end mb-0.5 pr-1">
               <span className="text-[11px] text-gray-500">{data.time}</span>
+              {data.isPinned && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
+                  <Pin size={10} className="fill-amber-600" />
+                  Đã ghim
+                </span>
+              )}
+              {data.isStarred && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-600 font-medium">
+                  <Star size={10} className="fill-blue-600" />
+                  Đã đánh dấu
+                </span>
+              )}
             </div>
           )}
 
@@ -335,8 +360,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           ) : (
             <div
               className={cn(
-                "overflow-hidden border border-gray-200 shadow-sm text-[13.5px] text-gray-800 whitespace-pre-line",
+                "overflow-hidden border shadow-sm text-[13.5px] text-gray-800 whitespace-pre-line",
                 data.isMine ? "bg-brand-50 text-gray-800" : "bg-white text-gray-800",
+                data.isPinned ? "border-amber-400" : data.isStarred ? "border-blue-400" : "border-gray-200",
                 radiusBySide
               )}
             >

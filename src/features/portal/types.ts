@@ -3,8 +3,13 @@ type ID = string;
 type ISODate = string; // ISO 8601
 
 // Định nghĩa tất cả type & interface
-export type BadgeType = 'processing' | 'waiting' | 'done' | 'danger' | 'neutral';
-export type ToastKind = 'success' | 'info' | 'warning' | 'error';
+export type BadgeType =
+  | "processing"
+  | "waiting"
+  | "done"
+  | "danger"
+  | "neutral";
+export type ToastKind = "success" | "info" | "warning" | "error";
 export type UserRole = "admin" | "leader" | "staff";
 
 export interface ToastMsg {
@@ -15,10 +20,10 @@ export interface ToastMsg {
 
 // ===== Tasks & Checklist =====
 export type TaskStatus =
-  | "todo"             // Chưa xử lý
-  | "in_progress"      // Đang xử lý
-  | "awaiting_review"  // Chờ duyệt (review của leader)
-  | "done";            // Hoàn thành
+  | "todo" // Chưa xử lý
+  | "in_progress" // Đang xử lý
+  | "awaiting_review" // Chờ duyệt (review của leader)
+  | "done"; // Hoàn thành
 
 export interface ChecklistItem {
   id: ID;
@@ -31,8 +36,8 @@ export interface ChecklistItem {
 export interface ChecklistTemplate {
   id: ID;
   name: string;
-  workTypeId?: ID;  // template có thể gắn theo work type
-  items: string[];  // labels
+  workTypeId?: ID; // template có thể gắn theo work type
+  items: string[]; // labels
   createdById: ID;
   createdAt: ISODate;
 }
@@ -53,12 +58,12 @@ export interface Task {
   checklistVariantName?: string;
   progressText?: string;
 
-  sourceMessageId: ID;       // message gốc dùng để tạo task
+  sourceMessageId: ID; // message gốc dùng để tạo task
   title: string;
   description?: string;
 
-  assigneeId: ID;            // người được giao (staff)
-  assignedById: ID;          // leader giao
+  assigneeId: ID; // người được giao (staff)
+  assignedById: ID; // leader giao
   status: TaskStatus;
 
   priority?: "low" | "normal" | "high" | "urgent";
@@ -68,8 +73,8 @@ export interface Task {
   isPending?: boolean;
   pendingUntil?: ISODate;
 
-  checklist?: ChecklistItem[];   // copy từ template, cho phép check
-  history?: TaskEvent[];         // log thay đổi
+  checklist?: ChecklistItem[]; // copy từ template, cho phép check
+  history?: TaskEvent[]; // log thay đổi
 
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -78,9 +83,9 @@ export interface Task {
 export interface LeadThread {
   id: string;
   t: string;
-  type: 'Nội bộ' | 'POS';
+  type: "Nội bộ" | "POS";
   owner: string;
-  st: 'Đang xử lý' | 'Chờ phản hồi' | 'Đã chốt';
+  st: "Đang xử lý" | "Chờ phản hồi" | "Đã chốt";
   at: string;
 }
 
@@ -88,12 +93,12 @@ export interface LeadThread {
 export type AttachmentType = "pdf" | "excel" | "word" | "image" | "other";
 
 export interface FileAttachment {
+  id?: string; // File ID from backend (GUID format) - Phase 5
   name: string;
   url: string;
   type: AttachmentType;
   size?: string;
 }
-
 
 /* ---------------- Message Types ---------------- */
 export interface Message {
@@ -114,11 +119,14 @@ export interface Message {
   /** Thời gian gửi (hiển thị UI) */
   time: string;
 
+  /** Timestamp (Unix ms) - Phase 4: for message grouping */
+  timestamp?: number;
+
   /** Có phải là tin nhắn của user hiện tại không */
   isMine?: boolean;
 
   files?: FileAttachment[];
-  
+
   /** vẫn giữ fileInfo cũ để backward-compatible **/
   fileInfo?: FileAttachment;
 
@@ -138,6 +146,9 @@ export interface Message {
 
   /** Đánh dấu tin nhắn */
   isPinned?: boolean;
+
+  /** Đánh sao tin nhắn (starred/important) */
+  isStarred?: boolean;
 
   /** Cờ hệ thống: phân cách ngày, sự kiện */
   isSystem?: boolean;
@@ -193,35 +204,35 @@ export interface User {
   displayName: string;
   email: string;
 
-  roles: UserRole[];          // quyền toàn cục (admin portal, v.v.)
-  departmentIds: ID[];        // có thể 1 hoặc nhiều (tuỳ doanh nghiệp)
-  primaryDepartmentId?: ID;   // dùng cho Staff trải nghiệm tốt hơn
+  roles: UserRole[]; // quyền toàn cục (admin portal, v.v.)
+  departmentIds: ID[]; // có thể 1 hoặc nhiều (tuỳ doanh nghiệp)
+  primaryDepartmentId?: ID; // dùng cho Staff trải nghiệm tốt hơn
   active: boolean;
-  createdAt: ISODate;  
+  createdAt: ISODate;
 }
 
 export interface Department {
   id: ID;
   name: string;
-  leaderId: ID;         // đúng 1 leader/phòng
-  memberIds: ID[];      // gồm cả leader
+  leaderId: ID; // đúng 1 leader/phòng
+  memberIds: ID[]; // gồm cả leader
   createdAt: ISODate;
 }
 
 export interface ChecklistVariant {
-  id: string;            // ví dụ: "nhanHang_kiemDem"
-  name: string;          // ví dụ: "Kiểm đếm"
-  description?: string;  // mô tả thêm nếu cần
-  isDefault?: boolean;   // variant mặc định cho workType
+  id: string; // ví dụ: "nhanHang_kiemDem"
+  name: string; // ví dụ: "Kiểm đếm"
+  description?: string; // mô tả thêm nếu cần
+  isDefault?: boolean; // variant mặc định cho workType
 }
 
 // ===== Group & Work Types =====
 export interface WorkType {
   id: ID;
-  key: string;         // "nhan_hang" | "doi_tra" | ...
-  name: string;        // "Nhận hàng", "Đổi trả", ...
-  icon?: string;       // lucide icon name
-  color?: string;      // brand subcolor cho chip/badge
+  key: string; // "nhan_hang" | "doi_tra" | ...
+  name: string; // "Nhận hàng", "Đổi trả", ...
+  icon?: string; // lucide icon name
+  color?: string; // brand subcolor cho chip/badge
 
   /** Danh sách các dạng checklist con (Kiểm đếm / Lưu trữ / Thanh toán / ...) */
   checklistVariants?: ChecklistVariant[];
@@ -232,24 +243,28 @@ export interface GroupMember {
   role: "leader" | "staff";
   isAutoJoined?: boolean; // true nếu là leader của phòng ban liên kết
   joinedAt: ISODate;
-  addedById?: ID;         // ai thêm vào (admin/leader), nếu không auto
+  addedById?: ID; // ai thêm vào (admin/leader), nếu không auto
 }
 
 export interface GroupChat {
   id: ID;
-  name: string;               // "Vận Hành - Kho"
+  name: string; // "Vận Hành - Kho"
   description?: string;
-  departmentIds: ID[];        // 2-3 phòng ban
-  members: GroupMember[];     // leaders auto + staff do leader assign
-  workTypes: WorkType[];      // loại việc được cấu hình riêng cho group
-  defaultWorkTypeId?: ID;     // filter mặc định khi vào group
-  lastSender?: string;   // "Huyền"
-  lastMessage?: string;  // text | "[hình ảnh]" | "[pdf]"
-  lastTime?: string;     // "09:45"
-  unreadCount?: number;  // 0 | 1 | 2...
+  departmentIds: ID[]; // 2-3 phòng ban
+  members: GroupMember[]; // leaders auto + staff do leader assign
+  workTypes: WorkType[]; // loại việc được cấu hình riêng cho group
+  defaultWorkTypeId?: ID; // filter mặc định khi vào group
+  lastSender?: string; // "Huyền"
+  lastMessage?: string; // text | "[hình ảnh]" | "[pdf]"
+  lastTime?: string; // "09:45"
+  unreadCount?: number; // 0 | 1 | 2...
   createdAt: ISODate;
-}
 
+  // Phase 4: Conversation metadata
+  status?: string; // "Active" | "Archived" | etc.
+  onlineCount?: number; // số thành viên đang online
+  avatarFileId?: string; // ID của file avatar (not available yet from API)
+}
 
 /* ---------------- Work Types ---------------- */
 // export interface WorkItem {
@@ -260,28 +275,27 @@ export interface GroupChat {
 // }
 
 export interface PinnedMessage {
-  id: string;                     // id của pinned entry
-  chatId: string;                 // group id nơi message xuất hiện
-  groupName: string;              // tên nhóm chat
-  workTypeName?: string;          // tên loại việc (nếu có)
+  id: string; // id của pinned entry
+  chatId: string; // group id nơi message xuất hiện
+  groupName: string; // tên nhóm chat
+  workTypeName?: string; // tên loại việc (nếu có)
 
-  sender: string;                 // tên người gửi
+  sender: string; // tên người gửi
   type: "text" | "image" | "file";
 
-  content?: string;               // nội dung text (nếu là text)
-  preview?: string;               // preview rút gọn để hiển thị list
+  content?: string; // nội dung text (nếu là text)
+  preview?: string; // preview rút gọn để hiển thị list
 
-  fileInfo?: FileAttachment;      // thumbnail hoặc file info (image/pdf/etc)
+  fileInfo?: FileAttachment; // thumbnail hoặc file info (image/pdf/etc)
 
-  time: string;                   // thời gian gửi tin nhắn (ISO), dùng để group
+  time: string; // thời gian gửi tin nhắn (ISO), dùng để group
 }
-
 
 // ===== Preferences (per user per group) =====
 export interface GroupUserPreference {
   userId: ID;
   groupId: ID;
-  defaultWorkTypeId?: ID;  // nhớ filter mặc định của user trong group
+  defaultWorkTypeId?: ID; // nhớ filter mặc định của user trong group
   createdAt: ISODate;
   updatedAt: ISODate;
 }
@@ -311,21 +325,21 @@ export interface ReceivedInfo {
   sender: string;
   createdAt: string;
   status: "waiting" | "assigned" | "transferred";
-  transferredTo?: string;  // departmentId
+  transferredTo?: string; // departmentId
   transferredToGroupName?: string;
   transferredWorkTypeName?: string;
 }
 
 // ===== Checklist task Template Item =====
 export type ChecklistTemplateItem = {
-  id: string;        // id template
-  label: string;     // tên checklist mặc định
+  id: string; // id template
+  label: string; // tên checklist mặc định
 };
 
 export type ChecklistTemplateMap = Record<
-  string,               // workTypeId
+  string, // workTypeId
   Record<
-    string,             // checklistVariantId
+    string, // checklistVariantId
     ChecklistTemplateItem[]
   >
 >;

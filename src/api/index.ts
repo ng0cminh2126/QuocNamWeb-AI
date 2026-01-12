@@ -9,3 +9,6 @@ export * from './conversations.api';
 
 // Messages API
 export * from './messages.api';
+
+// Pinned & Starred Messages API
+export * from './pinned_and_starred.api';

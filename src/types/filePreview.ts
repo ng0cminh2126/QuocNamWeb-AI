@@ -122,3 +122,192 @@ export interface PageCacheEntry {
  * Key format: "{fileId}-{pageNumber}"
  */
 export type PageCache = Map<string, PageCacheEntry>;
+
+// ========================================
+// Phase 5: Word & Excel Preview Types
+// ========================================
+
+/**
+ * Watermark information displayed over the document
+ * Provided by the backend for security/copyright protection
+ */
+export interface WatermarkInfoDto {
+  /** User identifier (email or name) */
+  userIdentifier: string;
+
+  /** Timestamp when file was accessed (ISO 8601 format) */
+  timestamp: string;
+}
+
+/**
+ * Word document metadata
+ */
+export interface WordMetadataDto {
+  /** Total number of pages (if available from backend) */
+  pageCount?: number;
+
+  /** Document title */
+  title?: string;
+
+  /** Author name */
+  author?: string;
+
+  /** File size in bytes */
+  sizeInBytes: number;
+}
+
+/**
+ * Response DTO for Word document preview
+ * GET /api/Files/{id}/preview/word
+ */
+export interface WordPreviewDto {
+  /** File ID (GUID) */
+  fileId: string;
+
+  /** File name with extension */
+  fileName: string;
+
+  /** HTML content converted from .docx */
+  htmlContent: string;
+
+  /** CSS styles for the HTML content */
+  cssStyles: string;
+
+  /** Document metadata */
+  metadata: WordMetadataDto;
+
+  /** Watermark information */
+  watermark: WatermarkInfoDto;
+}
+
+/**
+ * Excel sheet metadata
+ */
+export interface ExcelMetadataDto {
+  /** Total number of sheets */
+  sheetCount: number;
+
+  /** Total number of rows (across all sheets) */
+  totalRows: number;
+
+  /** File size in bytes */
+  sizeInBytes: number;
+}
+
+/**
+ * Column information for Excel sheet
+ */
+export interface ColumnInfoDto {
+  /** Column index (0-based) */
+  index: number;
+
+  /** Column letter (e.g., "A", "B", "AA") */
+  letter: string;
+
+  /** Column name/header (optional) */
+  name?: string;
+
+  /** Column width in Excel units (optional) */
+  width?: number;
+}
+
+/**
+ * Cell styling information
+ */
+export interface CellStyleDto {
+  /** Bold text */
+  bold?: boolean;
+
+  /** Italic text */
+  italic?: boolean;
+
+  /** Background color (hex format: #RRGGBB) */
+  backgroundColor?: string;
+
+  /** Text color (hex format: #RRGGBB) */
+  textColor?: string;
+
+  /** Horizontal alignment (left, center, right) */
+  horizontalAlignment?: "left" | "center" | "right";
+
+  /** Vertical alignment (top, middle, bottom) */
+  verticalAlignment?: "top" | "middle" | "bottom";
+
+  /** Number format (e.g., "0.00", "dd/mm/yyyy") */
+  numberFormat?: string;
+
+  /** Cell is merged */
+  isMerged?: boolean;
+
+  /** Merged cell range (e.g., "A1:B2") */
+  mergedRange?: string;
+}
+
+/**
+ * Single cell data
+ */
+export interface CellDataDto {
+  /** Row index (0-based) */
+  row: number;
+
+  /** Column index (0-based) */
+  column: number;
+
+  /** Raw cell value */
+  value: string | number | boolean | null;
+
+  /** Formatted value for display (e.g., "1,234.56" for number 1234.56) */
+  formattedValue: string;
+
+  /** Cell styling (optional) */
+  style?: CellStyleDto;
+}
+
+/**
+ * Single sheet data
+ */
+export interface SheetDataDto {
+  /** Sheet name */
+  name: string;
+
+  /** Column definitions */
+  columns: ColumnInfoDto[];
+
+  /** Row data (2D array: rows[rowIndex][columnIndex]) */
+  rows: CellDataDto[][];
+
+  /** Total number of rows in this sheet */
+  rowCount: number;
+
+  /** Total number of columns in this sheet */
+  columnCount: number;
+}
+
+/**
+ * Response DTO for Excel document preview
+ * GET /api/Files/{id}/preview/excel
+ */
+export interface ExcelPreviewDto {
+  /** File ID (GUID) */
+  fileId: string;
+
+  /** File name with extension */
+  fileName: string;
+
+  /** Array of sheets */
+  sheets: SheetDataDto[];
+
+  /** Document metadata */
+  metadata: ExcelMetadataDto;
+
+  /** Watermark information */
+  watermark: WatermarkInfoDto;
+}
+
+/**
+ * Query parameters for Excel preview API (optional)
+ */
+export interface ExcelPreviewOptions {
+  /** Include cell styling (default: true) */
+  includeStyles?: boolean;
+}
