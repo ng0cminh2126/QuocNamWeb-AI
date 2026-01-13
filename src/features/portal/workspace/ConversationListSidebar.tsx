@@ -22,6 +22,10 @@ import type {
 } from "@/types/conversations";
 import ConversationItem from "../components/ConversationItem";
 import { sortConversationsByLatest } from "@/utils/sortConversationsByLatest";
+import {
+  saveSelectedConversation,
+  getSelectedConversation,
+} from "@/utils/storage"; // Phase 6: Conversation persistence
 
 /* ===================== Types (props mới) ===================== */
 type ChatTarget = {
@@ -127,6 +131,10 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   const [openTools, setOpenTools] = React.useState(false);
   const [hasAutoSelected, setHasAutoSelected] = React.useState(false);
   const prevTabRef = React.useRef<"groups" | "contacts">("groups");
+  const isAutoSwitchingTabRef = React.useRef(false); // Flag to prevent clearing selection during auto-switch
+  const prevSelectedConversationIdRef = React.useRef<string | undefined>(
+    undefined
+  ); // Track previous conversation
 
   // API queries
   const groupsQuery = useGroups({ enabled: useApiData });
@@ -214,6 +222,8 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
         name: group.name,
         memberCount: group.memberCount,
       });
+      // Phase 6: Save selected conversation to localStorage
+      saveSelectedConversation(group.id);
     },
     [onSelectGroup, onSelectChat]
   );
@@ -221,32 +231,113 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   // Helper: handle DM selection
   const handleDirectSelect = (dm: DirectConversation) => {
     onSelectChat({ type: "dm", id: dm.id, name: dm.name });
+    // Phase 6: Save selected conversation to localStorage
+    saveSelectedConversation(dm.id);
   };
 
-  // Auto-select first group when API data loads (only once)
+  // Phase 6: Restore selected conversation from localStorage on mount
   React.useEffect(() => {
-    if (
-      useApiData &&
-      !hasAutoSelected &&
-      apiGroups.length > 0 &&
-      !selectedConversationId
-    ) {
-      const firstGroup = apiGroups[0];
-      handleGroupSelect(firstGroup);
-      setHasAutoSelected(true);
+    // Wait for data to load before restoring
+    if (useApiData && !hasAutoSelected) {
+      const isGroupsLoading = groupsQuery.isLoading;
+      const isDirectsLoading = directsQuery.isLoading;
+
+      // ⚠️ FIX: Wait for BOTH lists to load completely before restoring
+      // This prevents race condition when one API loads faster than the other
+      if (isGroupsLoading || isDirectsLoading) {
+        return;
+      }
+
+      const savedConversationId = getSelectedConversation();
+
+      // Try to find and restore saved conversation
+      if (savedConversationId) {
+        // Check in groups first
+        const savedGroup = apiGroups.find((g) => g.id === savedConversationId);
+
+        if (savedGroup) {
+          handleGroupSelect(savedGroup);
+          // Don't setTab here - let the separate effect handle it based on selectedConversationId
+          setHasAutoSelected(true);
+          return;
+        }
+
+        // If not in groups, check in directs
+        const savedDirect = apiDirects.find(
+          (d) => d.id === savedConversationId
+        );
+
+        if (savedDirect) {
+          handleDirectSelect(savedDirect);
+          // Don't setTab here - let the separate effect handle it based on selectedConversationId
+          setHasAutoSelected(true);
+          return;
+        }
+      }
+
+      // If no saved conversation or saved conversation deleted, auto-select first group
+      if (apiGroups.length > 0 && !selectedConversationId) {
+        const firstGroup = apiGroups[0];
+        handleGroupSelect(firstGroup);
+        setHasAutoSelected(true);
+      }
     }
   }, [
     useApiData,
     apiGroups,
+    apiDirects,
     hasAutoSelected,
     selectedConversationId,
     handleGroupSelect,
+    groupsQuery.isLoading,
+    directsQuery.isLoading,
   ]);
+
+  // Separate effect: Auto-switch tab based on selected conversation type
+  // This runs AFTER selectedConversationId is updated from parent
+  React.useEffect(() => {
+    // Only auto-switch when a NEW conversation is selected (not when cleared or same conversation)
+    const hasNewConversation =
+      selectedConversationId &&
+      selectedConversationId !== prevSelectedConversationIdRef.current;
+
+    if (!hasNewConversation || !useApiData) {
+      prevSelectedConversationIdRef.current = selectedConversationId;
+      return;
+    }
+
+    // Check if selected conversation is a direct message
+    const isDirect = apiDirects.some((d) => d.id === selectedConversationId);
+    if (isDirect && tab !== "contacts") {
+      isAutoSwitchingTabRef.current = true; // Set flag before switching
+      setTab("contacts");
+      prevSelectedConversationIdRef.current = selectedConversationId;
+      return;
+    }
+
+    // Check if selected conversation is a group
+    const isGroup = apiGroups.some((g) => g.id === selectedConversationId);
+    if (isGroup && tab !== "groups") {
+      isAutoSwitchingTabRef.current = true; // Set flag before switching
+      setTab("groups");
+    }
+
+    prevSelectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId, apiDirects, apiGroups, useApiData, tab]);
+
+  // Auto-select first group when API data loads (only once) - REMOVED (merged into restore logic above)
 
   // Clear selection when switching between tabs (groups <-> contacts)
   React.useEffect(() => {
     // Only clear if tab actually changed (not on initial mount or re-render)
     if (prevTabRef.current !== tab) {
+      // Don't clear if this is an auto-switch triggered by conversation selection
+      if (isAutoSwitchingTabRef.current) {
+        isAutoSwitchingTabRef.current = false; // Reset flag
+        prevTabRef.current = tab;
+        return;
+      }
+
       onClearSelectedChat?.();
       prevTabRef.current = tab;
     }

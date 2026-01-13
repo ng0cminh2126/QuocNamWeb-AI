@@ -73,10 +73,12 @@ export function useConversationRealtime(
 
   // Handle MessageSent event
   const handleMessageSent = useCallback(
-    (event: MessageSentEvent) => {
-      // Backend structure: { message: { conversationId, content, ... } }
-      const message = event.message;
-      const conversationId = message.conversationId;
+    (event: any) => {
+      // Handle both wrapped and unwrapped message structures
+      // Wrapped: { message: ChatMessage }
+      // Unwrapped: ChatMessage (backend sends directly)
+      const message = event.message || event;
+      const conversationId = message?.conversationId;
 
       if (!message || !conversationId) {
         console.error("❌ [Realtime] Invalid MessageSent event:", event);
@@ -281,12 +283,17 @@ export function useConversationRealtime(
     // Subscribe to events
     // Note: Use 'any' type to accept both object and multiple params from backend
     chatHub.on(SIGNALR_EVENTS.MESSAGE_SENT, handleMessageSent as any);
+
     chatHub.on(SIGNALR_EVENTS.RECEIVE_MESSAGE, handleMessageSent as any);
+
     chatHub.on(SIGNALR_EVENTS.MESSAGE_READ, handleMessageRead as any);
+
     chatHub.on(
       SIGNALR_EVENTS.CONVERSATION_UPDATED,
       handleConversationUpdated as any
     );
+    console.log("✅ [DEBUG] Registered:", SIGNALR_EVENTS.CONVERSATION_UPDATED);
+    console.log("✅ [DEBUG] Registered:", SIGNALR_EVENTS.CONVERSATION_UPDATED);
 
     // Cleanup
     return () => {

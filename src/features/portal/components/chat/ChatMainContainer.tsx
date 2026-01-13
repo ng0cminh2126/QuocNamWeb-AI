@@ -16,10 +16,12 @@ import {
 } from "@/hooks/queries/useStarredMessages";
 import { useMessageRealtime } from "@/hooks/useMessageRealtime";
 import { useSendTypingIndicator } from "@/hooks/useSendTypingIndicator";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useAuthStore } from "@/stores/authStore";
 import { MessageSkeleton } from "../MessageSkeleton";
 import { groupMessages } from "@/utils/messageGrouping";
 import { MessageBubbleSimple } from "./MessageBubbleSimple";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import {
   RefreshCw,
   Send,
@@ -103,6 +105,7 @@ function getFileExtension(fileName?: string, contentType?: string): string {
 }
 
 interface ChatMainContainerProps {
+  workspaceId?: string; // Optional for backward compatibility
   conversationId: string;
   conversationName: string;
   conversationType?: "GRP" | "DM";
@@ -126,6 +129,7 @@ interface ChatMainContainerProps {
  * 6. Handles typing indicators
  */
 export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
+  workspaceId = "default-workspace", // Default value
   conversationId,
   conversationName,
   conversationType = "GRP",
@@ -187,6 +191,8 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Send message mutation
   const sendMessageMutation = useSendMessage({
+    workspaceId,
+    conversationId,
     onSuccess: () => {
       setInputValue("");
     },
@@ -208,6 +214,9 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     conversationId,
     debounceMs: 500,
   });
+
+  // Network status (Phase 7: Timeout & Retry UI)
+  const { isOnline, wasOffline } = useNetworkStatus();
 
   // Function to scroll to a message or jump via API if not in view
   const handleScrollToMessage = useCallback(async (messageId: string) => {
@@ -284,6 +293,12 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Handle send message with file upload (Phase 2 - Option A: Sequential Messages)
   const handleSend = useCallback(async () => {
+    // Phase 7: Check network status before sending
+    if (!isOnline) {
+      toast.error("Không có kết nối mạng. Vui lòng kiểm tra kết nối của bạn.");
+      return;
+    }
+
     if (!inputValue.trim() && selectedFiles.length === 0) return;
 
     stopTyping();
@@ -340,6 +355,18 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
               });
             }
           });
+
+          // Update failed files with error status
+          result.errors.forEach(({ file, error }) => {
+            next.set(file.id, {
+              fileId: file.id,
+              fileName: file.file.name,
+              status: "error",
+              progress: 0,
+              error: error,
+            });
+          });
+
           return next;
         });
 
@@ -491,6 +518,32 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
       messagesQuery.fetchNextPage();
     }
   };
+
+  // Phase 7: Handle retry failed message
+  const handleRetry = useCallback(
+    (messageId: string) => {
+      // Find the failed message in cache
+      const message = messages.find((m) => m.id === messageId);
+      if (!message || message.sendStatus !== "failed") return;
+
+      // Check network status
+      if (!isOnline) {
+        toast.error(
+          "Không có kết nối mạng. Vui lòng kiểm tra kết nối của bạn."
+        );
+        return;
+      }
+
+      // Retry sending the message
+      sendMessageMutation.mutate({
+        conversationId,
+        content: message.content || "",
+        parentMessageId: message.parentMessageId || undefined,
+        // TODO: Handle attachment retry if needed
+      });
+    },
+    [messages, conversationId, sendMessageMutation, isOnline]
+  );
 
   // Format time for message
   const formatTime = (dateStr: string) => {
@@ -714,6 +767,13 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         </Popover>
       </div>
 
+      {/* Phase 7: Network status banner */}
+      {(isOnline === false || wasOffline) && (
+        <div className="px-4">
+          <OfflineBanner isOnline={isOnline} wasOffline={wasOffline} />
+        </div>
+      )}
+
       {/* Message list */}
       <div
         ref={messagesContainerRef}
@@ -758,6 +818,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                 }}
                 onTogglePin={onTogglePin}
                 onToggleStar={onToggleStar}
+                onRetry={handleRetry}
                 isFirstInGroup={groupedMsg.isFirstInGroup}
                 isMiddleInGroup={groupedMsg.isMiddleInGroup}
                 isLastInGroup={groupedMsg.isLastInGroup}

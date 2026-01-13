@@ -1,22 +1,22 @@
 // ConversationListContainer - Container that fetches and displays conversations
 
-import React from 'react';
-import { useGroups, flattenGroups } from '@/hooks/queries/useGroups';
+import React from "react";
+import { useGroups, flattenGroups } from "@/hooks/queries/useGroups";
 import {
   useDirectMessages,
   flattenDirectMessages,
-} from '@/hooks/queries/useDirectMessages';
-import { useConversationRealtime } from '@/hooks/useConversationRealtime';
-import { ConversationSkeleton } from './ConversationSkeleton';
+} from "@/hooks/queries/useDirectMessages";
+import { useConversationRealtime } from "@/hooks/useConversationRealtime";
+import { ConversationSkeleton } from "./ConversationSkeleton";
 import type {
   GroupConversation,
   DirectConversation,
   Conversation,
-} from '@/types/conversations';
-import { RefreshCw } from 'lucide-react';
+} from "@/types/conversations";
+import { RefreshCw } from "lucide-react";
 
 interface ConversationListContainerProps {
-  type: 'groups' | 'directs';
+  type: "groups" | "directs";
   onSelect: (conversation: Conversation) => void;
   selectedId?: string;
   searchQuery?: string;
@@ -35,13 +35,13 @@ export const ConversationListContainer: React.FC<
   ConversationListContainerProps
 > = ({ type, onSelect, selectedId, searchQuery }) => {
   // Fetch data based on type
-  const groupsQuery = useGroups({ enabled: type === 'groups' });
-  const directsQuery = useDirectMessages({ enabled: type === 'directs' });
+  const groupsQuery = useGroups({ enabled: type === "groups" });
+  const directsQuery = useDirectMessages({ enabled: type === "directs" });
 
   // Use appropriate query based on type
-  const query = type === 'groups' ? groupsQuery : directsQuery;
+  const query = type === "groups" ? groupsQuery : directsQuery;
   const conversations =
-    type === 'groups'
+    type === "groups"
       ? flattenGroups(groupsQuery.data)
       : flattenDirectMessages(directsQuery.data);
 
@@ -70,10 +70,7 @@ export const ConversationListContainer: React.FC<
   // Error state
   if (query.isError) {
     return (
-      <div
-        className="p-4 text-center"
-        data-testid="conversation-error"
-      >
+      <div className="p-4 text-center" data-testid="conversation-error">
         <p className="text-sm text-gray-500 mb-3">
           Không thể tải danh sách. Vui lòng thử lại.
         </p>
@@ -97,10 +94,10 @@ export const ConversationListContainer: React.FC<
         data-testid="conversation-empty"
       >
         {searchQuery
-          ? 'Không tìm thấy kết quả phù hợp.'
-          : type === 'groups'
-            ? 'Chưa có nhóm nào.'
-            : 'Chưa có cuộc trò chuyện nào.'}
+          ? "Không tìm thấy kết quả phù hợp."
+          : type === "groups"
+          ? "Chưa có nhóm nào."
+          : "Chưa có cuộc trò chuyện nào."}
       </div>
     );
   }
@@ -125,7 +122,7 @@ export const ConversationListContainer: React.FC<
           className="w-full py-3 text-sm text-brand-600 hover:bg-brand-50"
           data-testid="load-more-button"
         >
-          {query.isFetchingNextPage ? 'Đang tải...' : 'Tải thêm'}
+          {query.isFetchingNextPage ? "Đang tải..." : "Tải thêm"}
         </button>
       )}
     </div>
@@ -151,13 +148,13 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
   // Format display name (remove "DM: " prefix for DMs)
   const displayName =
-    conversation.type === 'DM' ? name.replace(/^DM:\s*/, '') : name;
+    conversation.type === "DM" ? name.replace(/^DM:\s*/, "") : name;
 
   // Get initials for avatar
   const initials = displayName
-    .split(' ')
+    .split(" ")
     .map((w) => w[0])
-    .join('')
+    .join("")
     .slice(0, 2)
     .toUpperCase();
 
@@ -171,13 +168,13 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
 
     if (days > 0) return `${days} ngày`;
     if (hours > 0) return `${hours}h`;
-    return 'Vừa xong';
+    return "Vừa xong";
   };
 
   return (
     <div
       className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-brand-50 ${
-        isSelected ? 'bg-brand-50 border-l-2 border-brand-500' : ''
+        isSelected ? "bg-brand-50 border-l-2 border-brand-500" : ""
       }`}
       onClick={onClick}
       data-testid={`conversation-item-${conversation.id}`}
@@ -224,7 +221,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
           className="inline-flex min-w-[20px] justify-center rounded-full bg-brand-600 px-1.5 text-[10px] font-semibold text-white"
           data-testid="unread-badge"
         >
-          {unreadCount > 99 ? '99+' : unreadCount}
+          {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       )}
     </div>

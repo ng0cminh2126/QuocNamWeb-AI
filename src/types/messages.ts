@@ -160,6 +160,11 @@ export interface ChatMessage {
   isPinned: boolean;
   threadPreview: unknown | null;
   mentions: string[];
+
+  // Client-side fields for send status tracking (optional)
+  sendStatus?: "sending" | "retrying" | "failed" | "sent";
+  retryCount?: number;
+  failReason?: string;
 }
 
 // API Response for GET messages
