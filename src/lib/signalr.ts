@@ -323,4 +323,9 @@ class ChatHubConnection {
 // Singleton instance
 export const chatHub = new ChatHubConnection();
 
+// Expose to window for debugging
+if (typeof window !== "undefined") {
+  (window as any).chatHub = chatHub;
+}
+
 export default chatHub;

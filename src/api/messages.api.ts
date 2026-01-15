@@ -43,13 +43,17 @@ export const getMessages = async ({
  * Updated 2026-01-07: Signature changed to match Swagger API
  * - conversationId is now part of SendChatMessageRequest
  * - No longer a separate parameter
+ *
+ * Updated 2026-01-13: Added options parameter for AbortSignal
  */
 export const sendMessage = async (
-  data: SendChatMessageRequest
+  data: SendChatMessageRequest,
+  options?: { signal?: AbortSignal }
 ): Promise<SendChatMessageResponse> => {
   const response = await apiClient.post<SendChatMessageResponse>(
     `/api/messages`,
-    data
+    data,
+    options
   );
   return response.data;
 };

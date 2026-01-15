@@ -1,8 +1,9 @@
 // useConversationRealtime hook - Handle realtime conversation list updates (UPGRADED)
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import { chatHub, SIGNALR_EVENTS } from "@/lib/signalr";
+import { useSignalRConnection } from "@/providers/SignalRProvider";
 import { conversationKeys } from "./queries/keys/conversationKeys";
 import type { ChatMessage } from "@/types/messages";
 import type {
@@ -52,6 +53,7 @@ interface UseConversationRealtimeOptions {
  * - Listen MessageRead: Clear unreadCount
  * - Auto sort conversations by latest message
  * - Optimistic updates without full refetch
+ * - Auto join/leave conversation groups for realtime updates
  *
  * @example
  * ```tsx
@@ -70,13 +72,17 @@ export function useConversationRealtime(
 ) {
   const { activeConversationId, onNewMessage } = options;
   const queryClient = useQueryClient();
+  const joinedGroupsRef = useRef<Set<string>>(new Set());
+  const { isConnected } = useSignalRConnection();
 
   // Handle MessageSent event
   const handleMessageSent = useCallback(
-    (event: MessageSentEvent) => {
-      // Backend structure: { message: { conversationId, content, ... } }
-      const message = event.message;
-      const conversationId = message.conversationId;
+    (event: any) => {
+      // Handle both wrapped and unwrapped message structures
+      // Wrapped: { message: ChatMessage }
+      // Unwrapped: ChatMessage (backend sends directly)
+      const message = event.message || event;
+      const conversationId = message?.conversationId;
 
       if (!message || !conversationId) {
         console.error("❌ [Realtime] Invalid MessageSent event:", event);
@@ -278,11 +284,16 @@ export function useConversationRealtime(
 
   // Setup SignalR listeners
   useEffect(() => {
+    if (!isConnected) return;
+
     // Subscribe to events
     // Note: Use 'any' type to accept both object and multiple params from backend
     chatHub.on(SIGNALR_EVENTS.MESSAGE_SENT, handleMessageSent as any);
+
     chatHub.on(SIGNALR_EVENTS.RECEIVE_MESSAGE, handleMessageSent as any);
+
     chatHub.on(SIGNALR_EVENTS.MESSAGE_READ, handleMessageRead as any);
+
     chatHub.on(
       SIGNALR_EVENTS.CONVERSATION_UPDATED,
       handleConversationUpdated as any
@@ -298,5 +309,69 @@ export function useConversationRealtime(
         handleConversationUpdated as any
       );
     };
-  }, [handleMessageSent, handleMessageRead, handleConversationUpdated]);
+  }, [
+    handleMessageSent,
+    handleMessageRead,
+    handleConversationUpdated,
+    isConnected,
+  ]);
+
+  // Join all conversations in the list to receive realtime updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Get all conversation IDs from cache
+    const groupsData = queryClient.getQueryData<InfiniteData<ConversationPage>>(
+      conversationKeys.groups()
+    );
+    const directsData = queryClient.getQueryData<
+      InfiniteData<ConversationPage>
+    >(conversationKeys.directs());
+
+    const allConversationIds = new Set<string>();
+
+    // Collect from groups
+    groupsData?.pages?.forEach((page) => {
+      page.items?.forEach((conv) => {
+        if (conv.id) allConversationIds.add(conv.id);
+      });
+    });
+
+    // Collect from directs
+    directsData?.pages?.forEach((page) => {
+      page.items?.forEach((conv) => {
+        if (conv.id) allConversationIds.add(conv.id);
+      });
+    });
+
+    // Join new groups
+    const newGroups = Array.from(allConversationIds).filter(
+      (id) => !joinedGroupsRef.current.has(id)
+    );
+
+    newGroups.forEach((conversationId) => {
+      chatHub.joinGroup(conversationId).then(() => {
+        joinedGroupsRef.current.add(conversationId);
+      });
+    });
+
+    // Leave old groups that are no longer in the list
+    const currentGroups = Array.from(joinedGroupsRef.current);
+    const groupsToLeave = currentGroups.filter(
+      (id) => !allConversationIds.has(id)
+    );
+
+    groupsToLeave.forEach((conversationId) => {
+      chatHub.leaveGroup(conversationId);
+      joinedGroupsRef.current.delete(conversationId);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      joinedGroupsRef.current.forEach((conversationId) => {
+        chatHub.leaveGroup(conversationId);
+      });
+      joinedGroupsRef.current.clear();
+    };
+  }, [queryClient, isConnected]);
 }

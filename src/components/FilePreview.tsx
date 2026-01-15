@@ -77,7 +77,7 @@ export default function FilePreview({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                  className="h-6 w-6 min-w-6 min-h-6 p-0 ml-2 flex items-center justify-center aspect-square hover:bg-destructive/10 hover:text-destructive shrink-0"
                   onClick={() => onRemove(id)}
                   aria-label={`Remove ${file.name}`}
                   data-testid={`file-preview-remove-${id}`}
@@ -102,8 +102,8 @@ export default function FilePreview({
               )}
             </div>
 
-            {/* Phase 2: Progress bar (Decision #2: Inline progress) */}
-            {progress && (
+            {/* Phase 2: Progress bar (Decision #2: Inline progress) - Hidden on error */}
+            {progress && !isFailed && (
               <div
                 className="flex items-center gap-2"
                 data-testid={`file-upload-progress-${id}`}
@@ -112,11 +112,7 @@ export default function FilePreview({
                 <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
-                      isSuccess
-                        ? "bg-green-500"
-                        : isFailed
-                        ? "bg-red-500"
-                        : "bg-blue-500"
+                      isSuccess ? "bg-green-500" : "bg-blue-500"
                     }`}
                     style={{ width: `${progress.progress}%` }}
                     data-testid={`file-upload-progress-bar-${id}`}
@@ -125,11 +121,7 @@ export default function FilePreview({
 
                 {/* Progress text */}
                 <span className="text-xs text-muted-foreground shrink-0">
-                  {isSuccess
-                    ? "✓"
-                    : isFailed
-                    ? "✗"
-                    : `${Math.round(progress.progress)}%`}
+                  {isSuccess ? "✓" : `${Math.round(progress.progress)}%`}
                 </span>
               </div>
             )}

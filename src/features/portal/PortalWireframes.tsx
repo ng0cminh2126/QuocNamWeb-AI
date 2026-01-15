@@ -34,8 +34,14 @@ import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 import type { ChecklistTemplateMap, ChecklistTemplateItem } from "./types";
 import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
 import { usePinnedMessages } from "@/hooks/queries/usePinnedMessages";
-import { usePinMessage, useUnpinMessage } from "@/hooks/mutations/usePinMessage";
-import { useStarMessage, useUnstarMessage } from "@/hooks/mutations/useStarMessage";
+import {
+  usePinMessage,
+  useUnpinMessage,
+} from "@/hooks/mutations/usePinMessage";
+import {
+  useStarMessage,
+  useUnstarMessage,
+} from "@/hooks/mutations/useStarMessage";
 
 type PortalMode = "desktop" | "mobile";
 
@@ -288,7 +294,8 @@ export default function PortalWireframes({
   };
 
   // Get current conversation ID for pinned messages query
-  const currentConversationId = selectedChat?.type === "group" ? selectedChat.id : undefined;
+  const currentConversationId =
+    selectedChat?.type === "group" ? selectedChat.id : undefined;
 
   // Fetch pinned messages from API
   const { data: pinnedMessagesData } = usePinnedMessages({
@@ -299,24 +306,30 @@ export default function PortalWireframes({
   // Transform API data to legacy PinnedMessage format for UI compatibility
   const pinnedMessages: PinnedMessage[] = React.useMemo(() => {
     if (!pinnedMessagesData || !selectedGroup) return [];
-    
+
     return pinnedMessagesData.map((pinned) => ({
       id: pinned.messageId,
       chatId: selectedGroup.id,
       groupName: selectedGroup.name,
       workTypeName: "", // Can be derived from message if needed
       sender: pinned.message.senderName,
-      type: pinned.message.contentType === "IMG" ? "image" : 
-            pinned.message.contentType === "FILE" ? "file" : "text",
+      type:
+        pinned.message.contentType === "IMG"
+          ? "image"
+          : pinned.message.contentType === "FILE"
+          ? "file"
+          : "text",
       content: pinned.message.content || "",
       preview: pinned.message.content || "",
       time: pinned.pinnedAt,
-      fileInfo: pinned.message.attachments?.[0] ? {
-        name: pinned.message.attachments[0].fileName || "",
-        type: pinned.message.contentType === "IMG" ? "image" : "other",
-        url: `/api/files/${pinned.message.attachments[0].fileId}`, // Construct file URL
-        size: pinned.message.attachments[0].fileSize.toString(),
-      } : undefined,
+      fileInfo: pinned.message.attachments?.[0]
+        ? {
+            name: pinned.message.attachments[0].fileName || "",
+            type: pinned.message.contentType === "IMG" ? "image" : "other",
+            url: `/api/files/${pinned.message.attachments[0].fileId}`, // Construct file URL
+            size: pinned.message.attachments[0].fileSize.toString(),
+          }
+        : undefined,
     }));
   }, [pinnedMessagesData, selectedGroup]);
 

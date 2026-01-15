@@ -4,10 +4,11 @@
  */
 
 import React from "react";
-import { Pin, Star, StarOff } from "lucide-react";
+import { Pin, Star, StarOff, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FileIcon from "@/components/FileIcon";
 import MessageImage from "@/features/portal/workspace/MessageImage";
+import { MessageStatusIndicator } from "@/components/MessageStatusIndicator";
 import type { ChatMessage } from "@/types/messages";
 
 /**
@@ -56,6 +57,7 @@ export interface MessageBubbleSimpleProps {
   onFilePreviewClick?: (fileId: string, fileName: string) => void;
   onTogglePin?: (messageId: string, isPinned: boolean) => void;
   onToggleStar?: (messageId: string, isStarred: boolean) => void;
+  onRetry?: (messageId: string) => void; // NEW: Retry failed message
   // Phase 4: Grouping props
   isFirstInGroup?: boolean;
   isMiddleInGroup?: boolean;
@@ -69,6 +71,7 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
   onTogglePin,
   onToggleStar,
   onFilePreviewClick,
+  onRetry,
   isFirstInGroup = true,
   isMiddleInGroup = false,
   isLastInGroup = true,
@@ -91,9 +94,8 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
       className={cn(
         "flex gap-2",
         isOwn ? "justify-end" : "justify-start",
-        isLastInGroup && "mb-2" // Spacing between groups (0.5rem = 8px)
+        isLastInGroup && "!mb-3" // Spacing between groups (0.75rem = 12px) - important to override parent space-y
       )}
-      data-testid={`message-bubble-${message.id}`}
     >
       {/* Avatar (only for received messages and first in group) */}
       {!isOwn && isFirstInGroup ? (
@@ -120,6 +122,10 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
             >
               {message.senderName}
             </span>
+            <span className="text-xs text-gray-400">•</span>
+            <span className="text-xs text-gray-500">
+              {formatTime(message.sentAt)}
+            </span>
             {message.isPinned && (
               <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
                 <Pin size={10} className="fill-amber-600" />
@@ -141,6 +147,15 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
             <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
               <Pin size={10} className="fill-amber-600" />
               Đã ghim
+            </span>
+          </div>
+        )}
+
+        {/* Timestamp for own messages (only first in group) */}
+        {isOwn && isFirstInGroup && (
+          <div className="flex justify-end mb-1">
+            <span className="text-xs text-gray-500">
+              {formatTime(message.sentAt)}
             </span>
           </div>
         )}
@@ -215,16 +230,24 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
           className={cn(
             "overflow-hidden",
             radiusBySide,
-            isOwn
+            // Failed state styling
+            message.sendStatus === "failed"
+              ? "bg-red-50/50 border-2 border-red-400"
+              : isOwn
               ? "bg-brand-600 text-white"
               : "bg-white text-gray-900 shadow-sm",
-            message.isPinned
+            // Pin/Star borders (override failed state)
+            message.isPinned && message.sendStatus !== "failed"
               ? "border-2 border-amber-400"
-              : message.isStarred
+              : message.isStarred && message.sendStatus !== "failed"
               ? "border-2 border-blue-400"
-              : "border"
+              : message.sendStatus !== "failed" && "border",
+            // Opacity for sending/retrying
+            (message.sendStatus === "sending" ||
+              message.sendStatus === "retrying") &&
+              "opacity-90"
           )}
-          data-testid="message-content"
+          data-testid={`message-bubble-${message.id}`}
         >
           {/* Helper: Check if message has text, image, or file */}
           {(() => {
@@ -340,16 +363,40 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
           })()}
         </div>
 
-        {/* Time (only for last message in group) */}
-        {isLastInGroup && (
-          <span
-            className={`text-xs text-gray-400 mt-1.5 mb-1 block ${
-              isOwn ? "text-right" : "text-left"
-            }`}
-            data-testid="message-time"
+        {/* Time or Status Indicator (only for last message in group and own messages) */}
+        {isLastInGroup && isOwn && (
+          <div className={cn("mt-1.5 mb-1", "flex justify-end")}>
+            <MessageStatusIndicator
+              status={message.sendStatus || "sent"}
+              retryCount={message.retryCount}
+              errorMessage={message.failReason}
+              timestamp={formatTime(message.sentAt)}
+            />
+          </div>
+        )}
+
+        {/* Retry button (below bubble, only for failed messages) */}
+        {message.sendStatus === "failed" && onRetry && (
+          <div
+            className={cn(
+              "mt-2",
+              isOwn ? "flex justify-end" : "flex justify-start"
+            )}
           >
-            {formatTime(message.sentAt)}
-          </span>
+            <button
+              onClick={() => onRetry(message.id)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg",
+                "text-xs font-medium transition-colors",
+                "bg-blue-500 text-white hover:bg-blue-600",
+                "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              )}
+              data-testid="retry-button"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Thử lại
+            </button>
+          </div>
         )}
       </div>
     </div>

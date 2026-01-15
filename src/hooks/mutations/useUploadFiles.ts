@@ -1,7 +1,40 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { uploadFile } from "@/api/files.api";
+import { retryWithBackoff, FILE_RETRY_CONFIG } from "@/utils/retryLogic";
+import { classifyError } from "@/utils/errorHandling";
 import type { SelectedFile, UploadFileResult } from "@/types/files";
+
+// Phase 6: File validation constants
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const ALLOWED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/csv",
+];
+
+/**
+ * Client-side file validation
+ * @throws Error with specific message if validation fails
+ */
+function validateFile(file: File): void {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("FILE_TOO_LARGE");
+  }
+
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    throw new Error("UNSUPPORTED_FILE_TYPE");
+  }
+}
 
 /**
  * Parameters for uploading multiple files
@@ -92,21 +125,28 @@ export function useUploadFiles() {
       // Upload files sequentially (one-by-one)
       for (const selectedFile of files) {
         try {
-          // Upload single file
-          const result: UploadFileResult = await uploadFile({
-            file: selectedFile.file,
-            sourceModule,
-            sourceEntityId,
-            onUploadProgress: (progressEvent) => {
-              // Calculate progress percentage
-              const progress = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
+          // Phase 6: Client-side validation BEFORE upload
+          validateFile(selectedFile.file);
 
-              // Call progress callback
-              onProgress?.(selectedFile.id, progress);
-            },
-          });
+          // Upload single file with retry logic
+          const result: UploadFileResult = await retryWithBackoff(
+            () =>
+              uploadFile({
+                file: selectedFile.file,
+                sourceModule,
+                sourceEntityId,
+                onUploadProgress: (progressEvent) => {
+                  // Calculate progress percentage
+                  const progress = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total
+                  );
+
+                  // Call progress callback
+                  onProgress?.(selectedFile.id, progress);
+                },
+              }),
+            FILE_RETRY_CONFIG
+          );
 
           // Collect successful upload with full file data
           uploadedFiles.push({
@@ -114,19 +154,18 @@ export function useUploadFiles() {
             uploadResult: result,
           });
         } catch (error: any) {
-          // Extract error message
-          const errorMessage =
-            error.response?.data?.detail || error.message || "Upload failed";
+          // Phase 6: Use error classification
+          const classified = classifyError(error);
 
           // Collect error
           errors.push({
             file: selectedFile,
-            error: errorMessage,
+            error: classified.message,
           });
 
           // Show error toast
           toast.error(`Lỗi upload ${selectedFile.file.name}`, {
-            description: errorMessage,
+            description: classified.message,
           });
         }
       }
