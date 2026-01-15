@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "capturedFrom": "Swagger Schema",
+    "note": "Template based on actual API schema - Replace with real response",
+    "capturedAt": "2026-01-14T11:36:00Z",
+    "environment": "dev",
+    "testCase": "Send message with 1 attachment (backward compatible test)"
+  },
+  "id": "msg-backward-test",
+  "conversationId": "conv-def456uvw",
+  "senderId": "user-ghi789rst",
+  "senderName": "John Doe",
+  "senderIdentifier": "john.doe@example.com",
+  "senderFullName": "John Doe",
+  "senderRoles": "User",
+  "parentMessageId": null,
+  "content": "Here is the report",
+  "contentType": "FILE",
+  "sentAt": "2026-01-14T11:36:00Z",
+  "editedAt": null,
+  "linkedTaskId": null,
+  "reactions": [],
+  "attachments": [
+    {
+      "id": "att-single",
+      "fileId": "f7b3c4a1-2d5e-4f8a-9b1c-3e4d5f6a7b8c",
+      "fileName": "report.pdf",
+      "fileSize": 2621440,
+      "contentType": "application/pdf",
+      "createdAt": "2026-01-14T11:36:00Z"
+    }
+  ],
+  "replyCount": 0,
+  "isStarred": false,
+  "isPinned": false,
+  "threadPreview": null,
+  "parentMessagePreview": null,
+  "mentions": []
+}

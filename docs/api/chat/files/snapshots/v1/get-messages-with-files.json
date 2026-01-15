@@ -1,0 +1,157 @@
+{
+  "data": [
+    {
+      "id": "msg-550e8400-e29b-41d4-a716-446655440001",
+      "conversationId": "conv-550e8400-e29b-41d4-a716-446655440000",
+      "senderId": "user-f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "senderName": "Nguyễn Văn A",
+      "senderAvatarUrl": "https://api.backend.com/avatars/user-f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg",
+      "type": "file",
+      "content": null,
+      "attachments": [
+        {
+          "id": "att-550e8400-e29b-41d4-a716-446655440101",
+          "fileId": "file-550e8400-e29b-41d4-a716-446655440101",
+          "fileName": "proposal_2025.pdf",
+          "contentType": "application/pdf",
+          "fileSize": 2524288,
+          "uploadedAt": "2025-01-08T14:30:00Z",
+          "thumbnailUrl": null,
+          "duration": null,
+          "dimensions": null
+        }
+      ],
+      "createdAt": "2025-01-08T14:30:00Z",
+      "updatedAt": "2025-01-08T14:30:00Z",
+      "isPinned": false,
+      "isStarred": false,
+      "workTypeId": "wt-550e8400-e29b-41d4-a716-446655440000",
+      "taskId": null,
+      "linkedTaskCount": 0
+    },
+    {
+      "id": "msg-550e8400-e29b-41d4-a716-446655440002",
+      "conversationId": "conv-550e8400-e29b-41d4-a716-446655440000",
+      "senderId": "user-123e4567-e89b-12d3-a456-426614174000",
+      "senderName": "Trần Thị B",
+      "senderAvatarUrl": "https://api.backend.com/avatars/user-123e4567-e89b-12d3-a456-426614174000.jpg",
+      "type": "image",
+      "content": null,
+      "attachments": [
+        {
+          "id": "att-550e8400-e29b-41d4-a716-446655440102",
+          "fileId": "file-550e8400-e29b-41d4-a716-446655440102",
+          "fileName": "screenshot_2025_01_08.png",
+          "contentType": "image/png",
+          "fileSize": 1048576,
+          "uploadedAt": "2025-01-08T15:45:00Z",
+          "thumbnailUrl": "https://api.backend.com/api/files/file-550e8400-e29b-41d4-a716-446655440102/thumbnail?size=200",
+          "duration": null,
+          "dimensions": {
+            "width": 1920,
+            "height": 1080
+          }
+        }
+      ],
+      "createdAt": "2025-01-08T15:45:00Z",
+      "updatedAt": "2025-01-08T15:45:00Z",
+      "isPinned": false,
+      "isStarred": true,
+      "workTypeId": "wt-550e8400-e29b-41d4-a716-446655440000",
+      "taskId": null,
+      "linkedTaskCount": 0
+    },
+    {
+      "id": "msg-550e8400-e29b-41d4-a716-446655440003",
+      "conversationId": "conv-550e8400-e29b-41d4-a716-446655440000",
+      "senderId": "user-f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "senderName": "Nguyễn Văn A",
+      "senderAvatarUrl": "https://api.backend.com/avatars/user-f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg",
+      "type": "file",
+      "content": "Bảng tính chi tiết dự án",
+      "attachments": [
+        {
+          "id": "att-550e8400-e29b-41d4-a716-446655440103",
+          "fileId": "file-550e8400-e29b-41d4-a716-446655440103",
+          "fileName": "budget_allocation_q1_2025.xlsx",
+          "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "fileSize": 524288,
+          "uploadedAt": "2025-01-08T16:20:00Z",
+          "thumbnailUrl": null,
+          "duration": null,
+          "dimensions": null
+        }
+      ],
+      "createdAt": "2025-01-08T16:20:00Z",
+      "updatedAt": "2025-01-08T16:20:00Z",
+      "isPinned": false,
+      "isStarred": false,
+      "workTypeId": "wt-550e8400-e29b-41d4-a716-446655440000",
+      "taskId": null,
+      "linkedTaskCount": 0
+    },
+    {
+      "id": "msg-550e8400-e29b-41d4-a716-446655440004",
+      "conversationId": "conv-550e8400-e29b-41d4-a716-446655440000",
+      "senderId": "user-123e4567-e89b-12d3-a456-426614174000",
+      "senderName": "Trần Thị B",
+      "senderAvatarUrl": "https://api.backend.com/avatars/user-123e4567-e89b-12d3-a456-426614174000.jpg",
+      "type": "image",
+      "content": null,
+      "attachments": [
+        {
+          "id": "att-550e8400-e29b-41d4-a716-446655440104",
+          "fileId": "file-550e8400-e29b-41d4-a716-446655440104",
+          "fileName": "meeting_notes_2025.jpg",
+          "contentType": "image/jpeg",
+          "fileSize": 3145728,
+          "uploadedAt": "2025-01-08T17:00:00Z",
+          "thumbnailUrl": "https://api.backend.com/api/files/file-550e8400-e29b-41d4-a716-446655440104/thumbnail?size=200",
+          "duration": null,
+          "dimensions": {
+            "width": 2048,
+            "height": 1536
+          }
+        }
+      ],
+      "createdAt": "2025-01-08T17:00:00Z",
+      "updatedAt": "2025-01-08T17:00:00Z",
+      "isPinned": true,
+      "isStarred": false,
+      "workTypeId": "wt-550e8400-e29b-41d4-a716-446655440000",
+      "taskId": null,
+      "linkedTaskCount": 0
+    },
+    {
+      "id": "msg-550e8400-e29b-41d4-a716-446655440005",
+      "conversationId": "conv-550e8400-e29b-41d4-a716-446655440000",
+      "senderId": "user-f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "senderName": "Nguyễn Văn A",
+      "senderAvatarUrl": "https://api.backend.com/avatars/user-f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg",
+      "type": "file",
+      "content": null,
+      "attachments": [
+        {
+          "id": "att-550e8400-e29b-41d4-a716-446655440105",
+          "fileId": "file-550e8400-e29b-41d4-a716-446655440105",
+          "fileName": "project_guidelines_v3.docx",
+          "contentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "fileSize": 784384,
+          "uploadedAt": "2025-01-08T17:30:00Z",
+          "thumbnailUrl": null,
+          "duration": null,
+          "dimensions": null
+        }
+      ],
+      "createdAt": "2025-01-08T17:30:00Z",
+      "updatedAt": "2025-01-08T17:30:00Z",
+      "isPinned": false,
+      "isStarred": true,
+      "workTypeId": "wt-550e8400-e29b-41d4-a716-446655440000",
+      "taskId": null,
+      "linkedTaskCount": 0
+    }
+  ],
+  "hasMore": true,
+  "oldestMessageId": "msg-550e8400-e29b-41d4-a716-446655440005"
+}

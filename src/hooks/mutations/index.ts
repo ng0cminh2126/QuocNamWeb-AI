@@ -7,3 +7,6 @@ export { useSendMessage } from './useSendMessage';
 // Pinned & Starred mutations
 export { usePinMessage, useUnpinMessage } from './usePinMessage';
 export { useStarMessage, useUnstarMessage } from './useStarMessage';
+
+// Task mutations
+export { useCreateTask } from './useCreateTask';

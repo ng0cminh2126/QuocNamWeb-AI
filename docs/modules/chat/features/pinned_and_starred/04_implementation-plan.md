@@ -27,5 +27,5 @@
 | Đã điền Pending Decisions | ⬜ rồi      |
 | **APPROVED để thực thi**  | ⬜ rồi      |
 
-**HUMAN Signature:** [KK__Zekken__KK]  
+**HUMAN Signature:** [Khoa]  
 **Date:** [01082026]

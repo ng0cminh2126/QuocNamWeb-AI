@@ -5,6 +5,155 @@
 
 ---
 
+## [2026-01-14 16:35] Fix Message Image Loading Skeleton
+
+### Summary:
+
+**Issue:** Khi gửi tin nhắn có ảnh, message bubble bị nhỏ sau đó bự ra (layout shift) gây trải nghiệm xấu. Không có loading skeleton hiển thị khi đang gọi API lấy thumbnail.
+
+**Root Cause:**
+
+- Component chỉ render placeholder khi `!isVisible`, không có loading state
+- Khi visible → loading → bubble size thay đổi
+- Dùng `max-w-[320px] max-h-[180px]` + `aspect-ratio` → kích thước không cố định
+
+**Fix:**
+
+- Luôn render skeleton với kích thước cố định ngay từ đầu (không đợi visible)
+- Single image: **fixed 320x180px**
+- Grid images: **aspect-square**
+- Skeleton đơn giản: gradient animate (không có spinner)
+
+### Actions Performed:
+
+| #   | Time  | Action | File(s)                                                     | Result |
+| --- | ----- | ------ | ----------------------------------------------------------- | ------ |
+| 1   | 16:32 | MODIFY | src/features/portal/workspace/MessageImage.tsx              | ✅     |
+| 2   | 16:33 | MODIFY | src/features/portal/components/chat/MessageBubbleSimple.tsx | ✅     |
+
+### Key Changes:
+
+**src/features/portal/workspace/MessageImage.tsx:**
+
+```tsx
+// ❌ BEFORE: Separate states causing layout shift
+if (!isVisible) return <Placeholder />;  // No loading indication
+if (isLoading) return <Skeleton />;      // Size changes here
+if (error) return <Error />;
+return <Image />;
+
+// ✅ AFTER: Fixed size skeleton always
+if (error) return <Error w-[320px] h-[180px] />;
+if (!imageUrl) return <Skeleton w-[320px] h-[180px] />; // ALWAYS fixed size
+return <Image w-[320px] h-[180px] />;
+```
+
+**Changes:**
+
+- Loại bỏ `!isVisible` check → skeleton luôn render
+- Loại bỏ `max-w-[320px] max-h-[180px]` + `aspect-ratio`
+- Dùng **fixed size**: `w-[320px] h-[180px]` cho single image
+- Skeleton đơn giản: chỉ gradient animate, không spinner
+- Grid images giữ nguyên `aspect-square`
+
+**src/features/portal/components/chat/MessageBubbleSimple.tsx:**
+
+```tsx
+// Tăng gap từ gap-1 (4px) → gap-2 (8px) cho tất cả image grids
+className = "grid grid-cols-2 gap-2 max-w-[320px]"; // 2 images
+className = "grid grid-cols-3 gap-2 max-w-[320px]"; // 3-6 images
+className = "grid grid-cols-3 gap-2 max-w-[200px]"; // Mixed with files
+```
+
+**Padding đồng nhất:**
+
+- Bubble padding: `px-4` (16px)
+- Grid gap: `gap-2` (8px)
+- Border radius: `rounded-lg` (MessageImage component)
+
+### Impact:
+
+**UX Improvements:**
+
+```
+❌ BEFORE:
+[Bubble nhỏ] → [Visible] → [Loading...] → [Bubble BỰ RA ⚡️]
+
+✅ AFTER:
+[Skeleton 320x180] → [Gradient animate] → [Image hiện smooth]
+```
+
+**Benefits:**
+
+- ✅ Bubble giữ kích thước cố định (no layout shift)
+- ✅ Loading skeleton hiển thị ngay khi gửi tin
+- ✅ Grid images padding đều hơn (gap-2 thay vì gap-1)
+- ✅ Single image: 320x180px (16:9 ratio)
+- ✅ Grid images: aspect-square
+
+### Testing:
+
+- ✅ Unit tests: 16/16 passed
+- 📋 Manual testing: Gửi tin nhắn với 1 ảnh, nhiều ảnh
+- 📋 Verify: Bubble không nhảy size, skeleton hiển thị smooth
+
+---
+
+## [2026-01-13 17:15] Quick Fix - Conversation List Join Groups
+
+### Summary:
+
+**Issue:** Live environment - Conversation list không nhận realtime updates, log "Ignoring message for different conversation"  
+**Root Cause:** `useConversationRealtime` không join conversation groups nên không nhận SignalR events  
+**Fix:** Thêm auto-join logic cho tất cả conversations trong cache
+
+### Actions Performed:
+
+| #   | Time  | Action | File(s)                                                     | Result |
+| --- | ----- | ------ | ----------------------------------------------------------- | ------ |
+| 1   | 17:15 | MODIFY | src/hooks/useConversationRealtime.ts                        | ✅     |
+| 2   | 17:16 | CREATE | docs/sessions/FIX_CONVERSATION_LIST_JOIN_GROUPS_20260113.md | ✅     |
+
+### Key Changes:
+
+**src/hooks/useConversationRealtime.ts:**
+
+- Added `useSignalRConnection()` hook for `isConnected` state
+- Added `joinedGroupsRef` to track joined groups
+- Added useEffect to auto-join all conversations in cache
+- Added logic to leave old groups when list changes
+- Added `isConnected` check before subscribing events
+- Removed duplicate debug console.logs
+
+**Logic:**
+
+```typescript
+// Get all conversations from cache (groups + directs)
+// Join new groups: chatHub.joinGroup(conversationId)
+// Leave old groups: chatHub.leaveGroup(conversationId)
+// Cleanup on unmount: leave all groups
+```
+
+### Impact:
+
+- ✅ Conversation list will now receive realtime updates for ALL conversations
+- ✅ No more "Ignoring message" logs
+- ✅ Dynamic join/leave when list changes (pagination, filters)
+
+### Testing Required:
+
+- [ ] Test in dev: Send message from another user, verify list updates
+- [ ] Test in live: Same test, verify no more logs
+- [ ] Test pagination: Load more conversations, verify new groups joined
+
+### Notes:
+
+- Similar pattern to `useMessageRealtime` but for ALL conversations instead of one
+- Backend only broadcasts to specific conversation groups, not global
+- This explains why it worked in dev before (might have global broadcast) but not in live
+
+---
+
 ## [2026-01-13 09:30] Session 040 - Message Send Timeout Feature COMPLETE ✅
 
 ### Summary:

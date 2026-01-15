@@ -251,13 +251,11 @@ export const MobileTaskLogScreen: React.FC<MobileTaskLogScreenProps> = ({
 
               <div className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 text-xs font-medium">
                 <User className="w-3 h-3" />
-                <span>
-                  {members.find((m) => m.id === task.assigneeId)?.name ??
-                    "Không rõ"}
-                </span>
+                <span>{members.find((m) => m.id === task.assignTo)?.name ?? "Không rõ"}</span>
               </div>
             </>
           )}
+          
         </div>
 
         {/* Line 2: Task title */}

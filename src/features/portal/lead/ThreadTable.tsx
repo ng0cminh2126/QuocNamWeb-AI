@@ -12,9 +12,13 @@ export const ThreadTable: React.FC<{
   leadThreads: LeadThread[];
   assignOpenId: string | null;
   setAssignOpenId: (v: string | null) => void;
-  members: string[];
+  groupMembers: Array<{
+    id: string;
+    name: string;
+    role?: "Leader" | "Member";
+  }>;
   onAssign: (id: string, member: string, title?: string) => void;
-}> = ({ leadThreads, assignOpenId, setAssignOpenId, members, onAssign }) => (
+}> = ({ leadThreads, assignOpenId, setAssignOpenId, groupMembers, onAssign }) => (
   <div className="mt-2 overflow-hidden rounded-xl border">
     <table className="w-full text-left text-sm">
       <thead className="bg-gray-50 text-gray-500">
@@ -40,7 +44,7 @@ export const ThreadTable: React.FC<{
                 <div className="inline-flex items-center gap-2">
                   <select className={inputCls} defaultValue="" onChange={(e) => e.target.value && onAssign(r.id, e.target.value, r.t)}>
                     <option value="" disabled>Chọn người nhận…</option>
-                    {members.map((m) => (<option key={m} value={m}>{m}</option>))}
+                    {groupMembers.map((m) => (<option key={m.id} value={m.name}>{m.name}</option>))}
                   </select>
                   <button className={btn(false)} onClick={() => setAssignOpenId(null)}>Hủy</button>
                 </div>

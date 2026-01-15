@@ -79,7 +79,7 @@ export default function MessageImage({
     return (
       <div
         className={cn(
-          "w-full h-48 rounded-lg bg-gray-200 animate-pulse",
+          "w-full aspect-square rounded-lg bg-gray-200 animate-pulse",
           className
         )}
         data-testid="message-image-skeleton"
@@ -91,7 +91,7 @@ export default function MessageImage({
     return (
       <div
         className={cn(
-          "w-full h-48 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400",
+          "w-full aspect-square rounded-lg bg-gray-100 flex items-center justify-center text-gray-400",
           className
         )}
         data-testid="message-image-error"
@@ -107,7 +107,7 @@ export default function MessageImage({
       alt={alt}
       onClick={onClick}
       className={cn(
-        "w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity",
+        "w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity",
         className
       )}
       data-testid="message-image"

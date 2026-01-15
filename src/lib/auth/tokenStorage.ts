@@ -4,7 +4,13 @@
  * Provides secure storage for auth tokens with fallback support
  */
 
-import { AUTH_CONFIG } from './config';
+import { AUTH_CONFIG } from "./config";
+import {
+  clearSelectedConversation,
+  clearAllDrafts,
+  clearAllFailedMessages,
+  clearAllScrollPositions,
+} from "@/utils/storage";
 
 /**
  * Get access token from storage
@@ -24,7 +30,7 @@ export function setAccessToken(token: string): void {
   try {
     localStorage.setItem(AUTH_CONFIG.storageKeys.accessToken, token);
   } catch (error) {
-    console.error('Failed to save access token:', error);
+    console.error("Failed to save access token:", error);
   }
 }
 
@@ -35,7 +41,7 @@ export function removeAccessToken(): void {
   try {
     localStorage.removeItem(AUTH_CONFIG.storageKeys.accessToken);
   } catch (error) {
-    console.error('Failed to remove access token:', error);
+    console.error("Failed to remove access token:", error);
   }
 }
 
@@ -44,9 +50,16 @@ export function removeAccessToken(): void {
  */
 export function clearAuthStorage(): void {
   try {
+    // Clear auth tokens
     localStorage.removeItem(AUTH_CONFIG.storageKeys.accessToken);
     localStorage.removeItem(AUTH_CONFIG.storageKeys.user);
+
+    // ✅ Clear chat state to prevent data leakage between users
+    clearSelectedConversation();
+    clearAllDrafts();
+    clearAllFailedMessages();
+    clearAllScrollPositions();
   } catch (error) {
-    console.error('Failed to clear auth storage:', error);
+    console.error("Failed to clear auth storage:", error);
   }
 }

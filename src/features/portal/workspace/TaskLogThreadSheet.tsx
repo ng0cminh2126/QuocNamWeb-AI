@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Task, Message, TaskLogMessage } from "../types";
 import { X, Reply, SendHorizonal, Paperclip, ImageIcon } from "lucide-react";
-import { MessageBubble } from "@/features/portal/components/task-log";
+import { MessageBubble } from "@/features/portal/components/MessageBubble";
 
 /**
  * Helper: lấy title hiển thị cho Nhật ký công việc
@@ -133,11 +133,9 @@ export const TaskLogThreadSheet: React.FC<TaskLogThreadSheetProps> = ({
                       {task.status === "done" && "Hoàn thành"}
                     </span>
                     <span>
-                      {" "}
-                      • Giao cho:{" "}
+                      {" "} • Giao cho:{" "}
                       <span className="font-medium">
-                        {members.find((m) => m.id === task.assigneeId)?.name ??
-                          "Không rõ"}
+                        {members.find((m) => m.id === task.assignTo)?.name ?? "Không rõ"}
                       </span>
                     </span>
                   </span>
@@ -195,6 +193,7 @@ export const TaskLogThreadSheet: React.FC<TaskLogThreadSheetProps> = ({
               />
             );
           })}
+
 
           <div ref={bottomRef} />
         </div>
@@ -261,6 +260,7 @@ export const TaskLogThreadSheet: React.FC<TaskLogThreadSheetProps> = ({
               Gửi
             </button>
           </div>
+
 
           <p className="mt-1 text-[10px] text-gray-400">
             Tin nhắn trong nhật ký công việc sẽ được lưu riêng cho task này,

@@ -23,5 +23,5 @@
 | Đã điền Pending Decisions | rồi      |
 | **APPROVED để thực thi**  | rồi      |
 
-**HUMAN Signature:** [KK__Zeken_KKK_K]  
+**HUMAN Signature:** [Khoa]  
 **Date:** [01082026]

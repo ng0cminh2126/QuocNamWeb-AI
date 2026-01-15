@@ -271,3 +271,40 @@ function getAllScrollPositions(): Record<string, ScrollPosition> {
     return {};
   }
 }
+
+// ============================================
+// CLEAR ALL FUNCTIONS (for logout)
+// ============================================
+
+/**
+ * Clear all draft messages (e.g., on logout)
+ */
+export function clearAllDrafts(): void {
+  try {
+    localStorage.removeItem(DRAFTS_KEY);
+  } catch (error) {
+    console.error("Failed to clear all drafts:", error);
+  }
+}
+
+/**
+ * Clear all failed messages (e.g., on logout)
+ */
+export function clearAllFailedMessages(): void {
+  try {
+    localStorage.removeItem(FAILED_MESSAGES_KEY);
+  } catch (error) {
+    console.error("Failed to clear all failed messages:", error);
+  }
+}
+
+/**
+ * Clear all scroll positions (e.g., on logout)
+ */
+export function clearAllScrollPositions(): void {
+  try {
+    localStorage.removeItem(SCROLL_POSITIONS_KEY);
+  } catch (error) {
+    console.error("Failed to clear all scroll positions:", error);
+  }
+}

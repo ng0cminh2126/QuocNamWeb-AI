@@ -18,6 +18,8 @@ import { useMessageRealtime } from "@/hooks/useMessageRealtime";
 import { useSendTypingIndicator } from "@/hooks/useSendTypingIndicator";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useAuthStore } from "@/stores/authStore";
+import { useCreateTaskStore } from "@/stores/createTaskStore";
+// import { MessageSkeleton } from "../components/MessageSkeleton";
 import { MessageSkeleton } from "../MessageSkeleton";
 import { groupMessages } from "@/utils/messageGrouping";
 import { MessageBubbleSimple } from "./MessageBubbleSimple";
@@ -52,8 +54,13 @@ import FileIcon from "@/components/FileIcon";
 import { cn } from "@/lib/utils";
 import FilePreview from "@/components/FilePreview";
 import { useFileValidation } from "@/hooks/useFileValidation";
-import { revokeFilePreview } from "@/utils/fileHelpers";
+import {
+  revokeFilePreview,
+  validateBatchFileSelection,
+  extractSuccessfulUploads,
+} from "@/utils/fileHelpers";
 import { useUploadFiles } from "@/hooks/mutations/useUploadFiles";
+import { useUploadFilesBatch } from "@/hooks/mutations/useUploadFilesBatch";
 import { formatAttachment } from "@/utils/formatAttachment";
 import { getFileUrl } from "@/utils/fileUrl";
 import { toast } from "sonner";
@@ -117,6 +124,7 @@ interface ChatMainContainerProps {
   onBack?: () => void;
   onTogglePin?: (messageId: string, isPinned: boolean) => void;
   onToggleStar?: (messageId: string, isStarred: boolean) => void;
+  onMessagesLoaded?: (messages: any[]) => void;
 }
 
 /**
@@ -141,8 +149,10 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   onBack,
   onTogglePin,
   onToggleStar,
+  onMessagesLoaded,
 }) => {
   const user = useAuthStore((state) => state.user);
+  const openCreateTaskModal = useCreateTaskStore((state) => state.openModal);
   const [inputValue, setInputValue] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<
@@ -151,6 +161,10 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null); // For image preview modal
   const [previewFileName, setPreviewFileName] = useState<string>("");
+  const [previewImages, setPreviewImages] = useState<
+    Array<{ fileId: string; fileName: string }>
+  >([]); // Phase 2.1: Gallery mode
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [showPinnedModal, setShowPinnedModal] = useState(false);
   const [showConversationStarredModal, setShowConversationStarredModal] =
     useState(false);
@@ -254,12 +268,25 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Phase 2: File upload
   const uploadFilesMutation = useUploadFiles();
+  const uploadBatchMutation = useUploadFilesBatch();
   // File validation
   const { validateAndAdd } = useFileValidation();
 
   // Get flattened messages
   const messages = flattenMessages(messagesQuery.data);
 
+  // Call onMessagesLoaded callback when messages are loaded (only when data changes)
+  const prevMessagesRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (onMessagesLoaded) {
+      const messagesJson = JSON.stringify(messages);
+      // Only call if messages actually changed (not just reference change)
+      if (prevMessagesRef.current !== messagesJson) {
+        prevMessagesRef.current = messagesJson;
+        onMessagesLoaded(messages);
+      }
+    }
+  }, [onMessagesLoaded]);
   // Phase 4: Group messages by time proximity (10 minutes)
   // Convert ChatMessage to format compatible with groupMessages
   const groupedMessages = useMemo(() => {
@@ -270,12 +297,15 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     return groupMessages(messagesWithTimestamp, 10 * 60 * 1000); // 10 minutes
   }, [messages]);
 
-  // Auto scroll to bottom on initial load
+  // Auto scroll to bottom when conversation changes or data loads successfully
   useEffect(() => {
-    if (!messagesQuery.isLoading && messages.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    if (messagesQuery.isSuccess && messages.length > 0) {
+      // Use setTimeout to ensure DOM is fully rendered (including image placeholders)
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 200); // Increased timeout to allow all image placeholders to render and calculate height
     }
-  }, [messages.length, messagesQuery.isLoading]);
+  }, [conversationId, messagesQuery.isSuccess, messages.length]); // ✅ Also trigger on messages.length change
 
   // Phase 2: Auto-focus input when conversation changes
   useEffect(() => {
@@ -291,7 +321,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     prevConversationIdRef.current = conversationId;
   }, [conversationId]);
 
-  // Handle send message with file upload (Phase 2 - Option A: Sequential Messages)
+  // Handle send message with file upload (Phase 2 - Batch Upload)
   const handleSend = useCallback(async () => {
     // Phase 7: Check network status before sending
     if (!isOnline) {
@@ -304,25 +334,18 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     stopTyping();
     setIsUploading(true);
 
-    // Phase 2: Upload files if any
-    if (selectedFiles.length > 0) {
-      // Initialize progress
-      const progressMap = new Map<string, FileUploadProgressState>();
-      selectedFiles.forEach((file) => {
-        progressMap.set(file.id, {
-          fileId: file.id,
-          fileName: file.file.name,
-          status: "pending",
-          progress: 0,
+    try {
+      if (selectedFiles.length === 0) {
+        // Case 1: Text-only message (no files)
+        await sendMessageMutation.mutateAsync({
+          conversationId,
+          content: inputValue.trim(),
         });
-      });
-      setUploadProgress(progressMap);
-
-      try {
-        // Upload files sequentially
+      } else if (selectedFiles.length === 1) {
+        // Case 2: Single file upload (Phase 1 API)
         const result = await uploadFilesMutation.mutateAsync({
           files: selectedFiles,
-          sourceModule: 1, // Chat
+          sourceModule: 1,
           sourceEntityId: conversationId,
           onProgress: (fileId, progress) => {
             setUploadProgress((prev) => {
@@ -340,109 +363,67 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
           },
         });
 
-        // Update progress to success
-        setUploadProgress((prev) => {
-          const next = new Map(prev);
-          result.files.forEach(({ originalFile, uploadResult }, index) => {
-            const selectedFile = selectedFiles[index];
-            if (selectedFile) {
-              next.set(selectedFile.id, {
-                fileId: selectedFile.id,
-                fileName: selectedFile.file.name,
-                status: "success",
-                progress: 100,
-                uploadedFileId: uploadResult.fileId,
-              });
-            }
-          });
-
-          // Update failed files with error status
-          result.errors.forEach(({ file, error }) => {
-            next.set(file.id, {
-              fileId: file.id,
-              fileName: file.file.name,
-              status: "error",
-              progress: 0,
-              error: error,
-            });
-          });
-
-          return next;
-        });
-
-        // Handle partial success
         if (result.failedCount > 0) {
-          toast.warning(
-            `Upload thành công ${result.successCount}/${selectedFiles.length} file`
-          );
-
-          // Decision #4: Block send if any file failed
+          toast.error("Lỗi upload file. Vui lòng thử lại.");
           setIsUploading(false);
-          return; // Don't send message if any file failed
+          return;
         }
 
-        // Clear progress after 2s (Decision #10)
-        setTimeout(() => setUploadProgress(new Map()), 2000);
+        // Send message with single attachment (as array)
+        const attachment = formatAttachment(
+          result.files[0].originalFile,
+          result.files[0].uploadResult
+        );
 
-        // Option A: Send sequential messages (1 file per message)
-        // First message: user text + first file
-        // Remaining messages: null content + file
-
-        for (let i = 0; i < result.files.length; i++) {
-          const { originalFile, uploadResult } = result.files[i];
-
-          try {
-            await sendMessageMutation.mutateAsync({
-              conversationId,
-              content: i === 0 ? inputValue.trim() : null, // Only first message has text
-              attachment: formatAttachment(originalFile, uploadResult),
-            });
-          } catch (error) {
-            console.error(`Failed to send message ${i + 1}:`, error);
-            toast.error(
-              `Lỗi gửi tin nhắn ${i + 1}/${
-                result.files.length
-              }. Vui lòng thử lại.`
-            );
-            setIsUploading(false);
-            return;
-          }
-        }
-
-        // Auto-focus after sending all messages
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      } catch (error) {
-        console.error("Upload error:", error);
-        toast.error("Lỗi upload file. Vui lòng thử lại.");
-        setIsUploading(false);
-        return; // Don't send message if upload failed
-      }
-    } else {
-      // No files: Send single text-only message
-      try {
         await sendMessageMutation.mutateAsync({
           conversationId,
-          content: inputValue.trim(),
+          content: inputValue.trim() || "", // Empty string instead of null for API
+          attachments: [attachment], // Phase 2: Always use attachments[] array
+        });
+      } else {
+        // Case 3: Batch upload (Phase 2 API - 2+ files)
+        const batchResult = await uploadBatchMutation.mutateAsync({
+          files: selectedFiles.map((sf) => sf.file),
+          sourceModule: 1,
+          sourceEntityId: conversationId,
         });
 
-        // Auto-focus after sending
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      } catch (error) {
-        console.error("Send message error:", error);
-        toast.error("Lỗi gửi tin nhắn. Vui lòng thử lại.");
-        setIsUploading(false);
-        return;
-      }
-    }
+        // Extract successful uploads
+        const attachments = extractSuccessfulUploads(batchResult);
 
-    // Clear files and input
-    selectedFiles.forEach((sf) => revokeFilePreview(sf.preview));
-    setSelectedFiles([]);
-    setIsUploading(false);
+        if (attachments.length === 0) {
+          toast.error("Tất cả file upload thất bại. Vui lòng thử lại.");
+          setIsUploading(false);
+          return;
+        }
+
+        // Show warning for partial success
+        if (batchResult.partialSuccess) {
+          toast.warning(
+            `${batchResult.successCount}/${batchResult.totalFiles} file upload thành công`
+          );
+        }
+
+        // Send 1 message with multiple attachments (Phase 2 API v2.0)
+        await sendMessageMutation.mutateAsync({
+          conversationId,
+          content: inputValue.trim() || "", // Empty string instead of null for API
+          attachments, // Phase 2: Array of AttachmentInputDto
+        });
+      }
+
+      // Success - clear state
+      selectedFiles.forEach((sf) => revokeFilePreview(sf.preview));
+      setSelectedFiles([]);
+      setInputValue("");
+      setIsUploading(false);
+
+      setTimeout(() => inputRef.current?.focus(), 0);
+    } catch (error) {
+      console.error("Send message error:", error);
+      toast.error("Lỗi gửi tin nhắn. Vui lòng thử lại.");
+      setIsUploading(false);
+    }
   }, [
     inputValue,
     sendMessageMutation,
@@ -450,6 +431,8 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     selectedFiles,
     conversationId,
     uploadFilesMutation,
+    uploadBatchMutation,
+    isOnline,
   ]);
 
   // Handle key press (Enter to send)
@@ -468,18 +451,28 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     }
   };
 
-  // Handle file selection (Phase 2: Single file only)
+  // Handle file selection (Phase 2: Batch upload - allow 2-10 files)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Chỉ cho phép chọn 1 file tại 1 thời điểm
-    if (files.length > 1) {
-      toast.warning("Vui lòng chỉ chọn 1 file mỗi lần");
+    const fileArray = Array.from(files);
+
+    // Phase 2: Validate batch file selection
+    const validationError = validateBatchFileSelection(
+      fileArray,
+      10, // Max 10 files
+      10 * 1024 * 1024, // Max 10MB per file
+      50 * 1024 * 1024 // Max 50MB total
+    );
+
+    if (validationError) {
+      toast.error(validationError.message);
+      e.target.value = "";
+      return;
     }
 
-    // Chỉ lấy file đầu tiên
-    const fileArray = [files[0]];
+    // Add validated files
     const validFiles = validateAndAdd(fileArray, selectedFiles.length);
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles]);
@@ -554,6 +547,22 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     });
   };
 
+  // Handle create task from message
+  const handleCreateTask = useCallback(
+    (messageId: string) => {
+      // Find the message to get its content
+      const message = groupedMessages.find((g) => g.message.id === messageId)?.message;
+      if (!message) return;
+
+      openCreateTaskModal({
+        messageId,
+        messageContent: message.content || message.attachments?.[0]?.fileName || '',
+        conversationId,
+      });
+    },
+    [conversationId, openCreateTaskModal, groupedMessages]
+  );
+
   // Get display name from DM format
   const getDisplayName = (name: string) => {
     if (conversationType === "DM") {
@@ -597,6 +606,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Format status line
   const isDirect = conversationType === "DM";
+  console.log({ status, memberCount, onlineCount, isDirect });
   const statusLine = formatStatusLine(
     status,
     memberCount || 0,
@@ -816,8 +826,15 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                   setFilePreviewId(fileId);
                   setFilePreviewName(fileName);
                 }}
+                onImageClick={(images, initialIndex) => {
+                  // Phase 2.1: Gallery mode navigation
+                  setPreviewImages(images);
+                  setPreviewInitialIndex(initialIndex);
+                  setPreviewFileId(images[initialIndex]?.fileId || null);
+                }}
                 onTogglePin={onTogglePin}
                 onToggleStar={onToggleStar}
+                onCreateTask={handleCreateTask}
                 onRetry={handleRetry}
                 isFirstInGroup={groupedMsg.isFirstInGroup}
                 isMiddleInGroup={groupedMsg.isMiddleInGroup}
@@ -886,6 +903,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             className="hidden"
             onChange={handleFileSelect}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
+            multiple
             data-testid="file-input"
           />
           <input
@@ -894,6 +912,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             className="hidden"
             onChange={handleFileSelect}
             accept={FILE_CATEGORIES.IMAGE.join(",")}
+            multiple
             data-testid="image-input"
           />
 
@@ -931,9 +950,17 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
       {/* Image Preview Modal - Placed at container level */}
       <ImagePreviewModal
         open={!!previewFileId}
-        onOpenChange={(open) => !open && setPreviewFileId(null)}
-        fileId={previewFileId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewFileId(null);
+            setPreviewImages([]);
+            setPreviewInitialIndex(0);
+          }
+        }}
+        fileId={previewImages.length > 0 ? null : previewFileId} // Use fileId only for single image mode
         fileName={previewFileName}
+        images={previewImages.length > 0 ? previewImages : undefined} // Gallery mode
+        initialIndex={previewInitialIndex}
       />
 
       {/* Pinned Messages Modal */}

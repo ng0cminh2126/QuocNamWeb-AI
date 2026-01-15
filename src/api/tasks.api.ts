@@ -1,0 +1,196 @@
+// Tasks API client
+// Handles API calls for task management
+// API Base: Vega Task API (https://vega-task-api-dev.allianceitsc.com)
+
+import { taskApiClient } from './taskClient';
+import type {
+  TaskPriorityDto,
+  TaskStatusDto,
+  CheckListTemplateResponse,
+  CreateTaskRequest,
+  TaskDetailResponse,
+  GetLinkedTasksResult,
+} from '@/types/tasks_api';
+
+/**
+ * GET /api/task-config/priorities
+ * Get all available task priorities
+ */
+export const getTaskPriorities = async (): Promise<TaskPriorityDto[]> => {
+  const response = await taskApiClient.get<TaskPriorityDto[]>(
+    '/api/task-config/priorities'
+  );
+  return response.data;
+};
+
+/**
+ * GET /api/task-config/statuses
+ * Get all available task statuses
+ */
+export const getTaskStatuses = async (): Promise<TaskStatusDto[]> => {
+  const response = await taskApiClient.get<TaskStatusDto[]>(
+    '/api/task-config/statuses'
+  );
+  return response.data;
+};
+
+/**
+ * GET /api/checklist-templates
+ * Get all checklist templates
+ */
+export const getChecklistTemplates = async (): Promise<
+  CheckListTemplateResponse[]
+> => {
+  const response = await taskApiClient.get<CheckListTemplateResponse[]>(
+    '/api/checklist-templates'
+  );
+  return response.data;
+};
+
+/**
+ * POST /api/tasks
+ * Create a new task
+ * 
+ * @param data - Task creation request
+ * @returns Created task details
+ */
+export const createTask = async (
+  data: CreateTaskRequest
+): Promise<TaskDetailResponse> => {
+  const response = await taskApiClient.post<TaskDetailResponse>(
+    '/api/tasks',
+    data
+  );
+  return response.data;
+};
+
+/**
+ * GET /api/conversations/{conversationId}/tasks
+ * Get all tasks linked to a specific conversation
+ * Used by Chat module to display linked tasks in the right side panel
+ * 
+ * @param conversationId - The conversation ID
+ * @returns List of linked tasks
+ */
+export const getLinkedTasks = async (
+  conversationId: string
+): Promise<GetLinkedTasksResult> => {
+  const response = await taskApiClient.get<GetLinkedTasksResult>(
+    `/api/conversations/${conversationId}/tasks`
+  );
+  return response.data;
+};
+
+/**
+ * GET /api/tasks/{taskId}
+ * Get details of a specific task
+ * 
+ * @param taskId - The task ID
+ * @returns Task details
+ */
+export const getTaskDetails = async (
+  taskId: string
+): Promise<TaskDetailResponse> => {
+  const response = await taskApiClient.get<TaskDetailResponse>(
+    `/api/tasks/${taskId}`
+  );
+  return response.data;
+};
+
+/**
+ * GET /api/tasks
+ * Get all tasks with optional filters
+ * 
+ * @param params - Query parameters for filtering tasks
+ * @param params.userTask - Filter by user relationship: "assigned", "created", or "related"
+ * @param params.conversationId - Filter by conversation ID
+ * @param params.messageId - Filter by message ID
+ * @returns Array of task details
+ */
+export const getTasks = async (params?: {
+  userTask?: 'assigned' | 'created' | 'related';
+  conversationId?: string;
+  messageId?: string;
+}): Promise<TaskDetailResponse[]> => {
+  const response = await taskApiClient.get<TaskDetailResponse[]>(
+    '/api/tasks',
+    { params }
+  );
+  return response.data;
+};
+
+/**
+ * POST /api/tasks/{id}/check-items
+ * Add a new checklist item to a task
+ * 
+ * @param taskId - The task ID
+ * @param content - The checklist item content
+ * @param order - Optional order position
+ * @returns void (204 No Content)
+ */
+export const addCheckItem = async (
+  taskId: string,
+  content: string,
+  order?: number
+): Promise<void> => {
+  await taskApiClient.post(`/api/tasks/${taskId}/check-items`, {
+    content,
+    order: order ?? null,
+  });
+};
+
+/**
+ * PATCH /api/tasks/{id}/check-items/{itemId}/toggle
+ * Toggle a checklist item's completion status
+ * 
+ * @param taskId - The task ID
+ * @param itemId - The check item ID
+ * @returns void (204 No Content)
+ */
+export const toggleCheckItem = async (
+  taskId: string,
+  itemId: string
+): Promise<void> => {
+  await taskApiClient.patch(
+    `/api/tasks/${taskId}/check-items/${itemId}/toggle`
+  );
+};
+
+/**
+ * PATCH /api/tasks/{id}/status
+ * Update task status
+ * 
+ * @param taskId - The task ID
+ * @param status - New status: "todo", "doing", "need_to_verified", or "finished"
+ * @returns void (204 No Content)
+ */
+export const updateTaskStatus = async (
+  taskId: string,
+  status: 'todo' | 'doing' | 'need_to_verified' | 'finished'
+): Promise<void> => {
+  await taskApiClient.patch(`/api/tasks/${taskId}/status`, {
+    status,
+  });
+};
+
+/**
+ * PATCH /api/checklist-templates/{id}
+ * Update a checklist template
+ * 
+ * @param templateId - The template ID
+ * @param data - Template update data
+ * @param data.name - Template name
+ * @param data.description - Optional description
+ * @param data.items - Array of checklist item strings
+ * @returns void (204 No Content)
+ */
+export const updateChecklistTemplate = async (
+  templateId: string,
+  data: {
+    name: string;
+    description?: string | null;
+    items?: string[] | null;
+  }
+): Promise<void> => {
+  await taskApiClient.patch(`/api/checklist-templates/${templateId}`, data);
+};

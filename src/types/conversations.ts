@@ -8,6 +8,18 @@ import type { ID } from './common';
 
 export type ConversationType = 'GRP' | 'DM';
 
+// Conversation Member
+export interface ConversationMember {
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+  role: string | null;
+  joinedAt: string;
+}
+
+// API returns array of members directly
+export type GetConversationMembersResponse = ConversationMember[];
+
 // Last Message structure (shared between Group and DM)
 export interface LastMessage {
   id: string;

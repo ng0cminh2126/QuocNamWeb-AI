@@ -5,6 +5,9 @@ import { ConversationDetailPanel } from "./ConversationDetailPanel";
 import { PinnedMessagesPanel } from "../components/PinnedMessagesPanel";
 import { ChatMainContainer } from "../components/chat";
 import { EmptyChatState } from "../components/EmptyChatState";
+import { QuickMessageManagerMobile } from "../components/QuickMessageManagerMobile";
+import { TodoListManagerMobile } from "../components/TodoListManagerMobile";
+import { PinnedMessagesManagerMobile } from "../components/PinnedMessagesManagerMobile";
 
 import type {
   Task,
@@ -19,13 +22,13 @@ import type {
   TaskLogMessage,
 } from "../types";
 import { MessageSquareIcon, ClipboardListIcon, UserIcon } from "lucide-react";
+import { useConversationMembers } from "@/hooks/queries/useConversationMembers";
+import { useAllTasks } from "@/hooks/queries/useTasks";
+import { useMessages, flattenMessages } from "@/hooks/queries/useMessages";
+import { transformMembersToMinimal, sortMembersWithLeadersFirst } from "@/utils/memberTransform";
+import { transformTasksToLocal } from "@/utils/taskTransform";
 
-type ChatTarget = {
-  type: "group" | "dm";
-  id: string;
-  name?: string;
-  memberCount?: number;
-};
+type ChatTarget = { type: "group" | "dm"; id: string; name?: string; memberCount?: number };
 
 interface WorkspaceViewProps {
   groups: GroupChat[];
@@ -50,7 +53,11 @@ interface WorkspaceViewProps {
 
   available: Task[];
   myWork: Task[];
-  members: string[];
+  groupMembers: Array<{
+    id: string;
+    name: string;
+    role?: "Leader" | "Member";
+  }>;
 
   showAvail: boolean;
   setShowAvail: (v: boolean) => void;
@@ -79,7 +86,6 @@ interface WorkspaceViewProps {
   tab: "info" | "order" | "tasks";
   setTab: (v: "info" | "order" | "tasks") => void;
   tasks: Task[];
-  groupMembers: Array<{ id: string; name: string; role?: "Leader" | "Member" }>;
   // onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
   // onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   // onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
@@ -126,6 +132,8 @@ interface WorkspaceViewProps {
   onOpenTaskLog?: (taskId: string) => void;
   taskLogs?: Record<string, TaskLogMessage[]>;
   onOpenSourceMessage?: (messageId: string) => void;
+  onScrollComplete?: () => void;
+  scrollToMessageId?: string;
 
   layoutMode?: "desktop" | "mobile";
 
@@ -139,12 +147,15 @@ interface WorkspaceViewProps {
 
   // Task management
   onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
-  onReassignTask?: (id: string, assigneeId: string) => void;
+  onReassignTask?: (id: string, assignTo: string) => void;
   onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
 
   // Checklist templates
   checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
+
+  onOpenWorkTypeManager?: () => void;
+  
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -191,7 +202,6 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     pinnedMessages,
     onClosePinned,
     onOpenPinnedMessage,
-    // setPinnedMessages,
     onUnpinMessage,
     onShowPinnedToast,
     onTogglePin,
@@ -206,6 +216,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onOpenTaskLog,
     taskLogs,
     onOpenSourceMessage,
+    onScrollComplete,
+    scrollToMessageId,
     layoutMode = "desktop",
     onOpenQuickMsg,
     onOpenPinned,
@@ -220,8 +232,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onToggleChecklist,
     onUpdateTaskChecklist,
     checklistTemplates,
-  } = props;
 
+    onOpenWorkTypeManager,    
+  } = props;
+  console.log(selectedChat);
   const isMobile = layoutMode === "mobile";
   const bottomItems = [
     {
@@ -379,6 +393,77 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     return "Trò chuyện";
   }, [apiConversationName, selectedChat, groups, contacts]);
 
+  // Fetch conversation members from Chat API
+  // This will re-fetch whenever selectedChat changes (conversation switch)
+  const {
+    data: membersFromAPI,
+    isLoading: membersLoading,
+    isError: membersError,
+  } = useConversationMembers({
+    conversationId: selectedChat?.id || '',
+    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+  });
+
+  // Fetch all tasks for the conversation from Task API
+  // This will re-fetch whenever selectedChat changes (conversation switch)
+  const {
+    data: tasksFromAPI,
+    isLoading: tasksLoading,
+    isError: tasksError,
+  } = useAllTasks({
+    conversationId: selectedChat?.id,
+    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+  });
+
+  // Fetch messages for the conversation from Chat API
+  // This will re-fetch whenever selectedChat changes (conversation switch)
+  const messagesQuery = useMessages({
+    conversationId: selectedChat?.id || '',
+    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+  });
+
+  // Flatten messages from infinite query pages
+  const chatMessages = React.useMemo(() => {
+    return flattenMessages(messagesQuery.data);
+  }, [messagesQuery.data]);
+
+  // Transform API members to local format and use as groupMembers
+  const apiGroupMembers = React.useMemo(() => {
+    if (!membersFromAPI || membersFromAPI.length === 0) {
+      return groupMembers; // Fallback to prop members if no API data
+    }
+    
+    // Transform API members to local MinimalMember format
+    const transformedMembers = transformMembersToMinimal(membersFromAPI);
+    
+    // Sort with Leaders first
+    const sortedTransformed = sortMembersWithLeadersFirst(transformedMembers);
+    
+    return sortedTransformed;
+  }, [membersFromAPI, groupMembers]);
+
+  // Transform API tasks to local format and use as tasks
+  const apiTasks = React.useMemo(() => {
+    // If no conversation is selected, return empty array (remove tasks list)
+    if (!selectedChat?.id) {
+      return [];
+    }
+    
+    if (!tasksFromAPI || tasksFromAPI.length === 0) {
+      return tasks; // Fallback to prop tasks if no API data
+    }
+    
+    // Transform API tasks to local format
+    const transformedTasks = transformTasksToLocal(
+      tasksFromAPI,
+      selectedChat?.id || '',
+      selectedWorkTypeId || ''
+    );
+    
+    return transformedTasks;
+  }, [tasksFromAPI, tasks, selectedChat?.id, selectedWorkTypeId]);
+
+
   // Handler to update conversation name when selecting from API
   const handleApiSelectChat = React.useCallback(
     (target: ChatTarget, name?: string) => {
@@ -403,6 +488,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   };
 
   if (isMobile) {
+    const [showQuickMessageMobile, setShowQuickMessageMobile] = React.useState(false);
+    const [showTodoListMobile, setShowTodoListMobile] = React.useState(false);
+    const [showPinnedMessagesMobile, setShowPinnedMessagesMobile] = React.useState(false);
+
     return (
       <div
         className={`relative flex h-full flex-col bg-gray-50 ${
@@ -449,42 +538,34 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 <div className="h-full min-h-0">
                   {selectedChat ? (
                     // API-based chat using ChatMainContainer (conversation-detail)
-                    <>
-                      <ChatMainContainer
-                        key={selectedChat.id}
-                        conversationId={selectedChat.id}
-                        conversationName={chatTitle}
-                        conversationType={
-                          selectedChat.type === "group" ? "GRP" : "DM"
-                        }
-                        memberCount={selectedChat?.memberCount}
-                        isMobile={true}
-                        onBack={() => {
-                          onClearSelectedChat?.();
-                          setMobileTab("messages");
-                        }}
-                        onTogglePin={
-                          onTogglePin
-                            ? (messageId: string, isPinned: boolean) => {
-                                onTogglePin({
-                                  id: messageId,
-                                  isPinned,
-                                } as Message);
-                              }
-                            : undefined
-                        }
-                        onToggleStar={
-                          onToggleStar
-                            ? (messageId: string, isStarred: boolean) => {
-                                onToggleStar({
-                                  id: messageId,
-                                  isStarred,
-                                } as Message);
-                              }
-                            : undefined
-                        }
-                      />
-                    </>
+                    <ChatMainContainer
+                      key={selectedChat.id}
+                      conversationId={selectedChat.id}
+                      conversationName={chatTitle}
+                      conversationType={
+                        selectedChat.type === "group" ? "GRP" : "DM"
+                      }
+                      memberCount={selectedChat.memberCount || 0}
+                      isMobile={true}
+                      onBack={() => {
+                        onClearSelectedChat?.();
+                        setMobileTab("messages");
+                      }}
+                      onTogglePin={
+                        onTogglePin
+                          ? (messageId: string, isPinned: boolean) => {
+                              onTogglePin({ id: messageId, isPinned } as Message);
+                            }
+                          : undefined
+                      }
+                      onToggleStar={
+                        onToggleStar
+                          ? (messageId: string, isStarred: boolean) => {
+                              onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                            }
+                          : undefined
+                      }
+                    />
                   ) : (
                     <EmptyChatState isMobile={true} />
                   )}
@@ -517,8 +598,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 viewMode={viewMode}
                 selectedWorkTypeId={selectedWorkTypeId}
                 currentUserId={currentUserId}
-                tasks={tasks}
-                members={groupMembers}
+                tasks={apiTasks}
+                members={apiGroupMembers}
                 onChangeTaskStatus={onChangeTaskStatus}
                 onReassignTask={undefined}
                 onToggleChecklist={onToggleChecklist}
@@ -533,6 +614,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 taskLogs={taskLogs}
                 onOpenTaskLog={onOpenTaskLog}
                 onOpenSourceMessage={onOpenSourceMessage}
+                messages={chatMessages}
               />
             </div>
           )}
@@ -576,6 +658,37 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               ))}
             </nav>
           </div>
+        )}
+
+        {/* Quick Message Modal */}
+        {showQuickMessageMobile && (
+          <QuickMessageManagerMobile
+            open={showQuickMessageMobile}
+            onClose={() => setShowQuickMessageMobile(false)}
+          />
+        )}
+        {/* Todo List Modal */}
+        {showTodoListMobile && (
+          <TodoListManagerMobile
+            open={showTodoListMobile} 
+            onClose={() => setShowTodoListMobile(false)}
+          />
+        )}
+
+        {/* ✅ NEW: Pinned Messages Modal */}
+        {showPinnedMessagesMobile && (
+          <PinnedMessagesManagerMobile
+            open={showPinnedMessagesMobile}
+            onClose={() => setShowPinnedMessagesMobile(false)}
+            pinnedMessages={pinnedMessages ?? []}
+            onUnpin={onUnpinMessage}
+            onOpenChat={(pin) => {
+              setShowPinnedMessagesMobile(false);
+              handleMobileSelectChat({ type: "group", id: pin.chatId });
+              onOpenSourceMessage?.(pin.id);
+            }}
+            onPreview={(file) => openPreview?.(file as any)}
+          />
         )}
       </div>
     );
@@ -634,38 +747,30 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
       <div className="h-full min-h-0 min-w-0">
         {selectedChat ? (
           // API-based chat using ChatMainContainer (conversation-detail)
-          <>
-            {console.log(
-              "[WorkspaceView Desktop] selectedChat:",
-              selectedChat,
-              "memberCount:",
-              selectedChat?.memberCount
-            )}
-            <ChatMainContainer
-              key={selectedChat.id}
-              conversationId={selectedChat.id}
-              conversationName={chatTitle}
-              conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
-              memberCount={selectedChat?.memberCount}
-              isMobile={false}
-              onTogglePin={
-                onTogglePin
-                  ? (messageId: string, isPinned: boolean) => {
-                      // Create a minimal Message object for the handler
-                      onTogglePin({ id: messageId, isPinned } as Message);
-                    }
-                  : undefined
-              }
-              onToggleStar={
-                onToggleStar
-                  ? (messageId: string, isStarred: boolean) => {
-                      // Create a minimal Message object for the handler
-                      onToggleStar({ id: messageId, isStarred } as Message);
-                    }
-                  : undefined
-              }
-            />
-          </>
+          <ChatMainContainer
+            key={selectedChat.id}
+            conversationId={selectedChat.id}
+            conversationName={chatTitle}
+            conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
+            memberCount={selectedChat?.memberCount || 0}
+            isMobile={false}
+            onTogglePin={
+              onTogglePin
+                ? (messageId: string, isPinned: boolean) => {
+                    // Create a minimal Message object for the handler
+                    onTogglePin({ id: messageId, isPinned } as Message);
+                  }
+                : undefined
+            }
+            onToggleStar={
+              onToggleStar
+                ? (messageId: string, isStarred: boolean) => {
+                    // Create a minimal Message object for the handler
+                    onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                  }
+                : undefined
+            }
+          />
         ) : (
           <EmptyChatState isMobile={false} />
         )}
@@ -708,8 +813,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             viewMode={viewMode}
             selectedWorkTypeId={selectedWorkTypeId}
             currentUserId={currentUserId}
-            tasks={tasks}
-            members={groupMembers}
+            tasks={apiTasks}
+            members={apiGroupMembers}
             onChangeTaskStatus={onChangeTaskStatus}
             onReassignTask={undefined}
             onToggleChecklist={onToggleChecklist}
@@ -724,6 +829,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             taskLogs={taskLogs}
             onOpenTaskLog={onOpenTaskLog}
             onOpenSourceMessage={onOpenSourceMessage}
+            messages={chatMessages}
           />
         </div>
       )}

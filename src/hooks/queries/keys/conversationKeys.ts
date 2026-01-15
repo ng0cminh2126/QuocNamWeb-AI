@@ -18,4 +18,8 @@ export const conversationKeys = {
   // Single conversation detail (for future use)
   detail: (conversationId: string) =>
     [...conversationKeys.all, 'detail', conversationId] as const,
+
+  // Conversation members
+  members: (conversationId: string) =>
+    [...conversationKeys.all, 'members', conversationId] as const,
 };

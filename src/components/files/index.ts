@@ -1,0 +1,14 @@
+/**
+ * File Components Barrel Export
+ * Central export point for all file-related components
+ */
+
+export { default as ViewAllFilesModal } from './ViewAllFilesModal';
+export { default as FileSearchBar } from './FileSearchBar';
+export { default as FileFilters } from './FileFilters';
+export { default as FileSortDropdown } from './FileSortDropdown';
+export { default as FilePagination } from './FilePagination';
+export { default as FileGrid } from './FileGrid';
+export { default as FileList } from './FileList';
+export { default as FileCard } from './FileCard';
+export { default as FileListItem } from './FileListItem';

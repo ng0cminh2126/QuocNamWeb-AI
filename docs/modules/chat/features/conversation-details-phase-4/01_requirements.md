@@ -329,6 +329,139 @@ Example: `Active • 5 members • 3 online`
 
 ---
 
+### FR-6: Image Message Loading States
+
+**ID:** FR-6  
+**Priority:** HIGH  
+**Description:** Hiển thị loading skeleton khi tin nhắn có ảnh đang chờ thumbnail từ API
+
+**Current Issue:**
+
+- Khi gửi tin nhắn có ảnh, message bubble ban đầu nhỏ, sau đó bự ra khi ảnh load → layout shift (user experience xấu)
+- Không có loading indicator → user không biết ảnh đang tải
+- Bubble size thay đổi gây scrolling jump, khó đọc
+
+**Root Cause:**
+
+- Component chỉ render placeholder khi `!isVisible`
+- Khi visible → loading → image → kích thước thay đổi 3 lần
+- Dùng `max-w` + `max-h` + `aspect-ratio` → kích thước không cố định
+
+**Solution:**
+
+✅ **Loading Skeleton với Fixed Size:**
+
+- **Single Image:**
+
+  - Width: 320px (fixed)
+  - Height: 180px (fixed)
+  - Aspect ratio: 16:9
+  - Skeleton: Gradient animate (gray-200 → gray-300 → gray-200)
+  - Border radius: rounded-lg (16px)
+
+- **Grid Images (2+ images):**
+  - Width: w-full (adapts to grid cell)
+  - Height: aspect-square (1:1 ratio)
+  - Skeleton: Same gradient animate
+  - Gap between images: gap-2 (8px)
+
+**Acceptance Criteria:**
+
+✅ **No Layout Shift:**
+
+```
+User sends message with image
+         ↓
+[Skeleton 320x180 renders IMMEDIATELY]  ← Fixed size
+         ↓
+API: getImageThumbnail(fileId, "large")
+         ↓
+[Skeleton continues animating]  ← Same size
+         ↓
+API returns blob
+         ↓
+[Image replaces skeleton]  ← Same size, smooth transition
+```
+
+✅ **Single Image Loading:**
+
+```
+Before API:
+┌─────────────────────────────────────┐
+│ [Avatar] User                       │
+│ ┌─────────────────────────────────┐ │
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ │ ← 320x180px skeleton
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │ │   gradient animate
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+
+After API:
+┌─────────────────────────────────────┐
+│ [Avatar] User                       │
+│ ┌─────────────────────────────────┐ │
+│ │ [   Actual Image 320x180   ]   │ │ ← Same size
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+✅ **Grid Images Loading (2 images):**
+
+```
+Before API:
+┌─────────────────────────────────────┐
+│ [Avatar] User                       │
+│ ┌──────────────┐  ┌──────────────┐ │
+│ │ ░░░░░░░░░░░░ │  │ ░░░░░░░░░░░░ │ │ ← Square skeletons
+│ │ ░░░░░░░░░░░░ │  │ ░░░░░░░░░░░░ │ │   gap-2 (8px)
+│ └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────┘
+```
+
+✅ **Visual Consistency:**
+
+- Bubble padding: px-4 (16px horizontal)
+- Grid gap: gap-2 (8px)
+- Border radius: rounded-lg (16px) for all images
+- No layout shift during loading
+
+✅ **Technical Requirements:**
+
+```tsx
+// Skeleton Specs
+Single image:
+  className="w-[320px] h-[180px] bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"
+
+Grid image:
+  className="w-full aspect-square bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"
+
+// Loaded image (same size)
+Single image:
+  className="w-[320px] h-[180px] object-cover rounded-lg"
+
+Grid image:
+  className="w-full aspect-square object-cover rounded-lg"
+```
+
+✅ **Error State:**
+
+- If API fails → show error placeholder with same size (320x180 or square)
+- User can click to retry via preview modal
+
+✅ **Performance:**
+
+- Skeleton renders immediately (no delay)
+- No re-render until image blob ready
+- Lazy loading with Intersection Observer (load when visible)
+
+**Benefits:**
+
+- ✅ No layout shift → better UX
+- ✅ Immediate loading feedback → user knows image is loading
+- ✅ Consistent bubble size → no scrolling jump
+- ✅ Grid padding matches bubble padding (gap-2 vs px-4)
+
+---
+
 ## 🎨 UI Requirements
 
 ### UR-1: Message Grouping Visual Design
