@@ -1,10 +1,12 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   PlayCircle,
   FileText,
   FileSpreadsheet,
   FileType2,
-  MessageCircle,  
+  MessageCircle,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -12,9 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { mockMessagesByWorkType } from "@/data/mockMessages";
+// import { mockMessagesByWorkType } from "@/data/mockMessages";
 import { IconButton } from "@/components/ui/icon-button";
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   Popover,
   PopoverTrigger,
@@ -23,6 +25,8 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator"
 import { Calendar } from "@/components/ui/calendar";
+import { API_ENDPOINTS } from "@/config/env.config";
+import { useAuthStore } from "@/stores/authStore";
 
 /**
  * Loại file Phase 1A – gom đơn giản thành 3 nhóm:
@@ -41,6 +45,9 @@ export type Phase1AFileItem = {
   sizeLabel?: string;
   dateLabel?: string;
   messageId?: string;
+  senderName?: string;
+  createdAt?: string;
+  fileId?: string; // File ID from API for preview endpoints
 };
 
 export type FileManagerPhase1AMode = "media" | "docs";
@@ -51,9 +58,21 @@ type MessageLike = {
   id: string;
   groupId?: string;
   sender?: string;
-  type: "text" | "image" | "file" | "system";
+  senderName?: string;
+  type?: "text" | "image" | "file" | "system";
   createdAt?: string;
   time?: string;
+  attachments?: { 
+    fileId?: string;
+    fileName?: string;
+    name?: string; 
+    url?: string; 
+    contentType?: string;
+    type?: AttachmentType; 
+    fileSize?: number;
+    size?: string;
+  }[];
+  // Legacy fields for backward compatibility
   files?: { name: string; url: string; type: AttachmentType; size?: string }[];
   fileInfo?: { name: string; url: string; type: AttachmentType; size?: string };
 };
@@ -72,21 +91,9 @@ export type FileManagerPhase1AProps = {
 
   isMobile?: boolean;
   onOpenAllFiles?: (mode: FileManagerPhase1AMode) => void;
-};
 
-const getWorkTypeKey = (workTypeId?: string) => {
-  switch (workTypeId) {
-    case "wt_nhan_hang":
-      return "nhanHang";
-    case "wt_doi_tra":
-      return "doiTra";
-    case "wt_lich_boc_hang":
-      return "lichBocHang";
-    case "wt_don_boc_hang":
-      return "donBocHang";
-    default:
-      return "nhanHang";
-  }
+  /** Messages from chat to extract files from */
+  messages?: MessageLike[];
 };
 
 const getDocIcon = (ext?: string) => {
@@ -106,6 +113,200 @@ const getDocIcon = (ext?: string) => {
 const isMediaAttachment = (attType: AttachmentType) => attType === "image";
 const isDocAttachment = (attType: AttachmentType) => attType !== "image";
 
+/**
+ * BlobImage component - Fetches blob from API and displays as image
+ * Handles blob fetch, object URL creation, and cleanup
+ */
+const BlobImage: React.FC<{
+  fileId?: string;
+  fallbackUrl?: string;
+  endpoint: 'thumbnail' | 'preview';
+  alt: string;
+  className?: string;
+  draggable?: boolean;
+}> = ({ fileId, fallbackUrl, endpoint, alt, className, draggable = false }) => {
+  const [objectUrl, setObjectUrl] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState(false);
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  React.useEffect(() => {
+    if (!fileId) {
+      // Use fallback URL if no fileId
+      if (fallbackUrl) {
+        setObjectUrl(fallbackUrl);
+      }
+      return;
+    }
+
+    let isMounted = true;
+    let url: string | null = null;
+
+    const fetchBlob = async () => {
+      setIsLoading(true);
+      setError(false);
+
+      try {
+        const apiEndpoint = endpoint === 'thumbnail' 
+          ? `${API_ENDPOINTS.file}/api/Files/${fileId}/watermarked-thumbnail?size=medium`
+          : `${API_ENDPOINTS.file}/api/Files/${fileId}/preview`;
+
+        const response = await fetch(apiEndpoint, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        
+        if (isMounted) {
+          url = URL.createObjectURL(blob);
+          setObjectUrl(url);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch blob image:', err);
+        if (isMounted) {
+          setError(true);
+          setIsLoading(false);
+          // Fallback to original URL if available
+          if (fallbackUrl) {
+            setObjectUrl(fallbackUrl);
+          }
+        }
+      }
+    };
+
+    fetchBlob();
+
+    // Cleanup: revoke object URL to prevent memory leaks
+    return () => {
+      isMounted = false;
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [fileId, fallbackUrl, endpoint, accessToken]);
+
+  if (isLoading) {
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+        <div className="text-xs text-gray-400">Đang tải...</div>
+      </div>
+    );
+  }
+
+  if (error && !objectUrl) {
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+        <div className="text-xs text-gray-400">Lỗi tải ảnh</div>
+      </div>
+    );
+  }
+
+  if (!objectUrl) {
+    return (
+      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+        <div className="text-xs text-gray-400">Không có ảnh</div>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line jsx-a11y/alt-text
+    <img
+      src={objectUrl}
+      alt={alt}
+      className={className}
+      draggable={draggable}
+    />
+  );
+};
+
+/**
+ * Simple Modal component using React Portal instead of Radix Dialog
+ * This avoids the infinite re-render loop issue with Radix Dialog
+ */
+const SimpleModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  maxWidth?: string;
+  children: React.ReactNode;
+}> = ({ open, onClose, title, maxWidth = "max-w-5xl", children }) => {
+  // Use ref to store onClose to avoid useEffect dependency issues
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Close on Escape key
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [open]); // Only depend on 'open', use ref for onClose
+
+  if (!open) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={handleBackdropClick}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/80 animate-in fade-in-0" />
+
+      {/* Modal Content */}
+      <div
+        className={`relative z-10 w-full ${maxWidth} max-h-[90vh] bg-white rounded-lg shadow-lg p-6 flex flex-col animate-in zoom-in-95`}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {/* Header */}
+        {title && (
+          <div className="flex items-center justify-between pb-4 border-b">
+            <h2 className="text-lg font-semibold leading-none tracking-tight">{title}</h2>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto mt-4">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+};
+
 export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   mode,
   groupId,
@@ -113,22 +314,24 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   onOpenSourceMessage,
   isMobile = false,
   onOpenAllFiles,
+  messages,
 }) => {
   const [previewFile, setPreviewFile] = React.useState<Phase1AFileItem | null>(
     null
   );
   const [showAll, setShowAll] = React.useState(false);
 
-  // ----- Lấy list message tương ứng group + workType từ mockMessages.ts -----
+  // ----- Lấy list message tương ứng group + workType từ API -----
   const messageList = React.useMemo<MessageLike[]>(() => {
-    const key = getWorkTypeKey(selectedWorkTypeId);
-    const all = (mockMessagesByWorkType as any)[key] || [];
-    if (!groupId) return all;
-    const gid = groupId.toLowerCase();
-    return (all as MessageLike[]).filter(
-      (m) => (m.groupId || "").toLowerCase() === gid
-    );
-  }, [groupId, selectedWorkTypeId]);
+    // Use messages prop if provided, otherwise return empty array
+    if (messages && messages.length > 0) {
+      return messages;
+    }
+    
+    // If no messages provided, return empty array
+    // Messages should be passed from parent component (InformationPanel, ConversationDetailPanel, etc.)
+    return [];
+  }, [messages]);
 
   // ----- Chuyển message -> list file dùng cho UI Phase 1A -----
   const { mediaFiles, docFiles } = React.useMemo<{
@@ -139,25 +342,65 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
     const docs: Phase1AFileItem[] = [];
 
     messageList.forEach((m) => {
-      const attachments: {
+      const attachmentList: {
         name: string;
         url: string;
         type: AttachmentType;
         size?: string;
+        fileId?: string;
       }[] = [];
 
-      if (Array.isArray(m.files)) {
-        attachments.push(...m.files);
+      // Priority 1: Use attachments field (from API - Swagger spec)
+      if (Array.isArray(m.attachments) && m.attachments.length > 0) {
+        m.attachments.forEach((att) => {
+          const fileName = att.fileName || att.name || 'unknown';
+          const fileUrl = att.url || '';
+          const fileId = att.fileId; // Extract fileId for preview endpoints
+          
+          // Map contentType to AttachmentType
+          let attType: AttachmentType = 'other';
+          if (att.contentType) {
+            if (att.contentType.includes('image')) attType = 'image';
+            else if (att.contentType.includes('pdf')) attType = 'pdf';
+            else if (att.contentType.includes('word') || att.contentType.includes('document')) attType = 'word';
+            else if (att.contentType.includes('excel') || att.contentType.includes('spreadsheet')) attType = 'excel';
+          } else if (att.type) {
+            attType = att.type;
+          }
+          
+          // Format file size
+          let sizeLabel = att.size;
+          if (att.fileSize && typeof att.fileSize === 'number') {
+            const sizeInMB = att.fileSize / (1024 * 1024);
+            sizeLabel = sizeInMB >= 1 
+              ? `${sizeInMB.toFixed(2)} MB` 
+              : `${(att.fileSize / 1024).toFixed(2)} KB`;
+          }
+          
+          attachmentList.push({
+            name: fileName,
+            url: fileUrl,
+            type: attType,
+            size: sizeLabel,
+            fileId,
+          });
+        });
       }
-      if (m.fileInfo) {
-        attachments.push(m.fileInfo);
+      // Priority 2: Legacy files field (for backward compatibility)
+      else if (Array.isArray(m.files)) {
+        attachmentList.push(...m.files);
+      }
+      // Priority 3: Legacy fileInfo field (for backward compatibility)
+      else if (m.fileInfo) {
+        attachmentList.push(m.fileInfo);
       }
 
-      attachments.forEach((att, index) => {
+      attachmentList.forEach((att, index) => {
         const ext = (att.name.split(".").pop() || "").toLowerCase();
         const dateLabel = m.createdAt
           ? new Date(m.createdAt).toLocaleDateString("vi-VN")
           : m.time;
+        const senderName = m.senderName || m.sender || "Unknown";
 
         const base: Phase1AFileItem = {
           id: `${m.id}__${index}`,
@@ -168,6 +411,9 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           sizeLabel: att.size,
           dateLabel,
           messageId: m.id,
+          senderName,
+          createdAt: m.createdAt || m.time,
+          fileId: att.fileId,
         };
 
         if (isMediaAttachment(att.type)) {
@@ -196,7 +442,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   /** Unique senders */
   const senders = React.useMemo(() => {
     const s = messageList
-      .map((m: any) => m.sender)
+      .map((m: any) => m.senderName || m.sender)
       .filter(Boolean);
     return Array.from(new Set(s));
   }, [messageList]);
@@ -218,19 +464,26 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
     }
   };
 
+  const handleCloseShowAll = () => {
+    setShowAll(false);
+    setSenderFilter("all");
+    setDatePreset("all");
+    setDateRange({});
+  };
+
   const renderMediaTile = (f: Phase1AFileItem, compact = false) => (
     <div
       key={f.id}
-      className={`group relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer ${
-        compact ? "aspect-[4/3]" : "aspect-[4/3]"
-      }`}
+      className={`group relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer ${compact ? "aspect-[4/3]" : "aspect-[4/3]"
+        }`}
       onClick={() => handleOpenPreview(f)}
       onContextMenu={(e) => e.preventDefault()}
-    >      
+    >
       {f.kind === "image" ? (
-        // eslint-disable-next-line jsx-a11y/alt-text
-        <img
-          src={f.url}
+        <BlobImage
+          fileId={f.fileId}
+          fallbackUrl={f.url}
+          endpoint="thumbnail"
           alt={f.name}
           className="h-full w-full object-cover"
           draggable={false}
@@ -240,7 +493,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           <PlayCircle className="h-10 w-10 text-white drop-shadow" />
         </div>
       )}
-       
+
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
 
       {f.messageId && onOpenSourceMessage && (
@@ -286,7 +539,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         </div>
       </div>
 
-      {f.messageId && onOpenSourceMessage && (        
+      {f.messageId && onOpenSourceMessage && (
         <IconButton
           label="Xem tin nhắn gốc"
           icon={<MessageCircle className="h-3.5 w-3.5 text-gray-700" />}
@@ -336,7 +589,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
             if (isMobile && onOpenAllFiles) {
               onOpenAllFiles(mode);
             } else {
-              // Destop behavior - open dialog
+              // Desktop behavior - open dialog
               setAllTab(mode);
               setShowAll(true);
             }
@@ -346,296 +599,229 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         </button>
       )}
 
-      {/* Dialog Xem tất cả – 2 tab Ảnh/Video & Tài liệu, group theo ngày */}
-      <Dialog
+      {/* Modal Xem tất cả – Using React Portal instead of Radix Dialog */}
+      <SimpleModal
         open={showAll}
-        onOpenChange={(v) => {
-          setShowAll(v);
-          if (!v) {
-            setSenderFilter("all");
-            setDatePreset("all");
-            setDateRange({});
-          }
-        }}
+        onClose={handleCloseShowAll}
+        title="Tất cả file trong nhóm chat"
+        maxWidth="max-w-5xl"
       >
+        {/* FILTER BAR - Using native HTML select instead of Radix Select */}
+        <div className="flex flex-wrap items-center gap-3">
 
-        <DialogContent
-          className="max-w-5xl"
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>Tất cả file trong nhóm chat</DialogTitle>
-          </DialogHeader>
-
-          {/* FILTER BAR */}
-          {/* FILTER BAR shadcn/ui */}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-
-            {/* Người gửi */}
-            <div>
-              <Select value={senderFilter} onValueChange={setSenderFilter}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="Người gửi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  {senders.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Ngày gửi */}
-            <div>
-              <Select
-                value={datePreset}
-                onValueChange={(v) => {
-                  setDatePreset(v);
-                  if (v !== "custom") setDateRange({});
-                }}
-              >
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="Ngày gửi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="7">7 ngày gần đây</SelectItem>
-                  <SelectItem value="15">15 ngày gần đây</SelectItem>
-                  <SelectItem value="30">30 ngày gần đây</SelectItem>
-                  <SelectItem value="custom">Tùy chỉnh…</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* POPUP chọn custom date bằng shadcn popover */}
-            {datePreset === "custom" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="h-8 text-xs">
-                    Chọn khoảng thời gian
-                  </Button>
-                </PopoverTrigger>
-
-                <PopoverContent className="w-[260px] p-3" align="start">
-
-                  {/* Gợi ý thời gian */}
-                  <div className="mb-2">
-                    <p className="text-xs text-gray-500 mb-1">Gợi ý thời gian</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[7, 15, 30].map((d) => (
-                        <Button
-                          key={d}
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            const now = new Date();
-                            const from = new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
-                            setDateRange({
-                              from: from.toISOString().split("T")[0],
-                              to: now.toISOString().split("T")[0],
-                            });
-                          }}
-                        >
-                          {d} ngày
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator className="my-2" />
-
-                  {/* Date range */}
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Chọn khoảng thời gian</p>
-
-                    <div className="flex items-center gap-2">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-[110px] justify-start text-xs">
-                            {dateRange.from ?? "Từ ngày"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.from ? new Date(dateRange.from) : undefined}
-                            onSelect={(d) =>
-                              d &&
-                              setDateRange((r) => ({
-                                ...r,
-                                from: d.toISOString().split("T")[0],
-                              }))
-                            }
-                          />
-                        </PopoverContent>
-                      </Popover>
-
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-[110px] justify-start text-xs">
-                            {dateRange.to ?? "Đến ngày"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.to ? new Date(dateRange.to) : undefined}
-                            onSelect={(d) =>
-                              d &&
-                              setDateRange((r) => ({
-                                ...r,
-                                to: d.toISOString().split("T")[0],
-                              }))
-                            }
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
+          {/* Người gửi - Native select */}
+          <div>
+            <select
+              value={senderFilter}
+              onChange={(e) => setSenderFilter(e.target.value)}
+              className="h-8 w-[140px] text-xs border border-gray-300 rounded-md px-2"
+            >
+              <option value="all">Tất cả người gửi</option>
+              {senders.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Tabs đơn giản */}
-          <div className="mt-3 flex items-center gap-2 border-b border-gray-200 pb-2">
-            <button
-              type="button"
-              className={`rounded-full px-3 py-1 text-xs ${allTab === "media"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-gray-600 hover:bg-gray-100"
-                }`}
-              onClick={() => setAllTab("media")}
+          {/* Ngày gửi - Native select */}
+          <div>
+            <select
+              value={datePreset}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDatePreset(v);
+                if (v !== "custom") setDateRange({});
+              }}
+              className="h-8 w-[140px] text-xs border border-gray-300 rounded-md px-2"
             >
-              Ảnh / Video ({mediaFiles.length})
-            </button>
-            <button
-              type="button"
-              className={`rounded-full px-3 py-1 text-xs ${allTab === "docs"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-gray-600 hover:bg-gray-100"
-                }`}
-              onClick={() => setAllTab("docs")}
-            >
-              Tài liệu ({docFiles.length})
-            </button>
+              <option value="all">Tất cả</option>
+              <option value="7">7 ngày gần đây</option>
+              <option value="15">15 ngày gần đây</option>
+              <option value="30">30 ngày gần đây</option>
+              <option value="custom">Tùy chỉnh…</option>
+            </select>
           </div>
 
-          <div className="mt-3 max-h-[70vh] overflow-y-auto">
-            {(() => {
-              let source =
-                allTab === "media" ? mediaFiles : docFiles;
+          {/* Custom date range using native date inputs */}
+          {datePreset === "custom" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateRange.from || ""}
+                onChange={(e) => setDateRange((r) => ({ ...r, from: e.target.value }))}
+                className="h-8 text-xs border border-gray-300 rounded-md px-2"
+                placeholder="Từ ngày"
+              />
+              <span className="text-xs text-gray-500">đến</span>
+              <input
+                type="date"
+                value={dateRange.to || ""}
+                onChange={(e) => setDateRange((r) => ({ ...r, to: e.target.value }))}
+                className="h-8 text-xs border border-gray-300 rounded-md px-2"
+                placeholder="Đến ngày"
+              />
+            </div>
+          )}
+        </div>
 
-              /** FILTER: Người gửi */
-              if (senderFilter !== "all") {
-                source = source.filter((f) =>
-                  messageList.find((m) => m.id === f.messageId)?.sender === senderFilter
-                );
-              }
+        {/* Tabs đơn giản */}
+        <div className="mt-3 flex items-center gap-2 border-b border-gray-200 pb-2">
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 text-xs ${allTab === "media"
+              ? "bg-emerald-50 text-emerald-700"
+              : "text-gray-600 hover:bg-gray-100"
+              }`}
+            onClick={() => setAllTab("media")}
+          >
+            Ảnh / Video ({mediaFiles.length})
+          </button>
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 text-xs ${allTab === "docs"
+              ? "bg-emerald-50 text-emerald-700"
+              : "text-gray-600 hover:bg-gray-100"
+              }`}
+            onClick={() => setAllTab("docs")}
+          >
+            Tài liệu ({docFiles.length})
+          </button>
+        </div>
 
+        <div className="mt-3 max-h-[60vh] overflow-y-auto">
+          {(() => {
+            let source =
+              allTab === "media" ? mediaFiles : docFiles;
 
-              if (source.length === 0) {
-                return (
-                  <div className="text-[12px] text-gray-400">
-                    Chưa có file nào trong nhóm chat cho tab này.
-                  </div>
-                );
-              }
+            /** FILTER: Người gửi */
+            if (senderFilter !== "all") {
+              source = source.filter((f) => f.senderName === senderFilter);
+            }
 
-              // group theo ngày (dùng dateLabel đã format)
-              const groups = source.reduce<
-                { date: string; items: Phase1AFileItem[] }[]
-              >((acc, f) => {
-                const key = f.dateLabel || "Khác";
-                const found = acc.find((g) => g.date === key);
-                if (found) {
-                  found.items.push(f);
-                } else {
-                  acc.push({ date: key, items: [f] });
+            /** FILTER: Ngày gửi */
+            if (datePreset !== "all" && datePreset !== "custom") {
+              const days = parseInt(datePreset, 10);
+              const cutoffDate = new Date();
+              cutoffDate.setDate(cutoffDate.getDate() - days);
+              
+              source = source.filter((f) => {
+                if (!f.createdAt) return false;
+                const fileDate = new Date(f.createdAt);
+                return fileDate >= cutoffDate;
+              });
+            } else if (datePreset === "custom" && (dateRange.from || dateRange.to)) {
+              source = source.filter((f) => {
+                if (!f.createdAt) return false;
+                const fileDate = new Date(f.createdAt);
+                
+                if (dateRange.from && dateRange.to) {
+                  const fromDate = new Date(dateRange.from);
+                  const toDate = new Date(dateRange.to);
+                  toDate.setHours(23, 59, 59, 999); // Include entire day
+                  return fileDate >= fromDate && fileDate <= toDate;
+                } else if (dateRange.from) {
+                  const fromDate = new Date(dateRange.from);
+                  return fileDate >= fromDate;
+                } else if (dateRange.to) {
+                  const toDate = new Date(dateRange.to);
+                  toDate.setHours(23, 59, 59, 999);
+                  return fileDate <= toDate;
                 }
-                return acc;
-              }, []);
+                return true;
+              });
+            }
 
+
+            if (source.length === 0) {
               return (
-                <div className="space-y-4">
-                  {groups.map((g) => (
-                    <div key={g.date}>
-                      <div className="mb-2 text-[11px] font-medium text-gray-500">
-                        {g.date}
-                      </div>
-
-                      {allTab === "media" ? (
-                        <div className="grid grid-cols-4 gap-3">
-                          {g.items.map((f) => (
-                            <div key={f.id}>
-                              {renderMediaTile(f)}
-                              <div className="mt-1 line-clamp-2 text-[11px] text-gray-700">
-                                {f.name}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {g.items.map(renderDocRow)}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="text-[12px] text-gray-400">
+                  Chưa có file nào trong nhóm chat cho tab này.
                 </div>
               );
-            })()}
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog preview đơn giản, view-only (không có nút download) */}
-      <Dialog
+            }
+
+            // group theo ngày (dùng dateLabel đã format)
+            const groups = source.reduce<
+              { date: string; items: Phase1AFileItem[] }[]
+            >((acc, f) => {
+              const key = f.dateLabel || "Khác";
+              const found = acc.find((g) => g.date === key);
+              if (found) {
+                found.items.push(f);
+              } else {
+                acc.push({ date: key, items: [f] });
+              }
+              return acc;
+            }, []);
+
+            return (
+              <div className="space-y-4">
+                {groups.map((g) => (
+                  <div key={g.date}>
+                    <div className="mb-2 text-[11px] font-medium text-gray-500">
+                      {g.date}
+                    </div>
+
+                    {allTab === "media" ? (
+                      <div className="grid grid-cols-4 gap-3">
+                        {g.items.map((f) => (
+                          <div key={f.id}>
+                            {renderMediaTile(f)}
+                            <div className="mt-1 line-clamp-2 text-[11px] text-gray-700">
+                              {f.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {g.items.map(renderDocRow)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      </SimpleModal>
+
+      {/* Modal preview đơn giản - Using React Portal instead of Radix Dialog */}
+      <SimpleModal
         open={!!previewFile}
-        onOpenChange={(open) =>
-          open ? null : handleClosePreview()
-        }
+        onClose={handleClosePreview}
+        title={previewFile?.name || "Xem trước"}
+        maxWidth="max-w-4xl"
       >
-        <DialogContent
-          className="max-w-4xl"
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              {previewFile?.name || "Xem trước"}
-            </DialogTitle>
-          </DialogHeader>
+        {previewFile && previewFile.kind === "image" && (
+          <BlobImage
+            fileId={previewFile.fileId}
+            fallbackUrl={previewFile.url}
+            endpoint="preview"
+            alt={previewFile.name}
+            className="w-full max-h-[70vh] object-contain rounded-lg"
+            draggable={false}
+          />
+        )}
 
-          {previewFile && previewFile.kind === "image" && (
-            // eslint-disable-next-line jsx-a11y/alt-text
-            <img
-              src={previewFile.url}
-              alt={previewFile.name}
-              className="w-full max-h-[70vh] object-contain rounded-lg"
-              draggable={false}
-            />
-          )}
+        {previewFile && previewFile.kind === "video" && (
+          <video
+            src={previewFile.url}
+            className="w-full max-h-[70vh] rounded-lg"
+            controls
+          />
+        )}
 
-          {previewFile && previewFile.kind === "video" && (
-            <video
-              src={previewFile.url}
-              className="w-full max-h-[70vh] rounded-lg"
-              controls
-            />
-          )}
+        {previewFile && previewFile.kind === "doc" && (
+          <div className="rounded-lg border border-dashed p-4 text-sm text-gray-500">
+            Xem trước tài liệu sẽ được tích hợp với viewer PDF/Office ở bước tiếp theo.
+          </div>
+        )}
+      </SimpleModal>
 
-          {previewFile && previewFile.kind === "doc" && (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-gray-500">
-              Xem trước tài liệu sẽ được tích hợp với viewer PDF/Office ở bước tiếp theo.
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      
     </div>
   );
 };

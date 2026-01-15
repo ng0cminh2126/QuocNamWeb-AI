@@ -54,15 +54,12 @@ export default function WordPreview({
     if (!data?.cssStyles) return;
 
     const styleId = `word-preview-styles-${fileId}`;
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
-    if (!styleElement) {
-      styleElement = document.createElement("style");
-      styleElement.id = styleId;
-      document.head.appendChild(styleElement);
-    }
+    // ✅ Skip if style already injected to prevent re-render loop
+    if (document.getElementById(styleId)) return;
 
-    // Inject Word styles + force transparent backgrounds to show watermark
+    const styleElement = document.createElement("style");
+    styleElement.id = styleId;
     styleElement.textContent = `
       ${data.cssStyles}
       
@@ -73,11 +70,14 @@ export default function WordPreview({
         background-color: transparent !important;
       }
     `;
+    document.head.appendChild(styleElement);
 
+    // Cleanup only when component unmounts
     return () => {
-      styleElement.remove();
+      const el = document.getElementById(styleId);
+      el?.remove();
     };
-  }, [data?.cssStyles, fileId]);
+  }, [fileId]); // ✅ Only depend on fileId, not data?.cssStyles
 
   return (
     <div className="flex h-full flex-col" data-testid="word-preview-container">
@@ -130,8 +130,15 @@ export default function WordPreview({
         {/* Success State */}
         {data && !isLoading && !isError && (
           <div
-            className="relative overflow-y-auto bg-white p-6"
-            style={watermarkStyles}
+            className="relative overflow-y-auto bg-white p-6 select-none"
+            style={{
+              ...watermarkStyles,
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              MozUserSelect: "none",
+              msUserSelect: "none",
+              pointerEvents: "none",
+            }}
             data-testid="word-preview-content"
           >
             {/* Document Content */}

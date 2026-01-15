@@ -93,7 +93,8 @@ const MobileTaskCard: React.FC<{
   onUpdateTaskChecklist?:  (taskId: string, next:  ChecklistItem[]) => void;
   onOpenTaskLog?: (taskId: string) => void;
   currentUserId?: string;
-}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist, onUpdateTaskChecklist, onOpenTaskLog, currentUserId }) => {
+  onClickTitle?: (sourceMessageId:  string) => void;
+}> = ({ t, members, viewMode, onChangeStatus, onReassign, onToggleChecklist, onUpdateTaskChecklist, onOpenTaskLog, currentUserId, onClickTitle }) => {
   const [showChecklist, setShowChecklist] = React.useState(false);
   const [showActions, setShowActions] = React. useState(false);
   
@@ -106,6 +107,8 @@ const MobileTaskCard: React.FC<{
   const total = t.checklist?. length ??  0;
   const doneCount = t.checklist?. filter((c) => c.done).length ?? 0;
   const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+  const canEditStructure = viewMode === "lead" && (t.status === "todo" || t.status === "in_progress");
 
   const assigneeName = members.find((m) => m.id === t.assigneeId)?.name ?? t.assigneeId;  
 
@@ -228,9 +231,37 @@ const MobileTaskCard: React.FC<{
         {/* Header:  Title + Status */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-800 line-clamp-2">
+            {/* UPDATED: Clickable Title */}
+            <a
+              href={t.sourceMessageId ? `#msg-${t.sourceMessageId}` : undefined}
+              onClick={(e) => {
+                if (!t.sourceMessageId) {
+                  e.preventDefault();
+                  return;
+                }
+                e.preventDefault();
+                onClickTitle?.(t.sourceMessageId);
+              }}
+              className={`
+                block w-full text-left
+                text-sm font-semibold leading-snug
+                line-clamp-2
+                transition-colors duration-200
+                ${t.sourceMessageId
+                          ? `
+                    text-gray-800 
+                    active:text-brand-600 
+                    active:underline
+                    active:decoration-brand-500
+                    cursor-pointer
+                  `
+                  : 'text-gray-400 no-underline'
+                }
+              `}
+              aria-disabled={!t.sourceMessageId}
+            >
               {truncateTitle(t.title || t.description, 80)}
-            </div>
+            </a>
           </div>
           <StatusBadge s={t.status} compact />
         </div>
@@ -313,7 +344,19 @@ const MobileTaskCard: React.FC<{
                 ) : (
                   <button
                     type="button"
-                    className="h-5 w-5 shrink-0 rounded-full border-2 border-emerald-300 bg-white active:bg-emerald-50"
+                    className="shrink-0 bg-white active:bg-emerald-50"
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          minWidth: '20px',
+                          minHeight: '20px',
+                          borderRadius: '50%',
+                          border: '2px solid rgb(110, 231, 183)', // emerald-300
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                     onClick={() => onToggleChecklist?.(t.id, c.id, true)}
                   />
                 )}
@@ -324,7 +367,7 @@ const MobileTaskCard: React.FC<{
                 </span>
 
                 {/* Edit/Delete buttons - ONLY for Leader + Todo */}
-                {viewMode === "lead" && t.status === "todo" && (
+                {canEditStructure && (
                   <div className="flex gap-1">
                     <button
                       onClick={() => {
@@ -351,7 +394,7 @@ const MobileTaskCard: React.FC<{
             ))}
 
             {/* Add New Item Button - ONLY for Leader + Todo */}
-            {viewMode === "lead" && t.status === "todo" && (
+            {canEditStructure && (
               <button
                 onClick={() => {
                   setEditingItem({ id: "new", label: "", done: false });
@@ -451,6 +494,7 @@ export const TabTaskMobile: React. FC<{
   // Checklist templates
   checklistTemplates?: ChecklistTemplateMap;
   checklistVariants?: ChecklistVariant[];
+  onOpenSourceMessage?: (messageId: string) => void;
 }> = ({
   open,
   onBack,
@@ -470,6 +514,7 @@ export const TabTaskMobile: React. FC<{
   taskLogs,
   checklistTemplates,
   checklistVariants,
+  onOpenSourceMessage,
 }) => {
   const [showFilterSheet, setShowFilterSheet] = React.useState(false);
   const [assigneeFilter, setAssigneeFilter] = React.useState<string>("all");
@@ -613,6 +658,13 @@ export const TabTaskMobile: React. FC<{
                           onUpdateTaskChecklist={onUpdateTaskChecklist}
                           onOpenTaskLog={onOpenTaskLog}
                           currentUserId={currentUserId}
+                          onClickTitle={(messageId) => {
+                            // Close mobile task panel
+                            onBack();
+
+                            // Trigger scroll in ChatMain
+                            onOpenSourceMessage?.(messageId);
+                          }}
                         />
                       ))}
                       {staffBuckets.inProgress.map((t) => (
@@ -627,6 +679,13 @@ export const TabTaskMobile: React. FC<{
                           onUpdateTaskChecklist={onUpdateTaskChecklist}
                           onOpenTaskLog={onOpenTaskLog}
                           currentUserId={currentUserId}
+                          onClickTitle={(messageId) => {
+                            // Close mobile task panel
+                            onBack();
+
+                            // Trigger scroll in ChatMain
+                            onOpenSourceMessage?.(messageId);
+                          }}
                         />
                       ))}
                     </>
@@ -665,6 +724,13 @@ export const TabTaskMobile: React. FC<{
                         onUpdateTaskChecklist={onUpdateTaskChecklist}
                         onOpenTaskLog={onOpenTaskLog}
                         currentUserId={currentUserId}
+                        onClickTitle={(messageId) => {
+                          // Close mobile task panel
+                          onBack();
+
+                          // Trigger scroll in ChatMain
+                          onOpenSourceMessage?.(messageId);
+                        }}
                       />
                     ))
                   )}
@@ -746,6 +812,13 @@ export const TabTaskMobile: React. FC<{
                         onUpdateTaskChecklist={onUpdateTaskChecklist}
                         onOpenTaskLog={onOpenTaskLog}
                         currentUserId={currentUserId}
+                        onClickTitle={(messageId) => {
+                          // Close mobile task panel
+                          onBack();
+
+                          // Trigger scroll in ChatMain
+                          onOpenSourceMessage?.(messageId);
+                        }}
                       />
                     ))}
                   </div>
@@ -777,6 +850,13 @@ export const TabTaskMobile: React. FC<{
                         onUpdateTaskChecklist={onUpdateTaskChecklist}
                         onOpenTaskLog={onOpenTaskLog}
                         currentUserId={currentUserId}
+                        onClickTitle={(messageId) => {
+                          // Close mobile task panel
+                          onBack();
+
+                          // Trigger scroll in ChatMain
+                          onOpenSourceMessage?.(messageId);
+                        }}
                       />
                     ))}
                   </div>
@@ -808,6 +888,13 @@ export const TabTaskMobile: React. FC<{
                         onUpdateTaskChecklist={onUpdateTaskChecklist}
                         onOpenTaskLog={onOpenTaskLog}
                         currentUserId={currentUserId}
+                        onClickTitle={(messageId) => {
+                          // Close mobile task panel
+                          onBack();
+
+                          // Trigger scroll in ChatMain
+                          onOpenSourceMessage?.(messageId);
+                        }}
                       />
                     ))}
                   </div>
@@ -839,6 +926,13 @@ export const TabTaskMobile: React. FC<{
                         onUpdateTaskChecklist={onUpdateTaskChecklist}
                         onOpenTaskLog={onOpenTaskLog}
                         currentUserId={currentUserId}
+                        onClickTitle={(messageId) => {
+                          // Close mobile task panel
+                          onBack();
+
+                          // Trigger scroll in ChatMain
+                          onOpenSourceMessage?.(messageId);
+                        }}
                       />
                     ))}
 

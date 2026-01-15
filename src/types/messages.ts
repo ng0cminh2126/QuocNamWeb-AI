@@ -114,6 +114,16 @@ export interface AttachmentDto {
   createdAt: string; // ISO datetime
 }
 
+// MessageAttachment - Used in UI components (Phase 2.1)
+// Extends AttachmentDto with URL for rendering
+export interface MessageAttachment {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  url: string; // Download/preview URL
+}
+
 // MentionInputDto - Used in REQUEST
 export interface MentionInputDto {
   userId: string; // UUID
@@ -174,13 +184,14 @@ export interface GetMessagesResponse {
   hasMore: boolean;
 }
 
-// API Request for POST message (Updated to match Swagger SendMessageRequest)
+// API Request for POST message (Updated to match Swagger SendMessageRequest v2.0)
+// Phase 2 Breaking Change: attachment → attachments[] to support batch upload
 export interface SendChatMessageRequest {
   conversationId: string; // Required - in request body
-  content: string | null; // Nullable - optional if attachment exists
+  content: string | null; // Nullable - optional if attachments exist
   parentMessageId?: string | null;
   mentions?: MentionInputDto[] | null;
-  attachment?: AttachmentInputDto | null; // SINGULAR - only 1 file per message
+  attachments?: AttachmentInputDto[] | null; // PLURAL - array of files (Phase 2)
 }
 
 // API Response for POST message (same as ChatMessage)
@@ -204,6 +215,26 @@ export function isFileMessage(msg: ChatMessage): boolean {
 
 export function isTaskMessage(msg: ChatMessage): boolean {
   return msg.contentType === "TASK";
+}
+
+// =============================================================
+// Task Link Types
+// =============================================================
+
+// Request for linking task to message (PATCH /api/messages/{id}/link-task)
+export interface LinkTaskToMessageRequest {
+  taskId: string;
+}
+
+// Response after linking task to message
+export interface LinkTaskToMessageResponse {
+  id: string;
+  taskId: string;
+  conversationId: string;
+  content: string;
+  contentType: ChatMessageContentType;
+  sender: ChatMessageSender;
+  createdAt: string;
 }
 
 // =============================================================

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 
-export const RightAccordion: React.FC<{ title: React.ReactNode; icon?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => {
+export const RightAccordion: React.FC<{ title: React.ReactNode; icon?: React.ReactNode; children: React.ReactNode, action?: React.ReactNode }> = ({ title, icon, children ,action}) => {
   const [open, setOpen] = useState(true);
   return (
     <div className="
@@ -15,8 +15,11 @@ export const RightAccordion: React.FC<{ title: React.ReactNode; icon?: React.Rea
           {icon}
           {title}
         </span>
-        <span className={`transition-transform ${open ? 'rotate-0' : '-rotate-90'}`}>
-          <ChevronDown size={14} />
+        <span className="flex items-center gap-2">
+          {action && <span onClick={(e) => e.stopPropagation()}>{action}</span>}
+          <span className={`transition-transform ${open ? 'rotate-0' : '-rotate-90'}`}>
+            <ChevronDown size={14} />
+          </span>
         </span>
       </button>
       {open && <div className="border-t border-emerald-50 p-3">{children}</div>}

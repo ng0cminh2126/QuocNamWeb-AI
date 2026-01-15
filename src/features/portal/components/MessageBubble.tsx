@@ -12,6 +12,7 @@ import {
   Paperclip,
   MessageSquarePlus,
   Pin,
+  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLongPress } from "@/lib/hooks/use-long-press";
@@ -32,6 +33,7 @@ interface MessageBubbleProps {
   isReceived?: boolean;
   receivedLabel?: string;
   onAssignFromMessage?: (msg: Message) => void;
+  onCreateTask?: (msg: Message) => void; // NEW: Open create task modal
   viewMode?: "lead" | "staff";
   onOpenTaskLog?: (taskId: string) => void;
   onOpenTaskLogMobile?: (taskId: string) => void;
@@ -47,7 +49,7 @@ interface MessageBubbleProps {
   onCreateTaskFromMessage?: (payload: {
     title: string;
     sourceMessageId: string;
-    assigneeId: string;
+    assignTo: string;
     checklistVariantId?: string;
     checklistVariantName?: string;
   }) => void;
@@ -86,6 +88,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isReceived,
   receivedLabel,
   onAssignFromMessage,
+  onCreateTask, // NEW: Create task callback
   viewMode,
   onOpenTaskLog,
   onOpenTaskLogMobile,
@@ -391,6 +394,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   {data.isPinned ? <StarOff size={14} /> : <Star size={14} />}
                 </button>
               )}
+              {/* NEW: Create Task Button - Only show if message doesn't have a linked task */}
+              {onCreateTask && !data.taskId && (
+                <button
+                  title="Create Task"
+                  className="p-1.5 hover:bg-emerald-50 rounded transition text-gray-500 hover:text-emerald-600"
+                  onClick={() => onCreateTask(data)}
+                  data-testid="create-task-button"
+                >
+                  <ListTodo className="w-4 h-4" />
+                </button>
+              )}
               {!data.taskId && viewMode === "lead" && (
                 <button title="Giao Task" className="p-1 hover:bg-brand-50 rounded" onClick={() => onAssignFromMessage?.(data)}>
                   <ClipboardPlus className="w-4 h-4 text-brand-600" />
@@ -401,7 +415,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <MessageSquarePlus className="w-4 h-4 text-emerald-600" />
                 </button>
               )}
-              {!isReceived && viewMode === "lead" && (
+              {!isReceived && !data.taskId && viewMode === "lead" && (
                 <button onClick={() => onReceiveInfo?.(data)} title="Tiếp nhận thông tin" className="p-1 rounded hover:bg-brand-50">
                   <Inbox className="w-4 h-4 text-brand-600" />
                 </button>
@@ -412,34 +426,84 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
 
       {data.taskId && taskLogs?.[data.taskId] && (
-        <div
-          className="mt-1 ml-10 cursor-pointer text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-1"
-          onClick={() => {
-            if (isMobileLayout && onOpenTaskLogMobile) {
-              onOpenTaskLogMobile(data.taskId!);
-            } else {
-              onOpenTaskLog?.(data.taskId!);
-            }
-          }}
-        >
-          <span className="text-emerald-600">📝 Nhật ký công việc</span>
+        <div className={cn(
+          "relative mt-1",
+          data.isMine ? "mr-10" : "ml-10"
+        )}>
+          {/* Thread curve indicator (Google Chat style) */}
+          {data.isMine ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              className="absolute -right-6 top-0 text-gray-300 -mt-1"
+              aria-hidden="true"
+            >
+              <path
+                stroke="currentColor"
+                strokeWidth="1.5"
+                d="M5 15C10.523 15 15 10.523 15 5" // 👈 Mirrored path
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              className="absolute -left-6 top-0 text-gray-300 -mt-1"
+              aria-hidden="true"
+            >
+              <path
+                stroke="currentColor"
+                strokeWidth="1.5"
+                d="M15 15C9.477 15 5 10.523 5 5"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+          <div
+            className={cn("cursor-pointer text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-1", data.isMine ? "justify-end" : "justify-start")}
+            onClick={() => {
+              if (isMobileLayout && onOpenTaskLogMobile) {
+                onOpenTaskLogMobile(data.taskId!);
+              } else {
+                onOpenTaskLog?.(data.taskId!);
+              }
+            }}
+          >
+            <span className="text-emerald-600">📝 Nhật ký công việc</span>
 
-          <span className="mx-1">·</span>
+            <span className="mx-1">·</span>
 
-          <span>{taskLogs[data.taskId].length} phản hồi</span>
+            <span>
+              {taskLogs?.[data.taskId]?.length ?? 0} phản hồi
+            </span>
 
-          {(() => {
-            const last = taskLogs[data.taskId][taskLogs[data.taskId].length - 1];
-            if (!last) return null;
-            const t = new Date(last.time);
-            const timeStr = t.toLocaleDateString("vi-VN", { weekday: "long" });
-            return (
-              <>
-                <span className="mx-1">·</span>
-                <span>cập nhật cuối: {timeStr}</span>
-              </>
-            );
-          })()}
+            {(() => {
+              const logs = taskLogs?.[data.taskId];
+
+              // Chỉ hiển thị "cập nhật cuối" khi có log
+              if (!logs || logs.length === 0) return null;
+
+              const last = logs[logs.length - 1];
+              const t = new Date(last.time);
+              const timeStr = t.toLocaleDateString("vi-VN", { weekday: "long" });
+
+              return (
+                <>
+                  <span className="mx-1">·</span>
+                  <span>cập nhật cuối:  {timeStr}</span>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
 
@@ -489,6 +553,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </button>
                 )}
 
+                {/* Trao đổi về công việc - CHỈ hiển thị khi ĐÃ có taskId */}
+                {data.taskId && onOpenTaskLogMobile && (
+                  <button
+                    className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 hover:bg-brand-50 transition"
+                    onClick={() => {
+                      setShowOverlay(false);
+                      onOpenTaskLogMobile(data.taskId!);
+                    }}
+                  >
+                    <MessageSquarePlus className="h-5 w-5 text-emerald-600" />
+                    <span className="text-[12px] text-gray-800">Nhật ký</span>
+                  </button>
+                )}
+
+                {/* Pin/Unpin */}
                 {!disableExtraActions && (
                   <button className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 hover:bg-brand-50 transition"
                           onClick={() => { setShowOverlay(false); onPin?.(data); }}>
@@ -497,7 +576,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </button>
                 )}
 
-                {!isReceived && (
+                {!isReceived && !data.taskId && (
                   <button className="flex flex-col items-center gap-1 rounded-xl px-2 py-2 hover:bg-brand-50 transition"
                           onClick={() => { setShowOverlay(false); onReceiveInfo?.(data); }}>
                     <Inbox className="h-5 w-5 text-green-600" />

@@ -36,10 +36,11 @@ export default function FilePreview({
       aria-label="Selected files"
     >
       {files.map((selectedFile) => {
-        const { file, id } = selectedFile;
+        const { file, id, preview } = selectedFile;
         const icon = getFileIcon(file.type);
         const displayName = truncateFileName(file.name);
         const size = formatFileSize(file.size);
+        const isImage = file.type.startsWith("image/");
 
         // Phase 2: Get upload progress if available
         const progress = uploadProgress?.get(id);
@@ -47,21 +48,30 @@ export default function FilePreview({
         const isSuccess = progress?.status === "success";
         const isFailed = progress?.status === "error";
 
+        // Unified card layout for all files (image preview or icon)
         return (
           <div
             key={id}
-            className="group relative flex flex-col gap-1 px-3 py-2 bg-background border border-border rounded-lg hover:border-primary/50 transition-colors min-w-[200px]"
+            className="group relative flex flex-col gap-2 p-2 bg-background border border-border rounded-lg hover:border-primary/50 transition-colors w-full max-w-[200px]"
             data-testid={`file-preview-item-${id}`}
             role="listitem"
           >
             <div className="flex items-center gap-2">
-              {/* File Icon */}
-              <span className="text-xl" aria-hidden="true">
-                {icon}
-              </span>
+              {/* Image preview or File Icon */}
+              {isImage ? (
+                <img
+                  src={preview}
+                  alt={file.name}
+                  className="w-10 h-10 object-cover rounded border border-border shrink-0"
+                />
+              ) : (
+                <span className="text-xl" aria-hidden="true">
+                  {icon}
+                </span>
+              )}
 
               {/* File Info */}
-              <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                 <span
                   className="text-sm font-medium text-foreground truncate"
                   title={file.name}
@@ -86,7 +96,7 @@ export default function FilePreview({
                 </Button>
               )}
 
-              {/* Retry button for failed uploads (Decision #3) */}
+              {/* Retry button for failed uploads */}
               {isFailed && onRetry && (
                 <Button
                   type="button"
@@ -102,13 +112,12 @@ export default function FilePreview({
               )}
             </div>
 
-            {/* Phase 2: Progress bar (Decision #2: Inline progress) - Hidden on error */}
+            {/* Progress bar */}
             {progress && !isFailed && (
               <div
                 className="flex items-center gap-2"
                 data-testid={`file-upload-progress-${id}`}
               >
-                {/* Progress bar */}
                 <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
@@ -118,8 +127,6 @@ export default function FilePreview({
                     data-testid={`file-upload-progress-bar-${id}`}
                   />
                 </div>
-
-                {/* Progress text */}
                 <span className="text-xs text-muted-foreground shrink-0">
                   {isSuccess ? "✓" : `${Math.round(progress.progress)}%`}
                 </span>

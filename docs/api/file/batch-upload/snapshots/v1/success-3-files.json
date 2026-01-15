@@ -1,0 +1,45 @@
+{
+  "_meta": {
+    "capturedFrom": "Swagger Schema",
+    "note": "Template based on actual API schema - Replace with real response",
+    "capturedAt": "2026-01-14T11:30:00Z",
+    "environment": "dev"
+  },
+  "totalFiles": 3,
+  "successCount": 3,
+  "failedCount": 0,
+  "results": [
+    {
+      "index": 0,
+      "success": true,
+      "fileId": "f7b3c4a1-2d5e-4f8a-9b1c-3e4d5f6a7b8c",
+      "fileName": "meeting-notes.pdf",
+      "contentType": "application/pdf",
+      "size": 2621440,
+      "storagePath": "/files/2026/01/f7b3c4a1-2d5e-4f8a-9b1c-3e4d5f6a7b8c.pdf",
+      "error": null
+    },
+    {
+      "index": 1,
+      "success": true,
+      "fileId": "a8c2d3e4-5f6g-7h8i-9j0k-1l2m3n4o5p6q",
+      "fileName": "photo1.jpg",
+      "contentType": "image/jpeg",
+      "size": 3984128,
+      "storagePath": "/files/2026/01/a8c2d3e4-5f6g-7h8i-9j0k-1l2m3n4o5p6q.jpg",
+      "error": null
+    },
+    {
+      "index": 2,
+      "success": true,
+      "fileId": "b9d3e4f5-6g7h-8i9j-0k1l-2m3n4o5p6q7r",
+      "fileName": "data.xlsx",
+      "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "size": 1258291,
+      "storagePath": "/files/2026/01/b9d3e4f5-6g7h-8i9j-0k1l-2m3n4o5p6q7r.xlsx",
+      "error": null
+    }
+  ],
+  "allSuccess": true,
+  "partialSuccess": false
+}

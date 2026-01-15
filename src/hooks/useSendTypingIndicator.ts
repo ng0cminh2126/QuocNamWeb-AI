@@ -1,7 +1,7 @@
 // useSendTypingIndicator hook - Send typing indicator with debounce
 
-import { useCallback, useRef } from 'react';
-import { chatHub } from '@/lib/signalr';
+import { useCallback, useRef } from "react";
+import { chatHub } from "@/lib/signalr";
 
 interface UseSendTypingIndicatorOptions {
   conversationId: string;
@@ -16,7 +16,9 @@ export function useSendTypingIndicator({
   conversationId,
   debounceMs = 500,
 }: UseSendTypingIndicatorOptions) {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
   const isTypingRef = useRef(false);
 
   const sendTyping = useCallback(

@@ -1,8 +1,14 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { setAccessToken, removeAccessToken, clearAuthStorage } from '@/lib/auth/tokenStorage';
-import { getTokenExpiry } from '@/lib/auth/jwt';
-import type { LoginApiUser } from '@/types/auth';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import {
+  setAccessToken,
+  removeAccessToken,
+  clearAuthStorage,
+} from "@/lib/auth/tokenStorage";
+import { getTokenExpiry } from "@/lib/auth/jwt";
+import type { LoginApiUser } from "@/types/auth";
+import { queryClient } from "@/lib/queryClient";
+import { clearSelectedConversation } from "@/utils/storage";
 
 // Auth user type (from login API)
 export interface AuthUser {
@@ -45,6 +51,14 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       loginSuccess: (apiUser, accessToken) => {
+        // ✅ Clear previous user's chat state when logging in as different user
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser && currentUser.id !== apiUser.id) {
+          // Different user logging in - clear chat data
+          queryClient.clear();
+          clearSelectedConversation();
+        }
+
         // Store token in localStorage
         setAccessToken(accessToken);
 
@@ -68,10 +82,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        // Clear all storage
+        // ✅ IMPORTANT: Clear storage FIRST, then update state
+        // This prevents Zustand persist from restoring old data
         clearAuthStorage();
         removeAccessToken();
 
+        // ✅ Clear TanStack Query cache to prevent data leakage between users
+        queryClient.clear();
+
+        // Then update Zustand state
         set({
           user: null,
           accessToken: null,
@@ -79,11 +98,22 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isLoading: false,
         });
+
+        // ✅ Clear again after set() to override Zustand persist auto-save
+        // Use setTimeout to ensure persistence middleware has finished
+        setTimeout(() => {
+          clearAuthStorage();
+          removeAccessToken();
+        }, 100);
       },
 
       clearAuth: () => {
+        // ✅ Same order: Clear storage first
         clearAuthStorage();
         removeAccessToken();
+
+        // ✅ Clear TanStack Query cache
+        queryClient.clear();
 
         set({
           user: null,
@@ -92,6 +122,12 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           isLoading: false,
         });
+
+        // ✅ Clear again after set()
+        setTimeout(() => {
+          clearAuthStorage();
+          removeAccessToken();
+        }, 100);
       },
 
       setLoading: (loading) =>
@@ -100,7 +136,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,

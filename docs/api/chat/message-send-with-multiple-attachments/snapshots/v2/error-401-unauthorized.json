@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "capturedFrom": "Swagger Schema",
+    "note": "Template based on actual API schema - Replace with real response",
+    "capturedAt": "2026-01-14T11:37:00Z",
+    "environment": "dev",
+    "testCase": "Missing or invalid authorization token"
+  },
+  "type": "https://tools.ietf.org/html/rfc7235#section-3.1",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Authorization header is missing or token is invalid"
+}

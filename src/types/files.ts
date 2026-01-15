@@ -80,7 +80,7 @@ export interface FileFolder {
   parentId?: ID;
   groupId: ID;
   fileCount: number;
-  createdById: ID;
+  assignFrom: ID;
   createdAt: string;
 }
 
@@ -183,6 +183,47 @@ export interface UploadFileResult {
   contentType: string;
   /** File size in bytes */
   size: number;
+}
+
+/**
+ * Phase 2: Batch upload result from Vega File API
+ * Response from POST /api/Files/batch endpoint
+ */
+export interface BatchUploadResult {
+  /** Total number of files in the batch */
+  totalFiles: number;
+  /** Number of successfully uploaded files */
+  successCount: number;
+  /** Number of failed uploads */
+  failedCount: number;
+  /** Individual results for each file */
+  results: BatchUploadItemResult[];
+  /** True if all files succeeded */
+  allSuccess: boolean;
+  /** True if some (but not all) files succeeded */
+  partialSuccess: boolean;
+}
+
+/**
+ * Phase 2: Individual file result in batch upload
+ */
+export interface BatchUploadItemResult {
+  /** Index of file in the batch (0-based) */
+  index: number;
+  /** Whether this file uploaded successfully */
+  success: boolean;
+  /** Server-assigned file ID (only if success) */
+  fileId?: string;
+  /** Original filename */
+  fileName: string | null;
+  /** MIME type */
+  contentType: string | null;
+  /** File size in bytes (only if success) */
+  size?: number;
+  /** Storage path (only if success) */
+  storagePath: string | null;
+  /** Error message (only if failed) */
+  error: string | null;
 }
 
 /**

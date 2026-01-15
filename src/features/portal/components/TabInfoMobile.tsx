@@ -34,6 +34,9 @@ export const TabInfoMobile: React. FC<{
   allMediaFiles?: Phase1AFileItem[];
   allDocFiles?: Phase1AFileItem[];
   allSenders?: string[];
+  
+  // Messages from chat to extract files from
+  messages?: any[];
 }> = ({
   open,
   onBack,
@@ -48,6 +51,7 @@ export const TabInfoMobile: React. FC<{
   allMediaFiles = [],
   allDocFiles = [],
   allSenders = [],
+  messages = [],
 }) => {
   const [showAllFiles, setShowAllFiles] = React.useState(false);
   const [allFilesTab, setAllFilesTab] = React.useState<"media" | "docs">("media");
@@ -97,6 +101,7 @@ export const TabInfoMobile: React. FC<{
                 setAllFilesTab(mode);
                 setShowAllFiles(true);
               }}
+              messages={messages}
             />
           </MobileAccordion>
 
@@ -116,6 +121,7 @@ export const TabInfoMobile: React. FC<{
                 setAllFilesTab(mode);
                 setShowAllFiles(true);
               }}
+              messages={messages}
             />
           </MobileAccordion>
 

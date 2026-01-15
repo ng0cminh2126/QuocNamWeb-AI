@@ -1,5 +1,5 @@
 import { fileApiClient } from "./fileClient";
-import type { UploadFileResult } from "@/types/files";
+import type { UploadFileResult, BatchUploadResult } from "@/types/files";
 
 /**
  * Parameters for uploading a file
@@ -65,6 +65,85 @@ export async function uploadFile(
       onUploadProgress: onUploadProgress as any,
     }
   );
+
+  return response.data;
+}
+
+/**
+ * Phase 2: Upload multiple files in a batch
+ *
+ * @param files Array of files to upload (2-10 files)
+ * @param params Optional parameters for batch upload
+ * @returns Batch upload result with individual results per file
+ * @throws Error if validation fails or upload fails
+ *
+ * @example
+ * ```typescript
+ * const result = await uploadFilesBatch(selectedFiles, {
+ *   sourceModule: 1, // Chat
+ *   sourceEntityId: conversationId
+ * });
+ *
+ * if (result.allSuccess) {
+ *   console.log('All files uploaded successfully');
+ * } else if (result.partialSuccess) {
+ *   console.log(`${result.successCount}/${result.totalFiles} files uploaded`);
+ *   const failed = result.results.filter(r => !r.success);
+ *   console.error('Failed files:', failed);
+ * }
+ * ```
+ */
+export async function uploadFilesBatch(
+  files: File[],
+  params?: {
+    sourceModule?: number;
+    sourceEntityId?: string;
+  }
+): Promise<BatchUploadResult> {
+  // Validation
+  if (!files || files.length === 0) {
+    throw new Error("No files provided for batch upload");
+  }
+
+  if (files.length === 1) {
+    throw new Error(
+      "Use single upload API (uploadFile) for 1 file. Batch upload requires 2-10 files."
+    );
+  }
+
+  if (files.length > 10) {
+    throw new Error(
+      `Maximum 10 files allowed per batch. Got ${files.length} files.`
+    );
+  }
+
+  // Create FormData with multiple files
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  // Build query params
+  const queryParams = new URLSearchParams();
+  if (params?.sourceModule !== undefined) {
+    queryParams.append("sourceModule", params.sourceModule.toString());
+  }
+  if (params?.sourceEntityId) {
+    queryParams.append("sourceEntityId", params.sourceEntityId);
+  }
+
+  // Upload batch
+  const queryString = queryParams.toString();
+  const url = queryString
+    ? `/api/Files/batch?${queryString}`
+    : "/api/Files/batch";
+
+  const response = await fileApiClient.post<BatchUploadResult>(url, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    timeout: 60000, // 60s timeout for batch upload
+  });
 
   return response.data;
 }

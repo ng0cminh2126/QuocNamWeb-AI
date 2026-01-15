@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { MobileTaskLogScreen } from "./MobileTaskLogScreen";
+import { getCurrentUserIdSync } from "@/utils/getCurrentUser";
 import type { Task, Message, TaskLogMessage } from "../types";
 import { Button } from "@/components/ui/button";
 
 // Mock data for demonstration
+const CURRENT_USER_ID = getCurrentUserIdSync();
+const CURRENT_USER_NAME = CURRENT_USER_ID === "u_thanh_truc" ? "Thanh Trúc" : CURRENT_USER_ID.replace("u_", "").replace(/_/g, " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
 const mockTask: Task = {
   id: "task_001",
   groupId: "grp_vh_kho",
@@ -11,19 +15,21 @@ const mockTask: Task = {
   workTypeName: "Nhận hàng",
   sourceMessageId: "msg_123",
   title: "Kiểm tra biên bản nhận hàng đợt 2",
-  assigneeId: "u_thu_an",
-  assignedById: "u_thanh_truc",
-  status: "in_progress",
-  priority: "high",
+  assignTo: "u_thu_an",
+  assignFrom: CURRENT_USER_ID,
+  status: { id: "2", code: "doing", label: "Đang làm", level: 2, color: "#ffa500" },
+  priority: { id: "1", code: "high", label: "Cao", level: 3, color: "#ff0000" },
   createdAt: "2025-11-12T12:12:00Z",
   updatedAt: "2025-11-12T14:30:00Z",
+  checklist: [],
+  history: [],
 };
 
 const mockSourceMessage: Message = {
   id: "msg_123",
   groupId: "grp_vh_kho",
-  senderId: "u_thanh_truc",
-  sender: "Thanh Trúc",
+  senderId: CURRENT_USER_ID,
+  sender: CURRENT_USER_NAME,
   type: "text",
   content: "Kiểm tra biên bản nhận hàng đợt 2",
   time: "12:12",
@@ -45,8 +51,8 @@ const mockTaskLogMessages: TaskLogMessage[] = [
   {
     id: "log_002",
     taskId: "task_001",
-    senderId: "u_thanh_truc",
-    sender: "Thanh Trúc",
+    senderId: CURRENT_USER_ID,
+    sender: CURRENT_USER_NAME,
     type: "text",
     content: "Nhớ đối chiếu với số lượng thực tế nhé.",
     time: "12:20",
@@ -65,8 +71,8 @@ const mockTaskLogMessages: TaskLogMessage[] = [
   {
     id: "log_004",
     taskId: "task_001",
-    senderId: "u_thanh_truc",
-    sender: "Thanh Trúc",
+    senderId: CURRENT_USER_ID,
+    sender: CURRENT_USER_NAME,
     type: "text",
     content: "Các mục nào cần xác nhận? Cho mình biết để hỗ trợ.",
     time: "14:00",
@@ -85,7 +91,7 @@ const mockTaskLogMessages: TaskLogMessage[] = [
 ];
 
 const mockMembers = [
-  { id: "u_thanh_truc", name: "Thanh Trúc" },
+  { id: CURRENT_USER_ID, name: CURRENT_USER_NAME },
   { id: "u_thu_an", name: "Thu An" },
   { id: "u_diem_chi", name: "Diễm Chi" },
 ];

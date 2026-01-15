@@ -2,6 +2,10 @@ import React from "react";
 import { ChecklistTemplateItem, ChecklistVariant } from "../types";
 import { Plus, X as XIcon, Trash } from "lucide-react";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { useChecklistTemplates } from "@/hooks/queries/useChecklistTemplates";
+import { transformTemplateItems } from "@/utils/checklistTemplateTransform";
+import { useUpdateChecklistTemplate } from "@/hooks/mutations/useTaskMutations";
+import type { CheckListTemplateResponse } from "@/types/tasks_api";
 
 type Props = {
   open: boolean;
@@ -28,6 +32,17 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   activeVariantId,
   onChangeVariant,
 }) => {
+  // Fetch templates from API
+  const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
+  
+  // Update template mutation
+  const updateTemplateMutation = useUpdateChecklistTemplate();
+  
+  // State for selected API template
+  const [selectedApiTemplateId, setSelectedApiTemplateId] = React.useState<string>("");
+  const [selectedTemplateName, setSelectedTemplateName] = React.useState<string>("");
+  const [selectedTemplateDescription, setSelectedTemplateDescription] = React.useState<string>("");
+  
   const [items, setItems] = React.useState<ChecklistTemplateItem[]>(template);
   const inputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const newItemRef = React.useRef<HTMLInputElement | null>(null);
@@ -51,6 +66,18 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   React.useEffect(() => {
     setItems(template);
   }, [template]);
+  
+  // Load template when API template is selected
+  const handleLoadApiTemplate = (templateId: string) => {
+    setSelectedApiTemplateId(templateId);
+    const selectedTemplate = apiTemplates?.find((t: CheckListTemplateResponse) => t.id === templateId);
+    if (selectedTemplate) {
+      const transformed = transformTemplateItems(selectedTemplate);
+      setItems(transformed);
+      setSelectedTemplateName(selectedTemplate.name);
+      setSelectedTemplateDescription(selectedTemplate.description || "");
+    }
+  };
 
   const update = (id: string, label: string) => {
     setItems((prev) =>
@@ -81,9 +108,31 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   };
 
 
-  const save = () => {
-    onChange(items);
-    onClose();
+  const save = async () => {
+    // If a template is selected from API, update it via API
+    if (selectedApiTemplateId && selectedApiTemplateId !== "new") {
+      try {
+        const itemLabels = items.map(item => item.label).filter(label => label.trim() !== "");
+        
+        await updateTemplateMutation.mutateAsync({
+          templateId: selectedApiTemplateId,
+          name: selectedTemplateName,
+          description: selectedTemplateDescription || null,
+          items: itemLabels.length > 0 ? itemLabels : null,
+        });
+        
+        // Notify parent and close
+        onChange(items);
+        onClose();
+      } catch (error) {
+        console.error("Failed to update template:", error);
+        // Could show a toast notification here
+      }
+    } else {
+      // Just update local state if no API template is selected
+      onChange(items);
+      onClose();
+    }
   };
 
   if (!open) return null;  
@@ -124,6 +173,41 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
             </button>
           </div>
 
+          {/* Template Selection Section */}
+          <div className="mt-4">
+            {/* Select from existing templates */}
+            <div>
+              <label className="text-[11px] font-medium text-gray-600 uppercase tracking-wide">
+                Chọn Template Để Chỉnh Sửa
+              </label>
+              <div className="mt-1">
+                <Select
+                  value={selectedApiTemplateId}
+                  onValueChange={handleLoadApiTemplate}
+                  disabled={templatesLoading}
+                >
+                  <SelectTrigger className="w-full h-8 text-xs rounded-md border border-gray-300 bg-white px-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
+                    <SelectValue placeholder={templatesLoading ? "Đang tải..." : "Chọn template để chỉnh sửa..."} />
+                  </SelectTrigger>
+
+                  <SelectContent position="popper" className="z-[9999]">
+                    {apiTemplates && apiTemplates.length > 0 ? (
+                      apiTemplates.map((t: CheckListTemplateResponse) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name || `Template ${t.id.slice(0, 8)}`}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-xs text-gray-500">
+                        Chưa có template nào
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {/* Dropdown – Dạng checklist */}
           {checklistVariants && checklistVariants.length > 0 && (
             <div className="mt-4">
@@ -158,94 +242,84 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-auto px-4 pt-5 pb-2">
-          <div className="space-y-2">
-            {items.map((it) => (
-              <div
-                key={it.id}
-                className="
-                  group
-                  flex items-center justify-between
-                  rounded-md border border-gray-200 bg-white
-                  hover:bg-emerald-50/40 transition-colors
-                  px-3 py-1.5
-                  relative z-0 overflow-visible
-                  min-w-full
-                "
-              >
-                <input
-                  ref={(el) => {
-                    // nếu là item cuối thì gán ref
-                    if (items[items.length - 1]?.id === it.id) {
-                      newItemRef.current = el;
-                    }
-                  }}
+          {items.length > 0 ? (
+            <div className="space-y-2">
+              {items.map((it) => (
+                <div
+                  key={it.id}
                   className="
-                    flex-grow bg-transparent border-none px-0
-                    focus:outline-none focus:ring-0
-                    text-[12px] text-gray-800 placeholder:text-gray-400 min-w-0                  
+                    group
+                    flex items-center justify-between
+                    rounded-md border border-gray-200 bg-white
+                    hover:bg-emerald-50/40 transition-colors
+                    px-3 py-1.5
+                    relative z-0 overflow-visible
+                    min-w-full
                   "
-                  value={it.label}
-                  onChange={(e) => update(it.id, e.target.value)}
-                  placeholder="Tên mục..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const isLast = items[items.length - 1]?.id === it.id;
-                      if (isLast) {
-                        const newId = "tpl_" + Date.now().toString(36);
-
-                        setItems((prev) => [
-                          ...prev,
-                          { id: newId, label: "" },
-                        ]);
-
-                        // báo rằng item mới cần được focus
-                        requestAnimationFrame(() => {
-                          if (newItemRef.current) {
-                            newItemRef.current.focus();
-                          }
-                        });
+                >
+                  <input
+                    ref={(el) => {
+                      // nếu là item cuối thì gán ref
+                      if (items[items.length - 1]?.id === it.id) {
+                        newItemRef.current = el;
                       }
-                    }
-                  }}
-                />
-
-                <div className="relative group shrink-0">
-                  <button
-                    onClick={() => remove(it.id)}
+                    }}
                     className="
-                      shrink-0
-                      opacity-0 group-hover:opacity-100
-                      text-gray-400 hover:text-rose-500
-                      p-1 rounded-full
-                      transition
+                      flex-grow bg-transparent border-none px-0
+                      focus:outline-none focus:ring-0
+                      text-[12px] text-gray-800 placeholder:text-gray-400 min-w-0                  
                     "
-                    title="Xoá mục"
-                  >
-                    <Trash className="h-3 w-3" />
-                  </button>
+                    value={it.label}
+                    onChange={(e) => update(it.id, e.target.value)}
+                    placeholder="Tên mục..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const isLast = items[items.length - 1]?.id === it.id;
+                        if (isLast) {
+                          const newId = "tpl_" + Date.now().toString(36);
 
-                  {/* Tooltip */}
-                  {/* <div
-                    className="
-                      absolute right-0 top-full mt-1
-                      px-2 py-0.5
-                      text-[11px] text-white
-                      bg-black/80 rounded-md shadow
-                      opacity-0 group-hover:opacity-100
-                      pointer-events-none
-                      transition-opacity
-                      whitespace-nowrap
-                      z-[50]
-                    "
-                  >
-                    Xoá mục
-                  </div> */}
+                          setItems((prev) => [
+                            ...prev,
+                            { id: newId, label: "" },
+                          ]);
+
+                          // báo rằng item mới cần được focus
+                          requestAnimationFrame(() => {
+                            if (newItemRef.current) {
+                              newItemRef.current.focus();
+                            }
+                          });
+                        }
+                      }
+                    }}
+                  />
+
+                  <div className="relative group shrink-0">
+                    <button
+                      onClick={() => remove(it.id)}
+                      className="
+                        shrink-0
+                        opacity-0 group-hover:opacity-100
+                        text-gray-400 hover:text-rose-500
+                        p-1 rounded-full
+                        transition
+                      "
+                      title="Xoá mục"
+                    >
+                      <Trash className="h-3 h-3" />
+                    </button>
+                  </div>
+
                 </div>
-
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-sm">Chưa có mục nào</p>
+              <p className="text-xs mt-1">Chọn template từ danh sách hoặc nhấn "Thêm mục" để bắt đầu</p>
+            </div>
+          )}
 
           <button
             onClick={add}
@@ -272,9 +346,11 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
 
             <button
               onClick={save}
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 shadow-sm"
+              disabled={items.length === 0 || updateTemplateMutation.isPending || !selectedApiTemplateId}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 shadow-sm flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Lưu
+              <Save className="w-3 h-3" />
+              {updateTemplateMutation.isPending ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>

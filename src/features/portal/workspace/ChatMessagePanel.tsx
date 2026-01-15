@@ -56,6 +56,7 @@ import { TabTaskMobile } from "../components/TabTaskMobile";
 import { DefaultChecklistMobile } from "../components/DefaultChecklistMobile";
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
 import type { SendChatMessageRequest } from "@/types/messages";
+import { useCreateTaskStore } from "@/stores/createTaskStore";
 
 type ViewMode = "lead" | "staff";
 
@@ -177,14 +178,14 @@ export const ChatMessagePanel: React.FC<{
   onCreateTaskFromMessage?: (payload: {
     title: string;
     sourceMessageId: string;
-    assigneeId: string;
+    assignTo: string;
     checklistVariantId?: string;
     checklistVariantName?: string;
   }) => void;
 
   // Task management callbacks
   onChangeTaskStatus?: (id: string, next: Task["status"]) => void;
-  onReassignTask?: (id: string, assigneeId: string) => void;
+  onReassignTask?: (id: string, assignTo: string) => void;
   onToggleChecklist?: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
 
@@ -253,6 +254,9 @@ export const ChatMessagePanel: React.FC<{
   const [inputValue, setInputValue] = React.useState("");
   const [inlineToast, setInlineToast] = React.useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Create task store for opening modal
+  const openCreateTaskModal = useCreateTaskStore((state) => state.openModal);
 
   // Mobile task log screen state
   const [mobileTaskLogOpen, setMobileTaskLogOpen] = React.useState(false);
@@ -360,6 +364,20 @@ export const ChatMessagePanel: React.FC<{
       setTab("order");
     },
     [onReceiveInfo, setTab]
+  );
+
+  // NEW: Handle create task from message
+  const handleCreateTask = useCallback(
+    (msg: Message) => {
+      if (!selectedChat?.id) return;
+      
+      openCreateTaskModal({
+        messageId: msg.id,
+        messageContent: msg.content || msg.fileInfo?.name || '',
+        conversationId: selectedChat.id,
+      });
+    },
+    [selectedChat, openCreateTaskModal]
   );
 
   useEffect(() => {
@@ -681,6 +699,7 @@ export const ChatMessagePanel: React.FC<{
                       `> ${m.type === "text" ? m.content : "[Đính kèm]"}\n`
                   )
                 }
+                onCreateTask={handleCreateTask}
                 onOpenTaskLog={(taskId) => onOpenTaskLog?.(taskId)}
                 onOpenTaskLogMobile={(taskId) => {
                   setMobileTaskLogId(taskId);

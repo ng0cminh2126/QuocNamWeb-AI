@@ -4,12 +4,12 @@
  */
 
 import React from "react";
-import { Pin, Star, StarOff, RefreshCw } from "lucide-react";
+import { Pin, Star, StarOff, RefreshCw, ClipboardPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FileIcon from "@/components/FileIcon";
 import MessageImage from "@/features/portal/workspace/MessageImage";
 import { MessageStatusIndicator } from "@/components/MessageStatusIndicator";
-import type { ChatMessage } from "@/types/messages";
+import type { ChatMessage, AttachmentDto } from "@/types/messages";
 
 /**
  * Format file size from bytes to human-readable format
@@ -55,6 +55,10 @@ export interface MessageBubbleSimpleProps {
   isOwn: boolean;
   formatTime: (dateStr: string) => string;
   onFilePreviewClick?: (fileId: string, fileName: string) => void;
+  onImageClick?: (
+    images: { fileId: string; fileName: string }[],
+    initialIndex: number
+  ) => void; // Phase 2.1: Gallery mode navigation
   onTogglePin?: (messageId: string, isPinned: boolean) => void;
   onToggleStar?: (messageId: string, isStarred: boolean) => void;
   onRetry?: (messageId: string) => void; // NEW: Retry failed message
@@ -62,6 +66,7 @@ export interface MessageBubbleSimpleProps {
   isFirstInGroup?: boolean;
   isMiddleInGroup?: boolean;
   isLastInGroup?: boolean;
+  onCreateTask?: (messageId: string) => void;
 }
 
 export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
@@ -71,10 +76,12 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
   onTogglePin,
   onToggleStar,
   onFilePreviewClick,
+  onImageClick,
   onRetry,
   isFirstInGroup = true,
   isMiddleInGroup = false,
   isLastInGroup = true,
+  onCreateTask
 }) => {
   // Phase 4: Dynamic border-radius based on grouping position
   const radiusBySide = isOwn
@@ -222,6 +229,16 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
                 {message.isStarred ? <StarOff size={14} /> : <Star size={14} />}
               </button>
             )}
+            {onCreateTask && !message.linkedTaskId && (
+              <button
+                className="p-1.5 rounded transition text-gray-500 hover:text-emerald-600"
+                onClick={() => onCreateTask(message.id)}
+                title="Giao việc"
+                data-testid="create-task-button"
+              >
+                <ClipboardPlus size={14} />
+              </button>
+            )}
           </div>
         )}
 
@@ -253,26 +270,29 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
           {(() => {
             const hasText =
               message.content && message.content.trim().length > 0;
-            const hasImage =
-              message.attachments &&
-              message.attachments.length > 0 &&
-              message.attachments[0].contentType?.startsWith("image/");
-            const hasFile =
-              message.attachments &&
-              message.attachments.length > 0 &&
-              !hasImage;
-            const hasMixedContent = hasText && hasImage;
-            const hasMixedTextFile = hasText && hasFile;
+
+            // Phase 2: Separate images from files
+            const images: AttachmentDto[] = [];
+            const files: AttachmentDto[] = [];
+
+            message.attachments?.forEach((attachment) => {
+              if (attachment.contentType?.startsWith("image/")) {
+                images.push(attachment);
+              } else {
+                files.push(attachment);
+              }
+            });
+
+            const hasImages = images.length > 0;
+            const hasFiles = files.length > 0;
 
             return (
               <>
-                {/* Text content - with v2.1 padding for mixed content */}
+                {/* Text content */}
                 {hasText && (
                   <div
                     className={
-                      hasMixedContent || hasMixedTextFile
-                        ? "px-4 pt-2 pb-2"
-                        : "px-4 py-2"
+                      hasImages || hasFiles ? "px-4 pt-2 pb-2" : "px-4 py-2"
                     }
                   >
                     <p className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -281,83 +301,312 @@ export const MessageBubbleSimple: React.FC<MessageBubbleSimpleProps> = ({
                   </div>
                 )}
 
-                {/* Gap between text and image/file - Increased spacing */}
-                {(hasMixedContent || hasMixedTextFile) && (
-                  <div className="h-3" />
-                )}
+                {/* Gap between text and attachments */}
+                {hasText && (hasImages || hasFiles) && <div className="h-3" />}
 
-                {/* Image attachment - Using MessageImage component */}
-                {hasImage && (
-                  <MessageImage
-                    fileId={message.attachments[0].fileId}
-                    fileName={message.attachments[0].fileName || "Image"}
-                    onPreviewClick={(fileId) => {
-                      onFilePreviewClick?.(
-                        fileId,
-                        message.attachments[0].fileName || "Image"
-                      );
-                    }}
-                  />
-                )}
-
-                {/* File attachment - v3.2: All file types clickable for preview */}
-                {hasFile && (
+                {/* Phase 2.1: Dynamic Image Grid based on count */}
+                {hasImages && (
                   <div
-                    className={cn(
-                      "flex items-center gap-3 cursor-pointer hover:bg-black/5 transition-colors",
-                      hasText ? "px-4 pb-4" : "px-4 py-4"
-                    )}
-                    data-testid={`message-file-attachment-${message.attachments[0].fileId}`}
-                    onClick={() => {
-                      onFilePreviewClick?.(
-                        message.attachments[0].fileId,
-                        message.attachments[0].fileName || "document"
-                      );
-                    }}
+                    className={cn("px-4", hasText ? "pb-4" : "py-4")}
+                    data-testid="message-attachments-container"
                   >
-                    {/* Icon container with white background for visibility */}
-                    <div className="bg-white rounded-lg p-2 shadow-sm">
-                      <FileIcon
-                        contentType={
-                          message.attachments[0].contentType ||
-                          "application/octet-stream"
-                        }
-                        size="md"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {message.attachments[0].fileName || "File"}
-                      </p>
+                    {/* Decision 1A: Dynamic grid layout */}
+                    {/* Special case: If has both images and files, use compact 3-col grid */}
+                    {hasFiles ? (
+                      // Mixed attachments: Always use 3-col square grid for compact display (smaller size)
                       <div
-                        className={cn(
-                          "flex items-center gap-2 text-xs",
-                          isOwn ? "text-white/80" : "text-gray-600"
-                        )}
+                        className="grid grid-cols-3 gap-2 max-w-[200px]"
+                        data-testid="image-grid-mixed-3cols"
                       >
-                        {message.attachments[0].fileSize && (
-                          <span>
-                            {formatFileSize(message.attachments[0].fileSize)}
-                          </span>
-                        )}
-                        {getFileExtension(
-                          message.attachments[0].fileName ?? undefined,
-                          message.attachments[0].contentType ?? undefined
-                        ) && (
-                          <>
-                            {message.attachments[0].fileSize && <span>•</span>}
-                            <span className="font-medium uppercase">
-                              {getFileExtension(
-                                message.attachments[0].fileName ?? undefined,
-                                message.attachments[0].contentType ?? undefined
+                        {images.slice(0, 6).map((image, index) => {
+                          const isLast = index === 5;
+                          const remainingCount = images.length - 6;
+
+                          return (
+                            <div
+                              key={image.fileId}
+                              className="relative aspect-square overflow-hidden rounded"
+                            >
+                              <MessageImage
+                                fileId={image.fileId}
+                                fileName={image.fileName || "Image"}
+                                isInGrid={true}
+                                onPreviewClick={(fileId) => {
+                                  if (onImageClick) {
+                                    onImageClick(
+                                      images.map((img) => ({
+                                        fileId: img.fileId,
+                                        fileName: img.fileName || "Image",
+                                      })),
+                                      index
+                                    );
+                                  } else {
+                                    onFilePreviewClick?.(
+                                      fileId,
+                                      image.fileName || "Image"
+                                    );
+                                  }
+                                }}
+                              />
+                              {isLast && remainingCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Open preview at first hidden image (index 6)
+                                    if (onImageClick) {
+                                      onImageClick(
+                                        images.map((img) => ({
+                                          fileId: img.fileId,
+                                          fileName: img.fileName || "Image",
+                                        })),
+                                        6
+                                      );
+                                    } else {
+                                      onFilePreviewClick?.(
+                                        images[6].fileId,
+                                        images[6].fileName || "Image"
+                                      );
+                                    }
+                                  }}
+                                  className="absolute inset-0 flex items-center justify-center bg-black/60 hover:bg-black/70 transition-colors"
+                                  data-testid="show-more-overlay"
+                                >
+                                  <span className="text-white text-lg font-semibold">
+                                    +{remainingCount} more
+                                  </span>
+                                </button>
                               )}
-                            </span>
-                          </>
-                        )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    ) : images.length === 1 ? (
+                      // Single image: Full width max 320px
+                      <div className="max-w-[320px]">
+                        <MessageImage
+                          fileId={images[0].fileId}
+                          fileName={images[0].fileName || "Image"}
+                          isInGrid={false}
+                          onPreviewClick={(fileId) => {
+                            // Use new gallery mode if available, fallback to old callback
+                            if (onImageClick) {
+                              onImageClick(
+                                images.map((img) => ({
+                                  fileId: img.fileId,
+                                  fileName: img.fileName || "Image",
+                                })),
+                                0
+                              );
+                            } else {
+                              onFilePreviewClick?.(
+                                fileId,
+                                images[0].fileName || "Image"
+                              );
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : images.length === 2 ? (
+                      // 2 images: 2 columns grid (preserve aspect ratio)
+                      <div
+                        className="grid grid-cols-2 gap-2 max-w-[320px]"
+                        data-testid="image-grid-2cols"
+                      >
+                        {images.map((image, index) => (
+                          <div
+                            key={image.fileId}
+                            className="overflow-hidden rounded"
+                          >
+                            <MessageImage
+                              fileId={image.fileId}
+                              fileName={image.fileName || "Image"}
+                              isInGrid={true}
+                              onPreviewClick={(fileId) => {
+                                if (onImageClick) {
+                                  onImageClick(
+                                    images.map((img) => ({
+                                      fileId: img.fileId,
+                                      fileName: img.fileName || "Image",
+                                    })),
+                                    index
+                                  );
+                                } else {
+                                  onFilePreviewClick?.(
+                                    fileId,
+                                    image.fileName || "Image"
+                                  );
+                                }
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : images.length >= 3 && images.length <= 6 ? (
+                      // 3-6 images: 3 columns grid
+                      <div
+                        className="grid grid-cols-3 gap-2 max-w-[320px]"
+                        data-testid="image-grid-3cols"
+                      >
+                        {images.map((image, index) => (
+                          <div
+                            key={image.fileId}
+                            className="aspect-square overflow-hidden rounded"
+                          >
+                            <MessageImage
+                              fileId={image.fileId}
+                              fileName={image.fileName || "Image"}
+                              isInGrid={true}
+                              onPreviewClick={(fileId) => {
+                                if (onImageClick) {
+                                  onImageClick(
+                                    images.map((img) => ({
+                                      fileId: img.fileId,
+                                      fileName: img.fileName || "Image",
+                                    })),
+                                    index
+                                  );
+                                } else {
+                                  onFilePreviewClick?.(
+                                    fileId,
+                                    image.fileName || "Image"
+                                  );
+                                }
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      // 7+ images: 3 cols with first 6 + "+N more" overlay
+                      <div
+                        className="grid grid-cols-3 gap-2 max-w-[320px]"
+                        data-testid="image-grid-with-overlay"
+                      >
+                        {images.slice(0, 6).map((image, index) => {
+                          const isLast = index === 5;
+                          const remainingCount = images.length - 6;
+
+                          return (
+                            <div
+                              key={image.fileId}
+                              className="relative aspect-square overflow-hidden rounded"
+                            >
+                              <MessageImage
+                                fileId={image.fileId}
+                                fileName={image.fileName || "Image"}
+                                isInGrid={true}
+                                onPreviewClick={(fileId) => {
+                                  if (onImageClick) {
+                                    onImageClick(
+                                      images.map((img) => ({
+                                        fileId: img.fileId,
+                                        fileName: img.fileName || "Image",
+                                      })),
+                                      index
+                                    );
+                                  } else {
+                                    onFilePreviewClick?.(
+                                      fileId,
+                                      image.fileName || "Image"
+                                    );
+                                  }
+                                }}
+                              />
+                              {isLast && remainingCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Open preview at first hidden image (index 6)
+                                    if (onImageClick) {
+                                      onImageClick(
+                                        images.map((img) => ({
+                                          fileId: img.fileId,
+                                          fileName: img.fileName || "Image",
+                                        })),
+                                        6
+                                      );
+                                    } else {
+                                      onFilePreviewClick?.(
+                                        images[6].fileId,
+                                        images[6].fileName || "Image"
+                                      );
+                                    }
+                                  }}
+                                  className="absolute inset-0 flex items-center justify-center bg-black/60 hover:bg-black/70 transition-colors"
+                                  data-testid="show-more-overlay"
+                                >
+                                  <span className="text-white text-lg font-semibold">
+                                    +{remainingCount} more
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* File attachments - Keep original logic */}
+                {hasFiles &&
+                  files.map((file) => (
+                    <div
+                      key={file.fileId}
+                      className={cn(
+                        "flex items-center gap-3 cursor-pointer hover:bg-black/5 transition-colors",
+                        hasText || hasImages ? "px-4 pb-4" : "px-4 py-4"
+                      )}
+                      data-testid={`message-file-attachment-${file.fileId}`}
+                      onClick={() => {
+                        onFilePreviewClick?.(
+                          file.fileId,
+                          file.fileName || "document"
+                        );
+                      }}
+                    >
+                      {/* Icon container with white background for visibility */}
+                      <div className="bg-white rounded-lg p-2 shadow-sm">
+                        <FileIcon
+                          contentType={
+                            file.contentType || "application/octet-stream"
+                          }
+                          size="md"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {file.fileName || "File"}
+                        </p>
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 text-xs",
+                            isOwn ? "text-white/80" : "text-gray-600"
+                          )}
+                        >
+                          {file.fileSize && (
+                            <span>{formatFileSize(file.fileSize)}</span>
+                          )}
+                          {getFileExtension(
+                            file.fileName ?? undefined,
+                            file.contentType ?? undefined
+                          ) && (
+                            <>
+                              {file.fileSize && <span>•</span>}
+                              <span className="font-medium uppercase">
+                                {getFileExtension(
+                                  file.fileName ?? undefined,
+                                  file.contentType ?? undefined
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </>
             );
           })()}

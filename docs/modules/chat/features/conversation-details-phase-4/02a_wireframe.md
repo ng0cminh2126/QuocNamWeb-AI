@@ -705,6 +705,149 @@ Hover:
 
 ---
 
+## 6. Image Message Loading States
+
+### Single Image Loading (320x180px)
+
+**Before API Response (Loading Skeleton):**
+
+```
+┌─────────────────────────────────────────┐
+│ 10:00 AM                               │
+│ [Avatar] User                          │
+│ ┌───────────────────────────────────┐  │
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  │
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  │ ← 320x180px skeleton
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  │   gradient animate
+│ │ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  │   (gray-200→gray-300→gray-200)
+│ └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+**After API Response (Image Loaded):**
+
+```
+┌─────────────────────────────────────────┐
+│ 10:00 AM                               │
+│ [Avatar] User                          │
+│ ┌───────────────────────────────────┐  │
+│ │ [   Image Content 320x180px   ]  │  │ ← Actual image
+│ │                                   │  │   object-cover
+│ └───────────────────────────────────┘  │   rounded-lg
+└─────────────────────────────────────────┘
+```
+
+### Multiple Images Grid Loading
+
+**2 Images (grid-cols-2, gap-2):**
+
+```
+┌─────────────────────────────────────────┐
+│ [Avatar] User                          │
+│ ┌──────────────┐  ┌──────────────┐    │
+│ │ ░░░░░░░░░░░░ │  │ ░░░░░░░░░░░░ │    │ ← aspect-square
+│ │ ░░░░░░░░░░░░ │  │ ░░░░░░░░░░░░ │    │   skeleton
+│ └──────────────┘  └──────────────┘    │
+│         ↑ 8px gap (gap-2) ↑           │
+└─────────────────────────────────────────┘
+```
+
+**3-6 Images (grid-cols-3, gap-2):**
+
+```
+┌─────────────────────────────────────────┐
+│ [Avatar] User                          │
+│ ┌────────┐  ┌────────┐  ┌────────┐    │
+│ │ ░░░░░░ │  │ ░░░░░░ │  │ ░░░░░░ │    │ ← square
+│ └────────┘  └────────┘  └────────┘    │   skeleton
+│ ┌────────┐  ┌────────┐  ┌────────┐    │
+│ │ ░░░░░░ │  │ ░░░░░░ │  │ ░░░░░░ │    │
+│ └────────┘  └────────┘  └────────┘    │
+│         ↑ gap-2 (8px) ↑               │
+└─────────────────────────────────────────┘
+```
+
+### Loading Skeleton Specifications
+
+**Single Image Skeleton:**
+
+```tsx
+<div
+  className="w-[320px] h-[180px] bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"
+  data-testid="image-skeleton-loader"
+/>
+```
+
+**Grid Image Skeleton:**
+
+```tsx
+<div
+  className="w-full aspect-square bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg"
+  data-testid="image-skeleton-loader"
+/>
+```
+
+**Key Properties:**
+
+| Property         | Single Image      | Grid Images       | Notes                    |
+| ---------------- | ----------------- | ----------------- | ------------------------ |
+| Width            | 320px (fixed)     | w-full            | Grid adapts to container |
+| Height           | 180px (fixed)     | aspect-square     | 16:9 vs 1:1 ratio        |
+| Background       | gradient animate  | gradient animate  | Same animation both      |
+| Border Radius    | rounded-lg (16px) | rounded-lg        | Consistent rounding      |
+| Loading Duration | Until API returns | Until API returns | No timeout               |
+
+**Animation:**
+
+```css
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Gradient flow left → right */
+background: linear-gradient(
+  90deg,
+  rgb(229, 231, 235) 0%,
+  /* gray-200 */ rgb(209, 213, 219) 50%,
+  /* gray-300 */ rgb(229, 231, 235) 100% /* gray-200 */
+);
+```
+
+### Loading States Flow
+
+```
+User sends message with images
+         ↓
+[Skeleton renders immediately]  ← FIXED SIZE (no layout shift)
+         ↓
+API call: getImageThumbnail(fileId, "large")
+         ↓
+[Skeleton continues animating]
+         ↓
+API response received
+         ↓
+[Image replaces skeleton smoothly]  ← Same size, no jump
+```
+
+**Benefits:**
+
+- ✅ **No layout shift:** Skeleton has same size as final image
+- ✅ **Immediate feedback:** User sees loading state instantly
+- ✅ **Consistent spacing:** Grid gap-2 (8px) matches bubble padding
+- ✅ **Smooth transition:** Skeleton → Image without size change
+
+---
+
 ## ⏳ PENDING DECISIONS (HUMAN PHẢI ĐIỀN)
 
 | #   | Decision Point                 | Options                              | HUMAN Choice     |

@@ -32,5 +32,5 @@
 | Đã điền Pending Decisions | rồi     |
 | **APPROVED để thực thi**  | ok      |
 
-**HUMAN Signature:** [KK_KK_KKK]  
+**HUMAN Signature:** [Khoa]  
 **Date:** [01082026]
