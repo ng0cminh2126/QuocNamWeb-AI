@@ -8,25 +8,12 @@ import {
   MessageCircle,
   X,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 // import { mockMessagesByWorkType } from "@/data/mockMessages";
 import { IconButton } from "@/components/ui/icon-button";
-import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator"
-import { Calendar } from "@/components/ui/calendar";
 import { API_ENDPOINTS } from "@/config/env.config";
 import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner"; // Phase 2: For toast notifications
+import FilePreviewModal from "@/components/FilePreviewModal"; // Phase 2.2: Document preview
 
 /**
  * Loại file Phase 1A – gom đơn giản thành 3 nhóm:
@@ -62,13 +49,13 @@ type MessageLike = {
   type?: "text" | "image" | "file" | "system";
   createdAt?: string;
   time?: string;
-  attachments?: { 
+  attachments?: {
     fileId?: string;
     fileName?: string;
-    name?: string; 
-    url?: string; 
+    name?: string;
+    url?: string;
     contentType?: string;
-    type?: AttachmentType; 
+    type?: AttachmentType;
     fileSize?: number;
     size?: string;
   }[];
@@ -89,11 +76,21 @@ export type FileManagerPhase1AProps = {
   /** Callback khi user bấm "Xem tin nhắn gốc" */
   onOpenSourceMessage?: (messageId: string) => void;
 
+  /** Callback to navigate to chat tab before scrolling to message (Phase 2) */
+  onNavigateToChat?: () => void;
+
   isMobile?: boolean;
   onOpenAllFiles?: (mode: FileManagerPhase1AMode) => void;
 
   /** Messages from chat to extract files from */
   messages?: MessageLike[];
+
+  /** Messages query object for auto-loading older messages (Phase 2) */
+  messagesQuery?: {
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    fetchNextPage: () => Promise<unknown>;
+  };
 };
 
 const getDocIcon = (ext?: string) => {
@@ -120,7 +117,7 @@ const isDocAttachment = (attType: AttachmentType) => attType !== "image";
 const BlobImage: React.FC<{
   fileId?: string;
   fallbackUrl?: string;
-  endpoint: 'thumbnail' | 'preview';
+  endpoint: "thumbnail" | "preview";
   alt: string;
   className?: string;
   draggable?: boolean;
@@ -147,9 +144,10 @@ const BlobImage: React.FC<{
       setError(false);
 
       try {
-        const apiEndpoint = endpoint === 'thumbnail' 
-          ? `${API_ENDPOINTS.file}/api/Files/${fileId}/watermarked-thumbnail?size=medium`
-          : `${API_ENDPOINTS.file}/api/Files/${fileId}/preview`;
+        const apiEndpoint =
+          endpoint === "thumbnail"
+            ? `${API_ENDPOINTS.file}/api/Files/${fileId}/watermarked-thumbnail?size=medium`
+            : `${API_ENDPOINTS.file}/api/Files/${fileId}/preview`;
 
         const response = await fetch(apiEndpoint, {
           headers: {
@@ -162,14 +160,14 @@ const BlobImage: React.FC<{
         }
 
         const blob = await response.blob();
-        
+
         if (isMounted) {
           url = URL.createObjectURL(blob);
           setObjectUrl(url);
           setIsLoading(false);
         }
       } catch (err) {
-        console.error('Failed to fetch blob image:', err);
+        console.error("Failed to fetch blob image:", err);
         if (isMounted) {
           setError(true);
           setIsLoading(false);
@@ -194,7 +192,11 @@ const BlobImage: React.FC<{
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+      <div
+        className={`flex items-center justify-center bg-gray-100 ${
+          className || ""
+        }`}
+      >
         <div className="text-xs text-gray-400">Đang tải...</div>
       </div>
     );
@@ -202,7 +204,11 @@ const BlobImage: React.FC<{
 
   if (error && !objectUrl) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+      <div
+        className={`flex items-center justify-center bg-gray-100 ${
+          className || ""
+        }`}
+      >
         <div className="text-xs text-gray-400">Lỗi tải ảnh</div>
       </div>
     );
@@ -210,7 +216,11 @@ const BlobImage: React.FC<{
 
   if (!objectUrl) {
     return (
-      <div className={`flex items-center justify-center bg-gray-100 ${className || ''}`}>
+      <div
+        className={`flex items-center justify-center bg-gray-100 ${
+          className || ""
+        }`}
+      >
         <div className="text-xs text-gray-400">Không có ảnh</div>
       </div>
     );
@@ -247,17 +257,17 @@ const SimpleModal: React.FC<{
     if (!open) return;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onCloseRef.current();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
     };
   }, [open]); // Only depend on 'open', use ref for onClose
 
@@ -286,7 +296,9 @@ const SimpleModal: React.FC<{
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between pb-4 border-b">
-            <h2 className="text-lg font-semibold leading-none tracking-tight">{title}</h2>
+            <h2 className="text-lg font-semibold leading-none tracking-tight">
+              {title}
+            </h2>
             <button
               onClick={onClose}
               className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -297,9 +309,7 @@ const SimpleModal: React.FC<{
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto mt-4">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto mt-4">{children}</div>
       </div>
     </div>
   );
@@ -312,14 +322,108 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   groupId,
   selectedWorkTypeId,
   onOpenSourceMessage,
+  onNavigateToChat,
   isMobile = false,
   onOpenAllFiles,
   messages,
+  messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
   const [previewFile, setPreviewFile] = React.useState<Phase1AFileItem | null>(
     null
   );
   const [showAll, setShowAll] = React.useState(false);
+
+  /**
+   * Phase 2: Jump to Message with Auto-Load
+   * Scrolls to message in ChatMain, auto-loading older messages if needed
+   */
+  const handleJumpToMessage = React.useCallback(
+    async (messageId: string) => {
+      // Step 0: Navigate to chat tab first (close information panel)
+      onNavigateToChat?.();
+
+      // Helper function to scroll and highlight message
+      const scrollAndHighlight = (element: Element) => {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        // Option 2: Background Glow (simple & effective)
+        element.classList.add(
+          "ring-2",
+          "ring-orange-400",
+          "ring-offset-2",
+          "bg-orange-50/80",
+          "transition-all",
+          "duration-300"
+        );
+
+        setTimeout(() => {
+          element.classList.remove(
+            "ring-2",
+            "ring-orange-400",
+            "ring-offset-2",
+            "bg-orange-50/80",
+            "transition-all",
+            "duration-300"
+          );
+        }, 2500);
+      };
+
+      // Step 1: Try to find message in current DOM
+      let messageElement = document.querySelector(
+        `[data-testid="message-bubble-${messageId}"]`
+      );
+
+      if (messageElement) {
+        // ✅ Found immediately - scroll and highlight
+        scrollAndHighlight(messageElement);
+        return;
+      }
+
+      // Step 2: Message not loaded - trigger auto-load
+      if (!messagesQuery) {
+        // No messagesQuery provided, show warning
+        toast.info("Tin nhắn có thể chưa được tải", { duration: 3000 });
+        return;
+      }
+
+      toast.info("Đang tải tin nhắn cũ hơn...", { duration: 3000 });
+
+      // Step 3: Retry loop - load older messages
+      const MAX_RETRIES = 5;
+      for (let i = 0; i < MAX_RETRIES; i++) {
+        if (messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage) {
+          await messagesQuery.fetchNextPage();
+
+          // Wait for DOM to update
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          // Check again
+          messageElement = document.querySelector(
+            `[data-testid="message-bubble-${messageId}"]`
+          );
+
+          if (messageElement) {
+            // ✅ Found after loading!
+            scrollAndHighlight(messageElement);
+            toast.success("Đã tìm thấy tin nhắn!", { duration: 2000 });
+            return;
+          }
+        } else {
+          // No more pages to load
+          break;
+        }
+      }
+
+      // ❌ Still not found after all retries
+      toast.error("Không tìm thấy tin nhắn (có thể đã bị xóa)", {
+        duration: 3000,
+      });
+    },
+    [messagesQuery, onNavigateToChat]
+  );
 
   // ----- Lấy list message tương ứng group + workType từ API -----
   const messageList = React.useMemo<MessageLike[]>(() => {
@@ -327,7 +431,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
     if (messages && messages.length > 0) {
       return messages;
     }
-    
+
     // If no messages provided, return empty array
     // Messages should be passed from parent component (InformationPanel, ConversationDetailPanel, etc.)
     return [];
@@ -353,30 +457,39 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
       // Priority 1: Use attachments field (from API - Swagger spec)
       if (Array.isArray(m.attachments) && m.attachments.length > 0) {
         m.attachments.forEach((att) => {
-          const fileName = att.fileName || att.name || 'unknown';
-          const fileUrl = att.url || '';
+          const fileName = att.fileName || att.name || "unknown";
+          const fileUrl = att.url || "";
           const fileId = att.fileId; // Extract fileId for preview endpoints
-          
+
           // Map contentType to AttachmentType
-          let attType: AttachmentType = 'other';
+          let attType: AttachmentType = "other";
           if (att.contentType) {
-            if (att.contentType.includes('image')) attType = 'image';
-            else if (att.contentType.includes('pdf')) attType = 'pdf';
-            else if (att.contentType.includes('word') || att.contentType.includes('document')) attType = 'word';
-            else if (att.contentType.includes('excel') || att.contentType.includes('spreadsheet')) attType = 'excel';
+            if (att.contentType.includes("image")) attType = "image";
+            else if (att.contentType.includes("pdf")) attType = "pdf";
+            else if (
+              att.contentType.includes("word") ||
+              att.contentType.includes("document")
+            )
+              attType = "word";
+            else if (
+              att.contentType.includes("excel") ||
+              att.contentType.includes("spreadsheet")
+            )
+              attType = "excel";
           } else if (att.type) {
             attType = att.type;
           }
-          
+
           // Format file size
           let sizeLabel = att.size;
-          if (att.fileSize && typeof att.fileSize === 'number') {
+          if (att.fileSize && typeof att.fileSize === "number") {
             const sizeInMB = att.fileSize / (1024 * 1024);
-            sizeLabel = sizeInMB >= 1 
-              ? `${sizeInMB.toFixed(2)} MB` 
-              : `${(att.fileSize / 1024).toFixed(2)} KB`;
+            sizeLabel =
+              sizeInMB >= 1
+                ? `${sizeInMB.toFixed(2)} MB`
+                : `${(att.fileSize / 1024).toFixed(2)} KB`;
           }
-          
+
           attachmentList.push({
             name: fileName,
             url: fileUrl,
@@ -428,7 +541,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   }, [messageList]);
 
   const allFiles = mode === "media" ? mediaFiles : docFiles;
-  const limit = mode === "media" ? 6 : 3;        // 6 media / 3 docs gần nhất
+  const limit = mode === "media" ? 6 : 3; // 6 media / 3 docs gần nhất
   const visible = allFiles.slice(0, limit);
   const label = mode === "media" ? "Ảnh / Video" : "Tài liệu";
 
@@ -437,7 +550,10 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   /** FILTERS **/
   const [senderFilter, setSenderFilter] = React.useState<string>("all");
   const [datePreset, setDatePreset] = React.useState<string>("all");
-  const [dateRange, setDateRange] = React.useState<{ from?: string; to?: string }>({});
+  const [dateRange, setDateRange] = React.useState<{
+    from?: string;
+    to?: string;
+  }>({});
 
   /** Unique senders */
   const senders = React.useMemo(() => {
@@ -447,23 +563,32 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
     return Array.from(new Set(s));
   }, [messageList]);
 
-
   const handleOpenPreview = (f: Phase1AFileItem) => {
     setPreviewFile(f);
   };
 
   const handleClosePreview = () => setPreviewFile(null);
 
-  const handleOpenSource = (
-    e: React.MouseEvent,
-    f: Phase1AFileItem
-  ) => {
+  const handleOpenSource = (e: React.MouseEvent, f: Phase1AFileItem) => {
     e.stopPropagation();
-    if (f.messageId && onOpenSourceMessage) {
-      onOpenSourceMessage(f.messageId);
+    if (f.messageId) {
+      // Close modal before jumping to message
+      setShowAll(false);
+
+      // Phase 2: Use new jump to message with auto-load
+      if (messagesQuery) {
+        handleJumpToMessage(f.messageId);
+      } else if (onOpenSourceMessage) {
+        // Fallback to old behavior if messagesQuery not provided
+        onOpenSourceMessage(f.messageId);
+      }
     }
   };
 
+  /**
+   * Phase 2: Jump to Message with Auto-Load
+   * Scrolls to message in chat, with auto-loading older messages if needed
+   */
   const handleCloseShowAll = () => {
     setShowAll(false);
     setSenderFilter("all");
@@ -474,8 +599,9 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   const renderMediaTile = (f: Phase1AFileItem, compact = false) => (
     <div
       key={f.id}
-      className={`group relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer ${compact ? "aspect-[4/3]" : "aspect-[4/3]"
-        }`}
+      className={`group relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer ${
+        compact ? "aspect-[4/3]" : "aspect-[4/3]"
+      }`}
       onClick={() => handleOpenPreview(f)}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -508,7 +634,6 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
              group-hover:opacity-100 hover:opacity-100 shadow-sm"
         />
       )}
-
     </div>
   );
 
@@ -524,15 +649,11 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           {getDocIcon(f.ext)}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[13px] text-gray-800">
-            {f.name}
-          </div>
+          <div className="truncate text-[13px] text-gray-800">{f.name}</div>
           {(f.sizeLabel || f.dateLabel) && (
             <div className="mt-0.5 text-[11px] text-gray-500">
               {f.sizeLabel && <span>{f.sizeLabel}</span>}
-              {f.sizeLabel && f.dateLabel && (
-                <span className="mx-1">•</span>
-              )}
+              {f.sizeLabel && f.dateLabel && <span className="mx-1">•</span>}
               {f.dateLabel && <span>{f.dateLabel}</span>}
             </div>
           )}
@@ -555,10 +676,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   );
 
   return (
-    <div
-      className="space-y-2"
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <div className="space-y-2" onContextMenu={(e) => e.preventDefault()}>
       {mode === "media" ? (
         <div className="grid grid-cols-3 gap-2">
           {visible.length === 0 ? (
@@ -608,7 +726,6 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
       >
         {/* FILTER BAR - Using native HTML select instead of Radix Select */}
         <div className="flex flex-wrap items-center gap-3">
-
           {/* Người gửi - Native select */}
           <div>
             <select
@@ -650,7 +767,9 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
               <input
                 type="date"
                 value={dateRange.from || ""}
-                onChange={(e) => setDateRange((r) => ({ ...r, from: e.target.value }))}
+                onChange={(e) =>
+                  setDateRange((r) => ({ ...r, from: e.target.value }))
+                }
                 className="h-8 text-xs border border-gray-300 rounded-md px-2"
                 placeholder="Từ ngày"
               />
@@ -658,7 +777,9 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
               <input
                 type="date"
                 value={dateRange.to || ""}
-                onChange={(e) => setDateRange((r) => ({ ...r, to: e.target.value }))}
+                onChange={(e) =>
+                  setDateRange((r) => ({ ...r, to: e.target.value }))
+                }
                 className="h-8 text-xs border border-gray-300 rounded-md px-2"
                 placeholder="Đến ngày"
               />
@@ -670,20 +791,22 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         <div className="mt-3 flex items-center gap-2 border-b border-gray-200 pb-2">
           <button
             type="button"
-            className={`rounded-full px-3 py-1 text-xs ${allTab === "media"
-              ? "bg-emerald-50 text-emerald-700"
-              : "text-gray-600 hover:bg-gray-100"
-              }`}
+            className={`rounded-full px-3 py-1 text-xs ${
+              allTab === "media"
+                ? "bg-emerald-50 text-emerald-700"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
             onClick={() => setAllTab("media")}
           >
             Ảnh / Video ({mediaFiles.length})
           </button>
           <button
             type="button"
-            className={`rounded-full px-3 py-1 text-xs ${allTab === "docs"
-              ? "bg-emerald-50 text-emerald-700"
-              : "text-gray-600 hover:bg-gray-100"
-              }`}
+            className={`rounded-full px-3 py-1 text-xs ${
+              allTab === "docs"
+                ? "bg-emerald-50 text-emerald-700"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
             onClick={() => setAllTab("docs")}
           >
             Tài liệu ({docFiles.length})
@@ -692,8 +815,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
 
         <div className="mt-3 max-h-[60vh] overflow-y-auto">
           {(() => {
-            let source =
-              allTab === "media" ? mediaFiles : docFiles;
+            let source = allTab === "media" ? mediaFiles : docFiles;
 
             /** FILTER: Người gửi */
             if (senderFilter !== "all") {
@@ -705,17 +827,20 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
               const days = parseInt(datePreset, 10);
               const cutoffDate = new Date();
               cutoffDate.setDate(cutoffDate.getDate() - days);
-              
+
               source = source.filter((f) => {
                 if (!f.createdAt) return false;
                 const fileDate = new Date(f.createdAt);
                 return fileDate >= cutoffDate;
               });
-            } else if (datePreset === "custom" && (dateRange.from || dateRange.to)) {
+            } else if (
+              datePreset === "custom" &&
+              (dateRange.from || dateRange.to)
+            ) {
               source = source.filter((f) => {
                 if (!f.createdAt) return false;
                 const fileDate = new Date(f.createdAt);
-                
+
                 if (dateRange.from && dateRange.to) {
                   const fromDate = new Date(dateRange.from);
                   const toDate = new Date(dateRange.to);
@@ -732,7 +857,6 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 return true;
               });
             }
-
 
             if (source.length === 0) {
               return (
@@ -815,13 +939,14 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         )}
 
         {previewFile && previewFile.kind === "doc" && (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-gray-500">
-            Xem trước tài liệu sẽ được tích hợp với viewer PDF/Office ở bước tiếp theo.
-          </div>
+          <FilePreviewModal
+            isOpen={true}
+            fileId={previewFile.fileId || ""}
+            fileName={previewFile.name}
+            onClose={() => setPreviewFile(null)}
+          />
         )}
       </SimpleModal>
-
-
     </div>
   );
 };

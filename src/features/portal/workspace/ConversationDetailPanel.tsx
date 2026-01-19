@@ -3,14 +3,29 @@ import { RightAccordion } from "../components";
 import { LinkedTasksPanel } from "../components/LinkedTasksPanel";
 import { ViewAllTasksModal } from "../components/ViewAllTasksModal";
 import { SegmentedTabs } from "../components/SegmentedTabs";
-import type { Task, ReceivedInfo, ChecklistItem, ChecklistTemplateMap, ChecklistTemplateItem, TaskLogMessage, ChecklistVariant } from "../types";
-import {ChecklistTemplatePanel} from "../components/ChecklistTemplatePanel";
-import {TaskChecklistEditor, TaskChecklistViewer} from "../components/TaskChecklist";
-import {ChecklistTemplateSlideOver} from "../components/ChecklistTemplateSlideOver";
+import type {
+  Task,
+  ReceivedInfo,
+  ChecklistItem,
+  ChecklistTemplateMap,
+  ChecklistTemplateItem,
+  TaskLogMessage,
+  ChecklistVariant,
+} from "../types";
+import { ChecklistTemplatePanel } from "../components/ChecklistTemplatePanel";
+import {
+  TaskChecklistEditor,
+  TaskChecklistViewer,
+} from "../components/TaskChecklist";
+import { ChecklistTemplateSlideOver } from "../components/ChecklistTemplateSlideOver";
 import { useAllTasks } from "@/hooks/queries/useTasks";
 import { useChecklistTemplates } from "@/hooks/queries/useChecklistTemplates";
 import { transformTemplatesToMap } from "@/utils/checklistTemplateTransform";
-import { useAddCheckItem, useToggleCheckItem, useUpdateTaskStatus } from "@/hooks/mutations/useTaskMutations";
+import {
+  useAddCheckItem,
+  useToggleCheckItem,
+  useUpdateTaskStatus,
+} from "@/hooks/mutations/useTaskMutations";
 
 import {
   Users,
@@ -20,23 +35,27 @@ import {
   FileText,
   Image as ImageIcon,
   MoveRight,
-  Edit2, Trash2, ArrowLeft,
-  ChevronDown, ChevronRight, Check,
-  ClipboardList, SquarePen, ListTodo, UserIcon,
+  Edit2,
+  Trash2,
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  ClipboardList,
+  SquarePen,
+  ListTodo,
+  UserIcon,
 } from "lucide-react";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { Button } from "@/components/ui/button";
 import { HintBubble } from "../components/HintBubble";
-import { FileNode }  from "../components/FileManager";
+import { FileNode } from "../components/FileManager";
 import { FileManagerPhase1A } from "../components/FileManagerPhase1A";
 import { group } from "console";
 
@@ -62,14 +81,16 @@ type MinimalMember = { id: string; name: string; role?: "Leader" | "Member" };
 
 type FolderAttribute = {
   id: string;
-  key: string;     // tên thuộc tính
-  value: string;   // giá trị thuộc tính
+  key: string; // tên thuộc tính
+  value: string; // giá trị thuộc tính
 };
 
 const FileIcon: React.FC<{ n: FileNode }> = ({ n }) => {
-  if (n.type === "folder") return <FolderIcon className="h-5 w-5 text-gray-600" />;
+  if (n.type === "folder")
+    return <FolderIcon className="h-5 w-5 text-gray-600" />;
   if (n.ext === "pdf") return <FileText className="h-5 w-5 text-rose-600" />;
-  if (n.ext === "jpg" || n.ext === "png") return <ImageIcon className="h-5 w-5 text-sky-600" />;
+  if (n.ext === "jpg" || n.ext === "png")
+    return <ImageIcon className="h-5 w-5 text-sky-600" />;
   return <FileText className="h-5 w-5 text-gray-600" />;
 };
 
@@ -78,7 +99,7 @@ const StatusBadge: React.FC<{ s: Task["status"] }> = ({ s }) => {
   // Use the label and color from API response
   const label = s.label || "Unknown";
   const color = s.color || "#gray";
-  
+
   // Map status codes to CSS classes (fallback for styling)
   const styleMap: Record<string, string> = {
     todo: "bg-amber-200 text-brand-700 border-gray-200",
@@ -86,7 +107,7 @@ const StatusBadge: React.FC<{ s: Task["status"] }> = ({ s }) => {
     need_to_verified: "bg-amber-50 text-amber-700 border-amber-200",
     finished: "bg-emerald-50 text-emerald-700 border-emerald-200",
   };
-  
+
   const cls = styleMap[s.code] || "bg-gray-50 text-gray-700 border-gray-200";
 
   return (
@@ -104,7 +125,6 @@ const StatusBadge: React.FC<{ s: Task["status"] }> = ({ s }) => {
   );
 };
 
-
 const truncateMessageTitle = (t?: string) =>
   (t || "").length > 80 ? (t || "").slice(0, 77) + "…" : t || "";
 
@@ -115,28 +135,31 @@ const TaskCard: React.FC<{
   viewMode: ViewMode;
   isLeaderOwnTask?: boolean; // Flag when leader is task owner
   onChangeStatus?: (id: string, next: Task["status"]) => void;
-  onReassign?: (id:  string, assignTo: string) => void;
-  onToggleChecklist?: (taskId: string, itemId: string, done:  boolean) => void;
+  onReassign?: (id: string, assignTo: string) => void;
+  onToggleChecklist?: (taskId: string, itemId: string, done: boolean) => void;
   onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
   taskLogs?: Record<string, TaskLogMessage[]>;
   onOpenTaskLog?: (taskId: string) => void;
   onClickTitle?: (sourceMessageId: string) => void;
-}> = ({ 
-  t, 
-  members, 
-  viewMode, 
+}> = ({
+  t,
+  members,
+  viewMode,
   isLeaderOwnTask = false,
-  onChangeStatus, 
-  onReassign, 
-  onToggleChecklist, 
-  onUpdateTaskChecklist, 
-  taskLogs, 
+  onChangeStatus,
+  onReassign,
+  onToggleChecklist,
+  onUpdateTaskChecklist,
+  taskLogs,
   onOpenTaskLog,
   onClickTitle,
 }) => {
   const [open, setOpen] = React.useState(false);
-  const assigneeName = members.find((m) => m.id === t.assignTo)?.name ?? t.assignTo;
-  const [editingItem, setEditingItem] = React.useState<ChecklistItem | null>(null);
+  const assigneeName =
+    members.find((m) => m.id === t.assignTo)?.name ?? t.assignTo;
+  const [editingItem, setEditingItem] = React.useState<ChecklistItem | null>(
+    null
+  );
   const [newLabel, setNewLabel] = React.useState("");
 
   // Mutation hooks for API calls
@@ -146,8 +169,7 @@ const TaskCard: React.FC<{
 
   const total = t.checklist?.length ?? 0;
   const doneCount = t.checklist?.filter((c) => c.done).length ?? 0;
-  const progress =
-    total > 0 ? Math.round((doneCount / total) * 100) : 0;
+  const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
   const workTypeLabel = t.workTypeName ?? t.workTypeId;
   const displayWorkTypeLabel = t.checklistVariantName
@@ -160,73 +182,71 @@ const TaskCard: React.FC<{
 
   const [editChecklist, setEditChecklist] = React.useState(false);
   const canEditStructure = viewMode === "lead" && t.status.code === "todo";
-  
+
   // Get permissions from task (from API)
   const permissions = t.permissions;
 
   return (
     <>
       {/* Checklist Edit Dialog */}
-      {
-        editingItem && (
-          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-4 w-[300px] shadow-xl">
-              <div className="text-sm font-semibold mb-2">
-                {editingItem?.id === "new" ? "Thêm mục" : "Chỉnh sửa mục"}
-              </div>
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-4 w-[300px] shadow-xl">
+            <div className="text-sm font-semibold mb-2">
+              {editingItem?.id === "new" ? "Thêm mục" : "Chỉnh sửa mục"}
+            </div>
 
-              <input
-                className="w-full rounded border px-2 py-1 text-sm"
-                value={newLabel}
-                autoFocus
-                onChange={(e) => setNewLabel(e.target.value)}
-              />
+            <input
+              className="w-full rounded border px-2 py-1 text-sm"
+              value={newLabel}
+              autoFocus
+              onChange={(e) => setNewLabel(e.target.value)}
+            />
 
-              <div className="flex justify-end gap-2 mt-3">
-                <button
-                  className="text-xs px-2 py-1 rounded bg-gray-100"
-                  onClick={() => setEditingItem(null)}
-                >
-                  Huỷ
-                </button>
-                <button
-                  className="text-xs px-3 py-1 rounded bg-emerald-600 text-white"
-                  disabled={addCheckItemMutation.isPending || !newLabel.trim()}
-                  onClick={async () => {
-                    if (!newLabel.trim()) return;
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                className="text-xs px-2 py-1 rounded bg-gray-100"
+                onClick={() => setEditingItem(null)}
+              >
+                Huỷ
+              </button>
+              <button
+                className="text-xs px-3 py-1 rounded bg-emerald-600 text-white"
+                disabled={addCheckItemMutation.isPending || !newLabel.trim()}
+                onClick={async () => {
+                  if (!newLabel.trim()) return;
 
-                    if (editingItem.id === "new") {
-                      // Call API to add new checklist item
-                      try {
-                        await addCheckItemMutation.mutateAsync({
-                          taskId: t.id,
-                          content: newLabel.trim(),
-                        });
-                        setEditingItem(null);
-                        setNewLabel("");
-                        setOpen(true); // Keep checklist open
-                      } catch (error) {
-                        console.error('Failed to add checklist item:', error);
-                        // Optionally show error message to user
-                      }
-                    } else {
-                      // For editing existing items, use the old callback
-                      // (API doesn't have an update endpoint yet)
-                      const updated = (t.checklist ?? []).map((i) =>
-                        i.id === editingItem.id ? { ...i, label: newLabel } : i
-                      );
-                      onUpdateTaskChecklist?.(t.id, updated);
+                  if (editingItem.id === "new") {
+                    // Call API to add new checklist item
+                    try {
+                      await addCheckItemMutation.mutateAsync({
+                        taskId: t.id,
+                        content: newLabel.trim(),
+                      });
                       setEditingItem(null);
+                      setNewLabel("");
+                      setOpen(true); // Keep checklist open
+                    } catch (error) {
+                      console.error("Failed to add checklist item:", error);
+                      // Optionally show error message to user
                     }
-                  }}
-                >
-                  {addCheckItemMutation.isPending ? "Đang lưu..." : "Lưu"}
-                </button>
-              </div>
+                  } else {
+                    // For editing existing items, use the old callback
+                    // (API doesn't have an update endpoint yet)
+                    const updated = (t.checklist ?? []).map((i) =>
+                      i.id === editingItem.id ? { ...i, label: newLabel } : i
+                    );
+                    onUpdateTaskChecklist?.(t.id, updated);
+                    setEditingItem(null);
+                  }
+                }}
+              >
+                {addCheckItemMutation.isPending ? "Đang lưu..." : "Lưu"}
+              </button>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
       <div
         className="
@@ -242,7 +262,6 @@ const TaskCard: React.FC<{
           hover:-translate-y-[1px]
         "
       >
-
         {/* Floating status badge góc phải trên */}
         <div className="absolute -top-3 right-2">
           <StatusBadge s={t.status} />
@@ -254,7 +273,9 @@ const TaskCard: React.FC<{
             <div className="text-[13px] font-semibold leading-snug truncate">
               {/* ✅ UPDATED:  Clickable Title */}
               <a
-                href={t.sourceMessageId ? `#msg-${t.sourceMessageId}` : undefined}
+                href={
+                  t.sourceMessageId ? `#msg-${t.sourceMessageId}` : undefined
+                }
                 onClick={(e) => {
                   if (!t.sourceMessageId) {
                     e.preventDefault();
@@ -268,8 +289,9 @@ const TaskCard: React.FC<{
                   text-[13px] font-semibold leading-snug
                   truncate
                   transition-colors duration-200
-                  ${t.sourceMessageId
-                                ? `
+                  ${
+                    t.sourceMessageId
+                      ? `
                       text-gray-800 
                       hover:text-brand-600 
                       hover:underline 
@@ -282,7 +304,7 @@ const TaskCard: React.FC<{
                       focus:ring-offset-1
                       rounded-sm
                     `
-                    : 'text-gray-400 cursor-not-allowed no-underline'
+                      : "text-gray-400 cursor-not-allowed no-underline"
                   }
                 `}
                 title={
@@ -302,7 +324,9 @@ const TaskCard: React.FC<{
                 <span>Loại việc:</span>
 
                 {/* WorkType name */}
-                <span className="font-medium text-gray-700">{workTypeLabel}</span>
+                <span className="font-medium text-gray-700">
+                  {workTypeLabel}
+                </span>
 
                 {/* CHIP variant */}
                 {t.checklistVariantName && (
@@ -348,7 +372,6 @@ const TaskCard: React.FC<{
                           </option>
                         ))}
                       </select>
-
                     </span>
                   </span>
                 </>
@@ -386,7 +409,11 @@ const TaskCard: React.FC<{
                   "
                     onClick={() => setOpen((v) => !v)}
                   >
-                    {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {open ? (
+                      <ChevronDown className="w-3 h-3" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3" />
+                    )}
                     Checklist ({doneCount}/{total})
                   </div>
 
@@ -448,14 +475,23 @@ const TaskCard: React.FC<{
                                   itemId: c.id,
                                 });
                               } catch (error) {
-                                console.error('Failed to toggle checklist item:', error);
+                                console.error(
+                                  "Failed to toggle checklist item:",
+                                  error
+                                );
                               }
                             }}
                           />
                         )}
 
                         {/* Label */}
-                        <span className={c.done ? "text-gray-400 line-through flex-1" : "text-gray-700 flex-1"}>
+                        <span
+                          className={
+                            c.done
+                              ? "text-gray-400 line-through flex-1"
+                              : "text-gray-700 flex-1"
+                          }
+                        >
                           {c.label}
                         </span>
 
@@ -475,7 +511,9 @@ const TaskCard: React.FC<{
                             <Trash2
                               className="w-3.5 h-3.5 text-rose-500 cursor-pointer hover:text-rose-600"
                               onClick={() => {
-                                const updated = (t.checklist ?? []).filter((i) => i.id !== c.id);
+                                const updated = (t.checklist ?? []).filter(
+                                  (i) => i.id !== c.id
+                                );
                                 onUpdateTaskChecklist?.(t.id, updated);
                               }}
                             />
@@ -483,9 +521,7 @@ const TaskCard: React.FC<{
                         )}
                       </li>
                     ))}
-
                   </ul>
-
                 )}
               </div>
             ) : (
@@ -533,7 +569,7 @@ const TaskCard: React.FC<{
                         status: "doing",
                       });
                     } catch (error) {
-                      console.error('Failed to update status:', error);
+                      console.error("Failed to update status:", error);
                     }
                   }}
                   className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50 disabled:opacity-50"
@@ -542,46 +578,49 @@ const TaskCard: React.FC<{
                 </button>
               )}
 
-              {permissions?.canChangeToNeedVerify && t.status.code === "doing" && !permissions?.canChangeToFinished && (
-                <button
-                  disabled={updateStatusMutation.isPending}
-                  onClick={async () => {
-                    try {
-                      await updateStatusMutation.mutateAsync({
-                        taskId: t.id,
-                        status: "need_to_verified",
-                      });
-                    } catch (error) {
-                      console.error('Failed to update status:', error);
-                    }
-                  }}
-                  className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50 disabled:opacity-50"
-                >
-                  {updateStatusMutation.isPending ? "..." : "Hoàn tất"}
-                </button>
-              )}
+              {permissions?.canChangeToNeedVerify &&
+                t.status.code === "doing" &&
+                !permissions?.canChangeToFinished && (
+                  <button
+                    disabled={updateStatusMutation.isPending}
+                    onClick={async () => {
+                      try {
+                        await updateStatusMutation.mutateAsync({
+                          taskId: t.id,
+                          status: "need_to_verified",
+                        });
+                      } catch (error) {
+                        console.error("Failed to update status:", error);
+                      }
+                    }}
+                    className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50 disabled:opacity-50"
+                  >
+                    {updateStatusMutation.isPending ? "..." : "Hoàn tất"}
+                  </button>
+                )}
 
-              {permissions?.canChangeToFinished && (t.status.code === "doing" || t.status.code === "need_to_verified") && (
-                <button
-                  disabled={updateStatusMutation.isPending}
-                  onClick={async () => {
-                    try {
-                      await updateStatusMutation.mutateAsync({
-                        taskId: t.id,
-                        status: "finished",
-                      });
-                    } catch (error) {
-                      console.error('Failed to update status:', error);
-                    }
-                  }}
-                  className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50 disabled:opacity-50"
-                >
-                  {updateStatusMutation.isPending ? "..." : "Hoàn tất"}
-                </button>
-              )}
+              {permissions?.canChangeToFinished &&
+                (t.status.code === "doing" ||
+                  t.status.code === "need_to_verified") && (
+                  <button
+                    disabled={updateStatusMutation.isPending}
+                    onClick={async () => {
+                      try {
+                        await updateStatusMutation.mutateAsync({
+                          taskId: t.id,
+                          status: "finished",
+                        });
+                      } catch (error) {
+                        console.error("Failed to update status:", error);
+                      }
+                    }}
+                    className="rounded-md border px-2 py-0.5 text-[11px] hover:bg-emerald-50 disabled:opacity-50"
+                  >
+                    {updateStatusMutation.isPending ? "..." : "Hoàn tất"}
+                  </button>
+                )}
             </div>
           </div>
-
         </div>
       </div>
 
@@ -595,7 +634,7 @@ const TaskCard: React.FC<{
           animation: fade-in 0.18s ease-out;
         }
       `}
-      </style>   
+      </style>
     </>
   );
 };
@@ -611,7 +650,7 @@ const ReceivedInfoSection: React.FC<{
 }> = ({ items, onAssignInfo, onOpenGroupTransfer }) => {
   if (!items || items.length === 0) return null;
 
-  return (    
+  return (
     <div className="premium-accordion-wrapper">
       <RightAccordion
         icon={<ListTodo className="h-4 w-4 text-amber-500" />}
@@ -621,8 +660,10 @@ const ReceivedInfoSection: React.FC<{
 
             {/* BADGE — số lượng "waiting" */}
             {items.filter((i) => i.status === "waiting").length > 0 && (
-              <span className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 
-                         rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-300">
+              <span
+                className="inline-flex items-center justify-center text-[10px] px-2 py-0.5 
+                         rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-300"
+              >
                 {items.filter((i) => i.status === "waiting").length}
               </span>
             )}
@@ -642,17 +683,24 @@ const ReceivedInfoSection: React.FC<{
                 <div className="font-medium text-sm truncate">{info.title}</div>
 
                 <div className="text-xs text-gray-500 mt-0.5">
-                  Từ: <span className="font-semibold">{info.sender}</span> • Tiếp nhận lúc: {formatTime(info.createdAt)}
+                  Từ: <span className="font-semibold">{info.sender}</span> •
+                  Tiếp nhận lúc: {formatTime(info.createdAt)}
                 </div>
 
                 {/* Status */}
                 {isTransferred && (
                   <div className="text-[11px] text-amber-700 mt-1">
                     ➜ Đã chuyển sang nhóm:{" "}
-                    <span className="font-semibold">{info.transferredToGroupName}</span>
+                    <span className="font-semibold">
+                      {info.transferredToGroupName}
+                    </span>
                     {info.transferredWorkTypeName && (
                       <>
-                        {" "}• Loại việc: <span className="font-semibold">{info.transferredWorkTypeName}</span>
+                        {" "}
+                        • Loại việc:{" "}
+                        <span className="font-semibold">
+                          {info.transferredWorkTypeName}
+                        </span>
                       </>
                     )}
                   </div>
@@ -667,10 +715,7 @@ const ReceivedInfoSection: React.FC<{
                 {/* Buttons */}
                 {info.status === "waiting" && (
                   <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      onClick={() => onAssignInfo?.(info)}
-                    >
+                    <Button size="sm" onClick={() => onAssignInfo?.(info)}>
                       Giao Task
                     </Button>
 
@@ -686,12 +731,9 @@ const ReceivedInfoSection: React.FC<{
               </div>
             );
           })}
-
-        </div>        
-
+        </div>
       </RightAccordion>
-    </div>      
-    
+    </div>
   );
 };
 
@@ -709,7 +751,7 @@ export const ConversationDetailPanel: React.FC<{
 
   // Members (for "Thành viên" accordion)
   members?: MinimalMember[];
-  onAddMember?: () => void;  
+  onAddMember?: () => void;
 
   // Tasks
   tasks?: Task[];
@@ -724,13 +766,25 @@ export const ConversationDetailPanel: React.FC<{
   onOpenGroupTransfer?: (info: ReceivedInfo) => void;
   onUpdateTaskChecklist?: (taskId: string, next: ChecklistItem[]) => void;
   checklistTemplates?: ChecklistTemplateMap;
-  setChecklistTemplates?: React.Dispatch<React.SetStateAction<ChecklistTemplateMap>>;
-  applyTemplateToTasks?: (workTypeId: string, template: ChecklistTemplateItem[]) => void;
+  setChecklistTemplates?: React.Dispatch<
+    React.SetStateAction<ChecklistTemplateMap>
+  >;
+  applyTemplateToTasks?: (
+    workTypeId: string,
+    template: ChecklistTemplateItem[]
+  ) => void;
   taskLogs?: Record<string, TaskLogMessage[]>;
   onOpenTaskLog?: (taskId: string) => void;
   onOpenSourceMessage?: (messageId: string) => void;
   checklistVariants?: ChecklistVariant[];
   messages?: MessageLike[]; // Messages from chat to extract files from
+
+  /** Phase 2: Messages query object for auto-loading older messages */
+  messagesQuery?: {
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    fetchNextPage: () => Promise<unknown>;
+  };
 }> = ({
   tab,
   setTab,
@@ -750,7 +804,7 @@ export const ConversationDetailPanel: React.FC<{
   onTransferInfo,
   onAssignInfo,
   onOpenGroupTransfer,
-  onUpdateTaskChecklist,  
+  onUpdateTaskChecklist,
   checklistTemplates = {},
   setChecklistTemplates,
   applyTemplateToTasks,
@@ -759,10 +813,12 @@ export const ConversationDetailPanel: React.FC<{
   onOpenSourceMessage,
   checklistVariants,
   messages = [],
+  messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
   // State for View All Tasks Modal
-  const [showViewAllTasksModal, setShowViewAllTasksModal] = React.useState(false);
-  
+  const [showViewAllTasksModal, setShowViewAllTasksModal] =
+    React.useState(false);
+
   // Fetch all tasks for conversation (no user task filter)
   const {
     data: linkedTasksData,
@@ -771,7 +827,7 @@ export const ConversationDetailPanel: React.FC<{
     error: linkedTasksErrorObj,
     refetch: refetchLinkedTasks,
   } = useAllTasks({
-    conversationId: groupId || '',
+    conversationId: groupId || "",
     enabled: !!groupId && showViewAllTasksModal,
   });
 
@@ -787,12 +843,12 @@ export const ConversationDetailPanel: React.FC<{
     if (!checklistTemplatesFromAPI || checklistTemplatesFromAPI.length === 0) {
       return checklistTemplates || {};
     }
-    
+
     // Transform API templates for the current workType
     const apiTemplatesMap = selectedWorkTypeId
       ? transformTemplatesToMap(checklistTemplatesFromAPI, selectedWorkTypeId)
       : {};
-    
+
     // Merge with prop templates (prop templates take precedence)
     return {
       ...apiTemplatesMap,
@@ -817,11 +873,13 @@ export const ConversationDetailPanel: React.FC<{
 
   // Collapse states for leader own tasks
   const [showLeaderOwnTodo, setShowLeaderOwnTodo] = React.useState(true);
-  const [showLeaderOwnInProgress, setShowLeaderOwnInProgress] = React.useState(true);
+  const [showLeaderOwnInProgress, setShowLeaderOwnInProgress] =
+    React.useState(true);
   const [showLeaderOwnDone, setShowLeaderOwnDone] = React.useState(true);
 
   // Modal for completed tasks history
-  const [showLeaderOwnCompletedAll, setShowLeaderOwnCompletedAll] = React.useState(false);
+  const [showLeaderOwnCompletedAll, setShowLeaderOwnCompletedAll] =
+    React.useState(false);
 
   // Toggle cho từng nhóm task ở chế độ lead
   const [showLeadAwaiting, setShowLeadAwaiting] = React.useState(true);
@@ -839,15 +897,18 @@ export const ConversationDetailPanel: React.FC<{
   // const [highlightInProgress, setHighlightInProgress] = React.useState(false);
 
   const isTasksTab = tab === "order" || tab === "tasks";
- 
+
   const [templateOpen, setTemplateOpen] = React.useState(false);
 
-    // Variant hiện tại đang chỉnh trong "Checklist mặc định"
-  const [templateVariantId, setTemplateVariantId] = React.useState<string | undefined>(undefined);
+  // Variant hiện tại đang chỉnh trong "Checklist mặc định"
+  const [templateVariantId, setTemplateVariantId] = React.useState<
+    string | undefined
+  >(undefined);
 
   React.useEffect(() => {
     if (checklistVariants && checklistVariants.length > 0) {
-      const def = checklistVariants.find((v) => v.isDefault) ?? checklistVariants[0];
+      const def =
+        checklistVariants.find((v) => v.isDefault) ?? checklistVariants[0];
       // Nếu state hiện tại không hợp lệ, reset về default
       setTemplateVariantId((prev) =>
         prev && checklistVariants.some((v) => v.id === prev) ? prev : def?.id
@@ -856,7 +917,6 @@ export const ConversationDetailPanel: React.FC<{
       setTemplateVariantId(undefined);
     }
   }, [checklistVariants, selectedWorkTypeId]);
-
 
   // ====== Files state - Phase 1A ======
   // Tạm thời không dùng FileManager (folder) trong tab Thông tin.
@@ -883,7 +943,6 @@ export const ConversationDetailPanel: React.FC<{
   //   { id: "att_exp", key: "Hạn dùng", value: "" },
   //   { id: "att_supplier", key: "NCC", value: "" },
   // ]);
- 
 
   // ====== Tasks derived ======
   // const tasksByWork = React.useMemo(
@@ -892,7 +951,10 @@ export const ConversationDetailPanel: React.FC<{
   // );
   // Lọc theo workType trước
   const tasksByWorkRaw = React.useMemo(
-    () => tasks.filter((t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId),
+    () =>
+      tasks.filter(
+        (t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId
+      ),
     [tasks, selectedWorkTypeId]
   );
 
@@ -900,11 +962,11 @@ export const ConversationDetailPanel: React.FC<{
   // Staff chỉ thấy task của mình trong hôm nay
   const tasksToday = React.useMemo(() => {
     if (viewMode === "lead") {
-      return tasksByWorkRaw.filter(t => isToday(t.createdAt));
+      return tasksByWorkRaw.filter((t) => isToday(t.createdAt));
     }
     if (viewMode === "staff") {
       return tasksByWorkRaw.filter(
-        t => t.assignTo === currentUserId && isToday(t.createdAt)
+        (t) => t.assignTo === currentUserId && isToday(t.createdAt)
       );
     }
     return tasksByWorkRaw;
@@ -915,29 +977,37 @@ export const ConversationDetailPanel: React.FC<{
   const leaderOwnTasks = React.useMemo(() => {
     if (viewMode !== "lead" || !currentUserId) return [];
 
-    return tasksToday.filter(t => t.assignTo === currentUserId);
+    return tasksToday.filter((t) => t.assignTo === currentUserId);
   }, [tasksToday, viewMode, currentUserId]);
 
   console.log("Leader own tasks:", leaderOwnTasks);
   // Group leader own tasks by status
-  const leaderOwnBuckets = React.useMemo(() => ({
-    todo: leaderOwnTasks.filter(t => t.status.code=== "todo"),
-    inProgress: leaderOwnTasks.filter(t => t.status.code === "doing"),
-    // Done TODAY only (for inline display)
-    doneToday: leaderOwnTasks.filter(t =>
-      (t.status.code === "need_to_verified" || t.status.code === "finished") && isToday(t.updatedAt || t.createdAt)
-    ),
-  }), [leaderOwnTasks]);
+  const leaderOwnBuckets = React.useMemo(
+    () => ({
+      todo: leaderOwnTasks.filter((t) => t.status.code === "todo"),
+      inProgress: leaderOwnTasks.filter((t) => t.status.code === "doing"),
+      // Done TODAY only (for inline display)
+      doneToday: leaderOwnTasks.filter(
+        (t) =>
+          (t.status.code === "need_to_verified" ||
+            t.status.code === "finished") &&
+          isToday(t.updatedAt || t.createdAt)
+      ),
+    }),
+    [leaderOwnTasks]
+  );
 
   // All completed tasks (any date) for modal
   const leaderOwnAllCompleted = React.useMemo(() => {
     if (viewMode !== "lead" || !currentUserId) return [];
 
     return tasksByWorkRaw
-      .filter(t =>
-        t.assignTo === currentUserId &&
-        (t.status.code === "need_to_verified" || t.status.code === "finished") &&
-        (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId)
+      .filter(
+        (t) =>
+          t.assignTo === currentUserId &&
+          (t.status.code === "need_to_verified" ||
+            t.status.code === "finished") &&
+          (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId)
       )
       .sort((a, b) => {
         const da = new Date(a.updatedAt || a.createdAt || "");
@@ -965,9 +1035,10 @@ export const ConversationDetailPanel: React.FC<{
   //   return splitByStatus(base);
   // }, [assigneeFilter, tasksByWork]);
   const leadBuckets = React.useMemo(() => {
-    const base = assigneeFilter === "all"
-      ? tasksToday
-      : tasksToday.filter(t => t.assignTo === assigneeFilter);
+    const base =
+      assigneeFilter === "all"
+        ? tasksToday
+        : tasksToday.filter((t) => t.assignTo === assigneeFilter);
     return splitByStatus(base);
   }, [assigneeFilter, tasksToday]);
 
@@ -978,7 +1049,10 @@ export const ConversationDetailPanel: React.FC<{
         ? tasksByWorkRaw
         : tasksByWorkRaw.filter((t) => t.assignTo === assigneeFilter);
 
-    return base.filter((t) => t.status.code === "finished" || t.status.code === "need_to_verified");
+    return base.filter(
+      (t) =>
+        t.status.code === "finished" || t.status.code === "need_to_verified"
+    );
   }, [assigneeFilter, tasksByWorkRaw]);
 
   const [showCompleted, setShowCompleted] = React.useState(false);
@@ -1000,9 +1074,10 @@ export const ConversationDetailPanel: React.FC<{
   return (
     <aside className="bg-white shadow-sm flex flex-col min-h-0">
       {/* Header: chỉ còn Tabs, bỏ dropdown CSKH/THU MUA */}
-      <div className="flex items-center gap-3 border border-gray-300
-        border-b-[2px] border-b-[#38AE3C] rounded-tl-2xl rounded-tr-2xl bg-white p-3 sticky top-0 z-10">
-
+      <div
+        className="flex items-center gap-3 border border-gray-300
+        border-b-[2px] border-b-[#38AE3C] rounded-tl-2xl rounded-tr-2xl bg-white p-3 sticky top-0 z-10"
+      >
         <SegmentedTabs
           tabs={[
             { key: "info", label: "Thông Tin" },
@@ -1023,7 +1098,10 @@ export const ConversationDetailPanel: React.FC<{
               <div className="flex flex-col items-center text-center gap-1">
                 <div className="text-sm font-semibold">{groupName}</div>
                 <div className="text-xs text-gray-700">
-                  Đang xem thông tin cho <span className="font-medium text-brand-600">Loại việc: {workTypeName}</span>
+                  Đang xem thông tin cho{" "}
+                  <span className="font-medium text-brand-600">
+                    Loại việc: {workTypeName}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1037,7 +1115,9 @@ export const ConversationDetailPanel: React.FC<{
                   groupId={groupId}
                   selectedWorkTypeId={selectedWorkTypeId}
                   onOpenSourceMessage={onOpenSourceMessage}
+                  onNavigateToChat={() => setTab("chat")}
                   messages={messages}
+                  messagesQuery={messagesQuery}
                 />
               </RightAccordion>
             </div>
@@ -1051,11 +1131,12 @@ export const ConversationDetailPanel: React.FC<{
                   groupId={groupId}
                   selectedWorkTypeId={selectedWorkTypeId}
                   onOpenSourceMessage={onOpenSourceMessage}
+                  onNavigateToChat={() => setTab("chat")}
                   messages={messages}
+                  messagesQuery={messagesQuery}
                 />
               </RightAccordion>
             </div>
-
 
             {/* Thành viên (Leader only) */}
             {viewMode === "lead" && (
@@ -1067,7 +1148,9 @@ export const ConversationDetailPanel: React.FC<{
                       <Users className="h-4 w-4 text-gray-600" />
                       <div className="text-sm">
                         {/* <div className="font-medium">Thành viên</div> */}
-                        <div className="text-xs text-gray-500">{members.length} thành viên</div>
+                        <div className="text-xs text-gray-500">
+                          {members.length} thành viên
+                        </div>
                       </div>
                     </div>
                     <button
@@ -1090,26 +1173,32 @@ export const ConversationDetailPanel: React.FC<{
                 conversationId={groupId}
                 onTaskClick={(taskId) => {
                   // TODO: Navigate to task detail or open task modal
-                  console.log('Task clicked:', taskId);
+                  console.log("Task clicked:", taskId);
                 }}
                 onViewAll={() => setShowViewAllTasksModal(true)}
               />
             )}
-            
-            {viewMode === "lead" && (                
+
+            {viewMode === "lead" && (
               <>
                 {isTasksTab && (
                   <HintBubble
                     storageKey="hint-received-info-bubble"
                     title="Cách hiển thị Thông tin được tiếp nhận"
-                    content={<>Chỉ hiển thị thông tin được tiếp nhận chưa giao task/chuyển nhóm. Các thông tin đã bàn giao chỉ hiển thị trong ngày.</>}
-                    show={(receivedInfos?.length ?? 0) > 0}   // 👈 CHỈ HIỂN THỊ KHI CÓ RECEIVED INFO
+                    content={
+                      <>
+                        Chỉ hiển thị thông tin được tiếp nhận chưa giao
+                        task/chuyển nhóm. Các thông tin đã bàn giao chỉ hiển thị
+                        trong ngày.
+                      </>
+                    }
+                    show={(receivedInfos?.length ?? 0) > 0} // 👈 CHỈ HIỂN THỊ KHI CÓ RECEIVED INFO
                     autoCloseMs={9000}
                   />
                 )}
 
                 {/* Received Info — thông tin tiếp nhận từ tin nhắn */}
-                < ReceivedInfoSection
+                <ReceivedInfoSection
                   items={receivedInfos}
                   onAssignInfo={(info) => onAssignInfo?.(info)}
                   //onTransferInfo={(id, dept) => onTransferInfo?.(id, dept)}
@@ -1122,11 +1211,17 @@ export const ConversationDetailPanel: React.FC<{
               <>
                 {/* Primary: Chưa xử lý + Đang xử lý */}
                 <div className="premium-accordion-wrapper">
-                  <RightAccordion icon={<ClipboardList className="h-4 w-4 text-brand-600" />}
-                    title="Công Việc Của Tôi">
+                  <RightAccordion
+                    icon={<ClipboardList className="h-4 w-4 text-brand-600" />}
+                    title="Công Việc Của Tôi"
+                  >
                     <div className="grid grid-cols-1 gap-3">
-                      {(staffBuckets.todo.length + staffBuckets.inProgress.length === 0) && (
-                        <div className="rounded border p-3 text-xs text-gray-500">Không có việc cần làm.</div>
+                      {staffBuckets.todo.length +
+                        staffBuckets.inProgress.length ===
+                        0 && (
+                        <div className="rounded border p-3 text-xs text-gray-500">
+                          Không có việc cần làm.
+                        </div>
                       )}
                       {staffBuckets.todo.map((t) => (
                         <TaskCard
@@ -1138,7 +1233,7 @@ export const ConversationDetailPanel: React.FC<{
                           onReassign={onReassignTask}
                           onToggleChecklist={onToggleChecklist}
                           onUpdateTaskChecklist={(taskId, next) => {
-                            onUpdateTaskChecklist?.(taskId, next)
+                            onUpdateTaskChecklist?.(taskId, next);
                           }}
                           taskLogs={taskLogs}
                           onClickTitle={(messageId) => {
@@ -1157,7 +1252,7 @@ export const ConversationDetailPanel: React.FC<{
                           onReassign={onReassignTask}
                           onToggleChecklist={onToggleChecklist}
                           onUpdateTaskChecklist={(taskId, next) => {
-                            onUpdateTaskChecklist?.(taskId, next)
+                            onUpdateTaskChecklist?.(taskId, next);
                           }}
                           taskLogs={taskLogs}
                           onClickTitle={(messageId) => {
@@ -1168,16 +1263,19 @@ export const ConversationDetailPanel: React.FC<{
                       ))}
                     </div>
                   </RightAccordion>
-
                 </div>
 
                 {/* Secondary: Chờ duyệt */}
                 <div className="premium-accordion-wrapper">
-                  <RightAccordion icon={<SquarePen className="h-4 w-4 text-gray-400" />}
-                    title="Chờ Duyệt">
+                  <RightAccordion
+                    icon={<SquarePen className="h-4 w-4 text-gray-400" />}
+                    title="Chờ Duyệt"
+                  >
                     <div className="grid grid-cols-1 gap-3">
                       {staffBuckets.awaiting.length === 0 && (
-                        <div className="rounded border p-3 text-xs text-gray-500">Không có việc chờ duyệt.</div>
+                        <div className="rounded border p-3 text-xs text-gray-500">
+                          Không có việc chờ duyệt.
+                        </div>
                       )}
                       {staffBuckets.awaiting.map((t) => (
                         <TaskCard
@@ -1204,88 +1302,103 @@ export const ConversationDetailPanel: React.FC<{
                         Xem tất cả công việc đã hoàn thành
                       </button>
                     </div>
-
                   </RightAccordion>
-
                 </div>
-                  {showCompleted && (
-                    <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-                      <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
-                        {/* ============================================
+                {showCompleted && (
+                  <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+                    <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
+                      {/* ============================================
                             HEADER (consistent với leader modal)
                             ============================================ */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
-                          <div className="flex items-center gap-2">
-                            <ClipboardList className="h-5 w-5 text-brand-600" />
-                            <h3 className="text-sm font-semibold text-gray-900">
-                              Công Việc Đã Hoàn Thành
-                            </h3>
-                          </div>
-                          <button
-                            onClick={() => setShowCompleted(false)}
-                            className="text-gray-400 hover:text-gray-600 transition"
-                          >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
+                      <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
+                        <div className="flex items-center gap-2">
+                          <ClipboardList className="h-5 w-5 text-brand-600" />
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            Công Việc Đã Hoàn Thành
+                          </h3>
                         </div>
+                        <button
+                          onClick={() => setShowCompleted(false)}
+                          className="text-gray-400 hover:text-gray-600 transition"
+                        >
+                          <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
 
-                        {/* ============================================
+                      {/* ============================================
                             CONTENT (scrollable với consistent styling)
                             ============================================ */}
-                        <div className="flex-1 overflow-y-auto px-6 py-4">
-                          {(() => {
-                            // Lọc toàn bộ task đã hoàn thành của user hiện tại, theo workType
-                            const completed = tasks
-                              .filter(
-                                (t) =>
-                                  (t.status.code === "finished" || t.status.code === "need_to_verified") &&
-                                  t.assignTo === currentUserId &&
-                                  (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId)
-                              )
-                              .slice()
-                              .sort((a, b) => {
-                                const da = new Date(a.updatedAt || a.createdAt || "");
-                                const db = new Date(b.updatedAt || b.createdAt || "");
-                                return db.getTime() - da.getTime(); // Newest first
-                              });
-
-                            if (completed.length === 0) {
-                              return (
-                                <div className="text-center py-12 text-sm text-gray-400">
-                                  Chưa có công việc nào hoàn thành
-                                </div>
+                      <div className="flex-1 overflow-y-auto px-6 py-4">
+                        {(() => {
+                          // Lọc toàn bộ task đã hoàn thành của user hiện tại, theo workType
+                          const completed = tasks
+                            .filter(
+                              (t) =>
+                                (t.status.code === "finished" ||
+                                  t.status.code === "need_to_verified") &&
+                                t.assignTo === currentUserId &&
+                                (!selectedWorkTypeId ||
+                                  t.workTypeId === selectedWorkTypeId)
+                            )
+                            .slice()
+                            .sort((a, b) => {
+                              const da = new Date(
+                                a.updatedAt || a.createdAt || ""
                               );
-                            }
-
-                            // Group theo ngày (dd/MM/yyyy format)
-                            const grouped: Record<string, typeof completed> = {};
-
-                            completed.forEach((t) => {
-                              const dateStr = t.updatedAt || t.createdAt;
-                              if (!dateStr) return;
-
-                              const date = new Date(dateStr);
-                              const key = date.toLocaleDateString("vi-VN", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              });
-
-                              if (!grouped[key]) grouped[key] = [];
-                              grouped[key].push(t);
+                              const db = new Date(
+                                b.updatedAt || b.createdAt || ""
+                              );
+                              return db.getTime() - da.getTime(); // Newest first
                             });
 
-                            const today = new Date().toLocaleDateString("vi-VN", {
+                          if (completed.length === 0) {
+                            return (
+                              <div className="text-center py-12 text-sm text-gray-400">
+                                Chưa có công việc nào hoàn thành
+                              </div>
+                            );
+                          }
+
+                          // Group theo ngày (dd/MM/yyyy format)
+                          const grouped: Record<string, typeof completed> = {};
+
+                          completed.forEach((t) => {
+                            const dateStr = t.updatedAt || t.createdAt;
+                            if (!dateStr) return;
+
+                            const date = new Date(dateStr);
+                            const key = date.toLocaleDateString("vi-VN", {
                               day: "2-digit",
                               month: "2-digit",
                               year: "numeric",
                             });
 
-                            return (
-                              <div className="space-y-5">
-                                {Object.entries(grouped).map(([dateKey, tasks]) => {
+                            if (!grouped[key]) grouped[key] = [];
+                            grouped[key].push(t);
+                          });
+
+                          const today = new Date().toLocaleDateString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          });
+
+                          return (
+                            <div className="space-y-5">
+                              {Object.entries(grouped).map(
+                                ([dateKey, tasks]) => {
                                   const isToday = dateKey === today;
 
                                   return (
@@ -1295,7 +1408,10 @@ export const ConversationDetailPanel: React.FC<{
                                           ============================================ */}
                                       <div className="flex items-center gap-2 mb-3">
                                         <span className="text-xs font-semibold text-gray-600">
-                                          📅 {isToday ? `Hôm nay - ${dateKey}` : dateKey}
+                                          📅{" "}
+                                          {isToday
+                                            ? `Hôm nay - ${dateKey}`
+                                            : dateKey}
                                         </span>
                                         <span className="text-xs text-gray-400">
                                           ({tasks.length})
@@ -1313,7 +1429,9 @@ export const ConversationDetailPanel: React.FC<{
                                           >
                                             {/* Title */}
                                             <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
-                                              {truncateMessageTitle(t.title || t.description)}
+                                              {truncateMessageTitle(
+                                                t.title || t.description
+                                              )}
                                             </div>
 
                                             {/* Meta:  Time + Checklist */}
@@ -1322,24 +1440,37 @@ export const ConversationDetailPanel: React.FC<{
                                                 Hoàn tất lúc{" "}
                                                 <span className="font-medium text-gray-700">
                                                   {t.updatedAt
-                                                    ? new Date(t.updatedAt).toLocaleTimeString("vi-VN", {
-                                                      hour: "2-digit",
-                                                      minute: "2-digit",
-                                                    })
+                                                    ? new Date(
+                                                        t.updatedAt
+                                                      ).toLocaleTimeString(
+                                                        "vi-VN",
+                                                        {
+                                                          hour: "2-digit",
+                                                          minute: "2-digit",
+                                                        }
+                                                      )
                                                     : "--:--"}
                                                 </span>
                                               </span>
 
                                               {/* Checklist progress (if any) */}
-                                              {t.checklist && t.checklist.length > 0 && (
-                                                <span className="text-emerald-600 text-[10px]">
-                                                  ✓ {t.checklist.filter(c => c.done).length}/{t.checklist.length} mục
-                                                </span>
-                                              )}
+                                              {t.checklist &&
+                                                t.checklist.length > 0 && (
+                                                  <span className="text-emerald-600 text-[10px]">
+                                                    ✓{" "}
+                                                    {
+                                                      t.checklist.filter(
+                                                        (c) => c.done
+                                                      ).length
+                                                    }
+                                                    /{t.checklist.length} mục
+                                                  </span>
+                                                )}
                                             </div>
 
                                             {/* WorkType + Variant chips */}
-                                            {(t.workTypeName || t.checklistVariantName) && (
+                                            {(t.workTypeName ||
+                                              t.checklistVariantName) && (
                                               <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
                                                 {t.workTypeName && (
                                                   <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
@@ -1358,26 +1489,27 @@ export const ConversationDetailPanel: React.FC<{
                                       </div>
                                     </div>
                                   );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </div>
+                                }
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
 
-                        {/* ============================================
+                      {/* ============================================
                             FOOTER (consistent với leader)
                             ============================================ */}
-                        <div className="px-6 py-3 border-t bg-gray-50 text-center">
-                          <button
-                            onClick={() => setShowCompleted(false)}
-                            className="text-xs text-gray-500 hover:text-gray-700"
-                          >
-                            Đóng
-                          </button>
-                        </div>
+                      <div className="px-6 py-3 border-t bg-gray-50 text-center">
+                        <button
+                          onClick={() => setShowCompleted(false)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          Đóng
+                        </button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -1386,7 +1518,9 @@ export const ConversationDetailPanel: React.FC<{
                   <ToggleGroup
                     type="single"
                     value={leaderMode}
-                    onValueChange={(v) => v && setLeaderMode(v as "team" | "mine")}
+                    onValueChange={(v) =>
+                      v && setLeaderMode(v as "team" | "mine")
+                    }
                     className="grid w-full grid-cols-2 gap-2"
                   >
                     <ToggleGroupItem
@@ -1416,14 +1550,26 @@ export const ConversationDetailPanel: React.FC<{
                     >
                       <UserIcon className="h-4 w-4" />
                       Của tôi
-                      {leaderOwnTasks.filter(t => (t.status.code !== "need_to_verified" && t.status.code !== "finished")).length > 0 && (
-                        <span className="
+                      {leaderOwnTasks.filter(
+                        (t) =>
+                          t.status.code !== "need_to_verified" &&
+                          t.status.code !== "finished"
+                      ).length > 0 && (
+                        <span
+                          className="
                           ml-1 inline-flex min-w-[18px] h-[18px]
                           items-center justify-center
                           rounded-full bg-amber-500 text-white
                           text-[10px] font-bold px-1
-                        ">
-                          {leaderOwnTasks.filter(t => (t.status.code !== "need_to_verified" && t.status.code !== "finished")).length}
+                        "
+                        >
+                          {
+                            leaderOwnTasks.filter(
+                              (t) =>
+                                t.status.code !== "need_to_verified" &&
+                                t.status.code !== "finished"
+                            ).length
+                          }
                         </span>
                       )}
                     </ToggleGroupItem>
@@ -1442,10 +1588,14 @@ export const ConversationDetailPanel: React.FC<{
                         <div className="flex items-center justify-center gap-2 flex-wrap">
                           <Users className="h-4 w-4 text-brand-600" />
                           <span className="text-sm font-semibold">
-                            Công Việc Của Nhóm <span className="text-brand-500"> {groupName}</span>
+                            Công Việc Của Nhóm{" "}
+                            <span className="text-brand-500"> {groupName}</span>
                           </span>
                           <span className="text-xs text-gray-500">
-                            • Loại việc: <span className="font-medium text-gray-700">{workTypeName}</span>
+                            • Loại việc:{" "}
+                            <span className="font-medium text-gray-700">
+                              {workTypeName}
+                            </span>
                           </span>
                         </div>
 
@@ -1456,7 +1606,9 @@ export const ConversationDetailPanel: React.FC<{
                             <select
                               className="rounded-lg border border-brand-200 px-2 py-1 bg-white"
                               value={assigneeFilter}
-                              onChange={(e) => setAssigneeFilter(e.target.value)}
+                              onChange={(e) =>
+                                setAssigneeFilter(e.target.value)
+                              }
                             >
                               <option value="all">Tất cả</option>
                               {members.map((m) => (
@@ -1479,17 +1631,25 @@ export const ConversationDetailPanel: React.FC<{
                       <div className="mt-2 text-[11px] text-gray-400">
                         Đang xem{" "}
                         <span className="font-semibold text-gray-600">
-                          {leadBuckets.todo.length + leadBuckets.inProgress.length + leadBuckets.awaiting.length}
+                          {leadBuckets.todo.length +
+                            leadBuckets.inProgress.length +
+                            leadBuckets.awaiting.length}
                         </span>{" "}
                         công việc •{" "}
                         <span>{leadBuckets.todo.length} chưa xử lý</span> •{" "}
-                        <span>{leadBuckets.inProgress.length} đang xử lý</span> •{" "}
-                        <span className="text-amber-600 font-semibold">{leadBuckets.awaiting.length} chờ duyệt</span>
+                        <span>{leadBuckets.inProgress.length} đang xử lý</span>{" "}
+                        •{" "}
+                        <span className="text-amber-600 font-semibold">
+                          {leadBuckets.awaiting.length} chờ duyệt
+                        </span>
                       </div>
                     </div>
 
                     {/* Grouped tasks theo trạng thái */}
-                    {leadBuckets.todo.length + leadBuckets.inProgress.length + leadBuckets.awaiting.length === 0 ? (
+                    {leadBuckets.todo.length +
+                      leadBuckets.inProgress.length +
+                      leadBuckets.awaiting.length ===
+                    0 ? (
                       <div className="rounded-xl border border-dashed bg-white/60 p-4 text-xs text-gray-500 text-center">
                         Không có công việc nào trong nhóm với bộ lọc hiện tại.
                       </div>
@@ -1506,17 +1666,29 @@ export const ConversationDetailPanel: React.FC<{
                                   if (next && !awaitingOpenedRef.current) {
                                     awaitingOpenedRef.current = true;
                                     setHighlightAwaiting(true);
-                                    setTimeout(() => setHighlightAwaiting(false), 700);
+                                    setTimeout(
+                                      () => setHighlightAwaiting(false),
+                                      700
+                                    );
                                   }
                                   return next;
                                 });
                               }}
                             >
                               <span className="inline-flex h-2 w-2 rounded-full bg-amber-500" />
-                              <span>Chờ duyệt ({leadBuckets.awaiting.length}) {showLeadAwaiting ? " ▲" : " ▼"}</span>
+                              <span>
+                                Chờ duyệt ({leadBuckets.awaiting.length}){" "}
+                                {showLeadAwaiting ? " ▲" : " ▼"}
+                              </span>
                             </div>
                             {showLeadAwaiting && (
-                              <div className={`space-y-3 transition-colors duration-300 ${highlightAwaiting ? "bg-amber-50/80 rounded-lg -mx-2 px-2 py-1" : ""}`}>
+                              <div
+                                className={`space-y-3 transition-colors duration-300 ${
+                                  highlightAwaiting
+                                    ? "bg-amber-50/80 rounded-lg -mx-2 px-2 py-1"
+                                    : ""
+                                }`}
+                              >
                                 {leadBuckets.awaiting.map((t) => (
                                   <TaskCard
                                     key={t.id}
@@ -1544,10 +1716,13 @@ export const ConversationDetailPanel: React.FC<{
                           <section>
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
-                              onClick={() => setShowLeadTodo(v => !v)}
+                              onClick={() => setShowLeadTodo((v) => !v)}
                             >
                               <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
-                              <span>Chưa xử lý ({leadBuckets.todo.length}) {showLeadTodo ? " ▲" : " ▼"}</span>
+                              <span>
+                                Chưa xử lý ({leadBuckets.todo.length}){" "}
+                                {showLeadTodo ? " ▲" : " ▼"}
+                              </span>
                             </div>
                             {showLeadTodo && (
                               <div className="space-y-3">
@@ -1561,7 +1736,9 @@ export const ConversationDetailPanel: React.FC<{
                                     onChangeStatus={onChangeTaskStatus}
                                     onReassign={onReassignTask}
                                     onToggleChecklist={onToggleChecklist}
-                                    onUpdateTaskChecklist={onUpdateTaskChecklist}
+                                    onUpdateTaskChecklist={
+                                      onUpdateTaskChecklist
+                                    }
                                     taskLogs={taskLogs}
                                     onClickTitle={(messageId) => {
                                       onOpenSourceMessage?.(messageId);
@@ -1579,7 +1756,7 @@ export const ConversationDetailPanel: React.FC<{
                           <section>
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
-                              onClick={() => setShowLeadInProgress(v => !v)}
+                              onClick={() => setShowLeadInProgress((v) => !v)}
                             >
                               <span className="inline-flex h-2 w-2 rounded-full bg-sky-400" />
                               <span>
@@ -1621,7 +1798,8 @@ export const ConversationDetailPanel: React.FC<{
                             >
                               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                               <span>
-                                Hoàn thành ({leadBuckets.done.length}) {showLeadDone ? " ▲" : " ▼"}
+                                Hoàn thành ({leadBuckets.done.length}){" "}
+                                {showLeadDone ? " ▲" : " ▼"}
                               </span>
                             </div>
 
@@ -1676,8 +1854,18 @@ export const ConversationDetailPanel: React.FC<{
                               onClick={() => setShowLeadCompletedAll(false)}
                               className="text-gray-400 hover:text-gray-600 transition"
                             >
-                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -1692,83 +1880,116 @@ export const ConversationDetailPanel: React.FC<{
                               <div className="space-y-5">
                                 {(() => {
                                   // Group by date
-                                  const grouped: Record<string, typeof allLeadDoneTasks> = {};
+                                  const grouped: Record<
+                                    string,
+                                    typeof allLeadDoneTasks
+                                  > = {};
 
-                                  allLeadDoneTasks.forEach(t => {
+                                  allLeadDoneTasks.forEach((t) => {
                                     const dateStr = t.updatedAt || t.createdAt;
                                     if (!dateStr) return;
 
                                     const date = new Date(dateStr);
-                                    const key = date.toLocaleDateString("vi-VN", {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "numeric",
-                                    });
+                                    const key = date.toLocaleDateString(
+                                      "vi-VN",
+                                      {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      }
+                                    );
 
                                     if (!grouped[key]) grouped[key] = [];
                                     grouped[key].push(t);
                                   });
 
-                                  const today = new Date().toLocaleDateString("vi-VN", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                  });
+                                  const today = new Date().toLocaleDateString(
+                                    "vi-VN",
+                                    {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "numeric",
+                                    }
+                                  );
 
-                                  return Object.entries(grouped).map(([dateKey, tasks]) => {
-                                    const isToday = dateKey === today;
+                                  return Object.entries(grouped).map(
+                                    ([dateKey, tasks]) => {
+                                      const isToday = dateKey === today;
 
-                                    return (
-                                      <div key={dateKey}>
-                                        <div className="flex items-center gap-2 mb-3">
-                                          <span className="text-xs font-semibold text-gray-600">
-                                            📅 {isToday ? `Hôm nay - ${dateKey}` : dateKey}
-                                          </span>
-                                          <span className="text-xs text-gray-400">({tasks.length})</span>
-                                        </div>
+                                      return (
+                                        <div key={dateKey}>
+                                          <div className="flex items-center gap-2 mb-3">
+                                            <span className="text-xs font-semibold text-gray-600">
+                                              📅{" "}
+                                              {isToday
+                                                ? `Hôm nay - ${dateKey}`
+                                                : dateKey}
+                                            </span>
+                                            <span className="text-xs text-gray-400">
+                                              ({tasks.length})
+                                            </span>
+                                          </div>
 
-                                        <div className="space-y-2 ml-4">
-                                          {tasks.map(t => (
-                                            <div
-                                              key={t.id}
-                                              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow"
-                                            >
-                                              <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
-                                                {truncateMessageTitle(t.title || t.description)}
-                                              </div>
-
-                                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                                <span>
-                                                  Hoàn tất lúc{" "}
-                                                  <span className="font-medium text-gray-700">
-                                                    {t.updatedAt
-                                                      ? new Date(t.updatedAt).toLocaleTimeString("vi-VN", {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                      })
-                                                      : "--:--"}
-                                                  </span>
-                                                </span>
-
-                                                {/* Assignee name */}
-                                                <span>
-                                                  <span className="font-medium text-gray-700">
-                                                    {members.find(m => m.id === t.assignTo)?.name ?? t.assignTo}
-                                                  </span>
-                                                </span>
-                                              </div>
-
-                                              {t.checklist && t.checklist.length > 0 && (
-                                                <div className="mt-1 text-[10px] text-emerald-600">
-                                                  ✓ {t.checklist.filter(c => c.done).length}/{t.checklist.length} mục
+                                          <div className="space-y-2 ml-4">
+                                            {tasks.map((t) => (
+                                              <div
+                                                key={t.id}
+                                                className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow"
+                                              >
+                                                <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
+                                                  {truncateMessageTitle(
+                                                    t.title || t.description
+                                                  )}
                                                 </div>
-                                              )}
-                                            </div>
-                                          ))}
+
+                                                <div className="flex items-center justify-between text-xs text-gray-500">
+                                                  <span>
+                                                    Hoàn tất lúc{" "}
+                                                    <span className="font-medium text-gray-700">
+                                                      {t.updatedAt
+                                                        ? new Date(
+                                                            t.updatedAt
+                                                          ).toLocaleTimeString(
+                                                            "vi-VN",
+                                                            {
+                                                              hour: "2-digit",
+                                                              minute: "2-digit",
+                                                            }
+                                                          )
+                                                        : "--:--"}
+                                                    </span>
+                                                  </span>
+
+                                                  {/* Assignee name */}
+                                                  <span>
+                                                    <span className="font-medium text-gray-700">
+                                                      {members.find(
+                                                        (m) =>
+                                                          m.id === t.assignTo
+                                                      )?.name ?? t.assignTo}
+                                                    </span>
+                                                  </span>
+                                                </div>
+
+                                                {t.checklist &&
+                                                  t.checklist.length > 0 && (
+                                                    <div className="mt-1 text-[10px] text-emerald-600">
+                                                      ✓{" "}
+                                                      {
+                                                        t.checklist.filter(
+                                                          (c) => c.done
+                                                        ).length
+                                                      }
+                                                      /{t.checklist.length} mục
+                                                    </div>
+                                                  )}
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
-                                      </div>
-                                    );
-                                  });
+                                      );
+                                    }
+                                  );
                                 })()}
                               </div>
                             )}
@@ -1792,340 +2013,416 @@ export const ConversationDetailPanel: React.FC<{
                 {/* ============================================
                     MINE MODE (NEW)
                     ============================================ */}
-                    {leaderMode === "mine" && (
-                      <div className="space-y-4">
-                        {/* Summary card */}
-                        <div className="rounded-xl border bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50 p-4 shadow-sm">
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <UserIcon className="h-5 w-5 text-brand-600" />
-                            <span className="text-sm font-semibold text-gray-900">
-                              Công Việc Của Tôi
+                {leaderMode === "mine" && (
+                  <div className="space-y-4">
+                    {/* Summary card */}
+                    <div className="rounded-xl border bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50 p-4 shadow-sm">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <UserIcon className="h-5 w-5 text-brand-600" />
+                        <span className="text-sm font-semibold text-gray-900">
+                          Công Việc Của Tôi
+                        </span>
+                      </div>
+
+                      <div className="text-center text-xs text-gray-600">
+                        {leaderOwnTasks.filter(
+                          (t) =>
+                            t.status.code !== "need_to_verified" &&
+                            t.status.code !== "finished"
+                        ).length > 0 ? (
+                          <>
+                            <span className="font-semibold text-brand-700">
+                              {
+                                leaderOwnTasks.filter(
+                                  (t) =>
+                                    t.status.code !== "need_to_verified" &&
+                                    t.status.code !== "finished"
+                                ).length
+                              }
+                            </span>{" "}
+                            công việc đang thực hiện •{" "}
+                            <span>
+                              {leaderOwnBuckets.todo.length} chưa xử lý
+                            </span>{" "}
+                            •{" "}
+                            <span>
+                              {leaderOwnBuckets.inProgress.length} đang xử lý
                             </span>
-                          </div>
-
-                          <div className="text-center text-xs text-gray-600">
-                            {leaderOwnTasks.filter(t => (t.status.code !== "need_to_verified" && t.status.code !== "finished")).length > 0 ? (
+                            {leaderOwnBuckets.doneToday.length > 0 && (
                               <>
-                                <span className="font-semibold text-brand-700">
-                                  {leaderOwnTasks.filter(t => (t.status.code !== "need_to_verified" && t.status.code !== "finished")).length}
-                                </span>{" "}
-                                công việc đang thực hiện •{" "}
-                                <span>{leaderOwnBuckets.todo.length} chưa xử lý</span> •{" "}
-                                <span>{leaderOwnBuckets.inProgress.length} đang xử lý</span>
-                                {leaderOwnBuckets.doneToday.length > 0 && (
-                                  <>
-                                    {" "}• <span className="text-emerald-600">{leaderOwnBuckets.doneToday.length} hoàn thành hôm nay</span>
-                                  </>
-                                )}
+                                {" "}
+                                •{" "}
+                                <span className="text-emerald-600">
+                                  {leaderOwnBuckets.doneToday.length} hoàn thành
+                                  hôm nay
+                                </span>
                               </>
-                            ) : (
-                              <span className="text-emerald-600">✓ Đã hoàn thành hết công việc hôm nay</span>
                             )}
-                          </div>
+                          </>
+                        ) : (
+                          <span className="text-emerald-600">
+                            ✓ Đã hoàn thành hết công việc hôm nay
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Empty state */}
+                    {leaderOwnTasks.filter(
+                      (t) =>
+                        t.status.code !== "need_to_verified" &&
+                        t.status.code !== "finished"
+                    ).length === 0 &&
+                      leaderOwnBuckets.doneToday.length === 0 && (
+                        <div className="rounded-xl border border-dashed bg-white/60 p-8 text-center">
+                          <UserIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                          <p className="text-sm text-gray-500 font-medium mb-1">
+                            Bạn chưa có công việc nào cần làm
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Các công việc được giao sẽ xuất hiện ở đây
+                          </p>
                         </div>
+                      )}
 
-                        {/* Empty state */}
-                        {leaderOwnTasks.filter(t => (t.status.code !== "need_to_verified" && t.status.code !== "finished")).length === 0 &&
-                          leaderOwnBuckets.doneToday.length === 0 && (
-                            <div className="rounded-xl border border-dashed bg-white/60 p-8 text-center">
-                              <UserIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                              <p className="text-sm text-gray-500 font-medium mb-1">
-                                Bạn chưa có công việc nào cần làm
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                Các công việc được giao sẽ xuất hiện ở đây
-                              </p>
-                            </div>
-                          )}
-
-                        {/* ============================================
+                    {/* ============================================
                             TODO SECTION (Collapsible)
                             ============================================ */}
-                        {leaderOwnBuckets.todo.length > 0 && (
-                          <section>
-                            <div
-                              className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
-                              onClick={() => setShowLeaderOwnTodo(v => !v)}
-                            >
-                              <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
-                              <span>Chưa xử lý ({leaderOwnBuckets.todo.length})</span>
-                              <span className="ml-1 text-gray-400">
-                                {showLeaderOwnTodo ? "▲" : "▼"}
-                              </span>
-                            </div>
+                    {leaderOwnBuckets.todo.length > 0 && (
+                      <section>
+                        <div
+                          className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
+                          onClick={() => setShowLeaderOwnTodo((v) => !v)}
+                        >
+                          <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
+                          <span>
+                            Chưa xử lý ({leaderOwnBuckets.todo.length})
+                          </span>
+                          <span className="ml-1 text-gray-400">
+                            {showLeaderOwnTodo ? "▲" : "▼"}
+                          </span>
+                        </div>
 
-                            {showLeaderOwnTodo && (
-                              <div className={`
+                        {showLeaderOwnTodo && (
+                          <div
+                            className={`
                                     space-y-3
                                     transition-all duration-300 ease-out
                                     overflow-hidden
-                                    ${showLeaderOwnTodo ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}
-                                  `}>
-                                {leaderOwnBuckets.todo.map(t => (
-                                  <TaskCard
-                                    key={t.id}
-                                    t={t}
-                                    members={members}
-                                    viewMode="lead"
-                                    isLeaderOwnTask={true}
-                                    onChangeStatus={onChangeTaskStatus}
-                                    onReassign={onReassignTask}
-                                    onToggleChecklist={onToggleChecklist}
-                                    onUpdateTaskChecklist={onUpdateTaskChecklist}
-                                    taskLogs={taskLogs}
-                                    onClickTitle={(messageId) => {
-                                      onOpenSourceMessage?.(messageId);
-                                    }}
-                                    onOpenTaskLog={onOpenTaskLog}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </section>
-                        )}
-
-                        {/* ============================================
-                            IN_PROGRESS SECTION (Collapsible)
-                            ============================================ */}
-                        {leaderOwnBuckets.inProgress.length > 0 && (
-                          <section>
-                            <div
-                              className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
-                              onClick={() => setShowLeaderOwnInProgress(v => !v)}
-                            >
-                              <span className="inline-flex h-2 w-2 rounded-full bg-sky-400" />
-                              <span>Đang xử lý ({leaderOwnBuckets.inProgress.length})</span>
-                              <span className="ml-1 text-gray-400">
-                                {showLeaderOwnInProgress ? "▲" : "▼"}
-                              </span>
-                            </div>
-
-                            {showLeaderOwnInProgress && (
-                              <div className="space-y-3">
-                                {leaderOwnBuckets.inProgress.map(t => (
-                                  <TaskCard
-                                    key={t.id}
-                                    t={t}
-                                    members={members}
-                                    viewMode="lead"
-                                    isLeaderOwnTask={true}
-                                    onChangeStatus={onChangeTaskStatus}
-                                    onReassign={onReassignTask}
-                                    onToggleChecklist={onToggleChecklist}
-                                    onUpdateTaskChecklist={onUpdateTaskChecklist}
-                                    taskLogs={taskLogs}
-                                    onClickTitle={(messageId) => {
-                                      onOpenSourceMessage?.(messageId);
-                                    }}
-                                    onOpenTaskLog={onOpenTaskLog}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </section>
-                        )}
-
-                        {/* ============================================
-                            DONE TODAY SECTION (Collapsible)
-                            ============================================ */}
-                        {leaderOwnBuckets.doneToday.length > 0 && (
-                          <section>
-                            <div
-                              className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
-                              onClick={() => setShowLeaderOwnDone(v => !v)}
-                            >
-                              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                              <span>Hoàn thành hôm nay ({leaderOwnBuckets.doneToday.length})</span>
-                              <span className="ml-1 text-gray-400">
-                                {showLeaderOwnDone ? "▲" : "▼"}
-                              </span>
-                            </div>
-
-                            {showLeaderOwnDone && (
-                              <div className="space-y-3">
-                                {leaderOwnBuckets.doneToday.map(t => (
-                                  <TaskCard
-                                    key={t.id}
-                                    t={t}
-                                    members={members}
-                                    viewMode="lead"
-                                    isLeaderOwnTask={true}
-                                    onChangeStatus={onChangeTaskStatus}
-                                    onReassign={onReassignTask}
-                                    onToggleChecklist={onToggleChecklist}
-                                    onUpdateTaskChecklist={onUpdateTaskChecklist}
-                                    taskLogs={taskLogs}
-                                    onClickTitle={(messageId) => {
-                                      onOpenSourceMessage?.(messageId);
-                                    }}
-                                    onOpenTaskLog={onOpenTaskLog}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </section>
-                        )}
-
-                        {/* ============================================
-                            LINK TO ALL COMPLETED TASKS
-                            ============================================ */}
-                        {leaderOwnAllCompleted.length > 0 && (
-                          <div className="text-center pt-2">
-                            <button
-                              className="text-xs text-brand-700 hover:text-brand-800 hover:underline font-medium"
-                              onClick={() => setShowLeaderOwnCompletedAll(true)}
-                            >
-                              Xem tất cả công việc đã hoàn thành ({leaderOwnAllCompleted.length}) →
-                            </button>
+                                    ${
+                                      showLeaderOwnTodo
+                                        ? "max-h-[2000px] opacity-100"
+                                        : "max-h-0 opacity-0"
+                                    }
+                                  `}
+                          >
+                            {leaderOwnBuckets.todo.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                isLeaderOwnTask={true}
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                                onUpdateTaskChecklist={onUpdateTaskChecklist}
+                                taskLogs={taskLogs}
+                                onClickTitle={(messageId) => {
+                                  onOpenSourceMessage?.(messageId);
+                                }}
+                                onOpenTaskLog={onOpenTaskLog}
+                              />
+                            ))}
                           </div>
                         )}
-                      </div>
+                      </section>
                     )}
 
                     {/* ============================================
+                            IN_PROGRESS SECTION (Collapsible)
+                            ============================================ */}
+                    {leaderOwnBuckets.inProgress.length > 0 && (
+                      <section>
+                        <div
+                          className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
+                          onClick={() => setShowLeaderOwnInProgress((v) => !v)}
+                        >
+                          <span className="inline-flex h-2 w-2 rounded-full bg-sky-400" />
+                          <span>
+                            Đang xử lý ({leaderOwnBuckets.inProgress.length})
+                          </span>
+                          <span className="ml-1 text-gray-400">
+                            {showLeaderOwnInProgress ? "▲" : "▼"}
+                          </span>
+                        </div>
+
+                        {showLeaderOwnInProgress && (
+                          <div className="space-y-3">
+                            {leaderOwnBuckets.inProgress.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                isLeaderOwnTask={true}
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                                onUpdateTaskChecklist={onUpdateTaskChecklist}
+                                taskLogs={taskLogs}
+                                onClickTitle={(messageId) => {
+                                  onOpenSourceMessage?.(messageId);
+                                }}
+                                onOpenTaskLog={onOpenTaskLog}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    {/* ============================================
+                            DONE TODAY SECTION (Collapsible)
+                            ============================================ */}
+                    {leaderOwnBuckets.doneToday.length > 0 && (
+                      <section>
+                        <div
+                          className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
+                          onClick={() => setShowLeaderOwnDone((v) => !v)}
+                        >
+                          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                          <span>
+                            Hoàn thành hôm nay (
+                            {leaderOwnBuckets.doneToday.length})
+                          </span>
+                          <span className="ml-1 text-gray-400">
+                            {showLeaderOwnDone ? "▲" : "▼"}
+                          </span>
+                        </div>
+
+                        {showLeaderOwnDone && (
+                          <div className="space-y-3">
+                            {leaderOwnBuckets.doneToday.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                t={t}
+                                members={members}
+                                viewMode="lead"
+                                isLeaderOwnTask={true}
+                                onChangeStatus={onChangeTaskStatus}
+                                onReassign={onReassignTask}
+                                onToggleChecklist={onToggleChecklist}
+                                onUpdateTaskChecklist={onUpdateTaskChecklist}
+                                taskLogs={taskLogs}
+                                onClickTitle={(messageId) => {
+                                  onOpenSourceMessage?.(messageId);
+                                }}
+                                onOpenTaskLog={onOpenTaskLog}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    {/* ============================================
+                            LINK TO ALL COMPLETED TASKS
+                            ============================================ */}
+                    {leaderOwnAllCompleted.length > 0 && (
+                      <div className="text-center pt-2">
+                        <button
+                          className="text-xs text-brand-700 hover:text-brand-800 hover:underline font-medium"
+                          onClick={() => setShowLeaderOwnCompletedAll(true)}
+                        >
+                          Xem tất cả công việc đã hoàn thành (
+                          {leaderOwnAllCompleted.length}) →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ============================================
                         MODAL:  All Completed Tasks (Leader Own)
                         ============================================ */}
-                    {showLeaderOwnCompletedAll && (
-                      <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-                        <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
-                          {/* Header */}
-                          <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
-                            <div className="flex items-center gap-2">
-                              <UserIcon className="h-5 w-5 text-brand-600" />
-                              <h3 className="text-sm font-semibold text-gray-900">
-                                Công Việc Đã Hoàn Thành
-                              </h3>
-                            </div>
-                            <button
-                              onClick={() => setShowLeaderOwnCompletedAll(false)}
-                              className="text-gray-400 hover:text-gray-600 transition"
-                            >
-                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
+                {showLeaderOwnCompletedAll && (
+                  <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+                    <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
+                      {/* Header */}
+                      <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-5 w-5 text-brand-600" />
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            Công Việc Đã Hoàn Thành
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => setShowLeaderOwnCompletedAll(false)}
+                          className="text-gray-400 hover:text-gray-600 transition"
+                        >
+                          <svg
+                            className="h-5 w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 overflow-y-auto px-6 py-4">
+                        {leaderOwnAllCompleted.length === 0 ? (
+                          <div className="text-center py-12 text-sm text-gray-400">
+                            Chưa có công việc nào hoàn thành
                           </div>
+                        ) : (
+                          <div className="space-y-5">
+                            {(() => {
+                              // Group by date
+                              const grouped: Record<
+                                string,
+                                typeof leaderOwnAllCompleted
+                              > = {};
 
-                          {/* Content */}
-                          <div className="flex-1 overflow-y-auto px-6 py-4">
-                            {leaderOwnAllCompleted.length === 0 ? (
-                              <div className="text-center py-12 text-sm text-gray-400">
-                                Chưa có công việc nào hoàn thành
-                              </div>
-                            ) : (
-                              <div className="space-y-5">
-                                {(() => {
-                                  // Group by date
-                                  const grouped: Record<string, typeof leaderOwnAllCompleted> = {};
+                              leaderOwnAllCompleted.forEach((t) => {
+                                const dateStr = t.updatedAt || t.createdAt;
+                                if (!dateStr) return;
 
-                                  leaderOwnAllCompleted.forEach(t => {
-                                    const dateStr = t.updatedAt || t.createdAt;
-                                    if (!dateStr) return;
+                                const date = new Date(dateStr);
+                                const key = date.toLocaleDateString("vi-VN", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                });
 
-                                    const date = new Date(dateStr);
-                                    const key = date.toLocaleDateString("vi-VN", {
-                                      day: "2-digit",
-                                      month: "2-digit",
-                                      year: "numeric",
-                                    });
+                                if (!grouped[key]) grouped[key] = [];
+                                grouped[key].push(t);
+                              });
 
-                                    if (!grouped[key]) grouped[key] = [];
-                                    grouped[key].push(t);
-                                  });
+                              const today = new Date().toLocaleDateString(
+                                "vi-VN",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                }
+                              );
 
-                                  const today = new Date().toLocaleDateString("vi-VN", {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                  });
+                              return Object.entries(grouped).map(
+                                ([dateKey, tasks]) => {
+                                  const isToday = dateKey === today;
 
-                                  return Object.entries(grouped).map(([dateKey, tasks]) => {
-                                    const isToday = dateKey === today;
+                                  return (
+                                    <div key={dateKey}>
+                                      {/* Date header */}
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-xs font-semibold text-gray-600">
+                                          📅{" "}
+                                          {isToday
+                                            ? `Hôm nay - ${dateKey}`
+                                            : dateKey}
+                                        </span>
+                                        <span className="text-xs text-gray-400">
+                                          ({tasks.length})
+                                        </span>
+                                      </div>
 
-                                    return (
-                                      <div key={dateKey}>
-                                        {/* Date header */}
-                                        <div className="flex items-center gap-2 mb-3">
-                                          <span className="text-xs font-semibold text-gray-600">
-                                            📅 {isToday ? `Hôm nay - ${dateKey}` : dateKey}
-                                          </span>
-                                          <span className="text-xs text-gray-400">
-                                            ({tasks.length})
-                                          </span>
-                                        </div>
+                                      {/* Tasks */}
+                                      <div className="space-y-2 ml-4">
+                                        {tasks.map((t) => (
+                                          <div
+                                            key={t.id}
+                                            className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow"
+                                          >
+                                            {/* Title */}
+                                            <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
+                                              {truncateMessageTitle(
+                                                t.title || t.description
+                                              )}
+                                            </div>
 
-                                        {/* Tasks */}
-                                        <div className="space-y-2 ml-4">
-                                          {tasks.map(t => (
-                                            <div
-                                              key={t.id}
-                                              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow"
-                                            >
-                                              {/* Title */}
-                                              <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
-                                                {truncateMessageTitle(t.title || t.description)}
-                                              </div>
-
-                                              {/* Meta */}
-                                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                                <span>
-                                                  Hoàn tất lúc{" "}
-                                                  <span className="font-medium text-gray-700">
-                                                    {t.updatedAt
-                                                      ? new Date(t.updatedAt).toLocaleTimeString("vi-VN", {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                      })
-                                                      : "--:--"}
-                                                  </span>
+                                            {/* Meta */}
+                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                              <span>
+                                                Hoàn tất lúc{" "}
+                                                <span className="font-medium text-gray-700">
+                                                  {t.updatedAt
+                                                    ? new Date(
+                                                        t.updatedAt
+                                                      ).toLocaleTimeString(
+                                                        "vi-VN",
+                                                        {
+                                                          hour: "2-digit",
+                                                          minute: "2-digit",
+                                                        }
+                                                      )
+                                                    : "--:--"}
                                                 </span>
+                                              </span>
 
-                                                {/* Checklist progress (if any) */}
-                                                {t.checklist && t.checklist.length > 0 && (
+                                              {/* Checklist progress (if any) */}
+                                              {t.checklist &&
+                                                t.checklist.length > 0 && (
                                                   <span className="text-emerald-600 text-[10px]">
-                                                    ✓ {t.checklist.filter(c => c.done).length}/{t.checklist.length} mục
+                                                    ✓{" "}
+                                                    {
+                                                      t.checklist.filter(
+                                                        (c) => c.done
+                                                      ).length
+                                                    }
+                                                    /{t.checklist.length} mục
+                                                  </span>
+                                                )}
+                                            </div>
+
+                                            {/* WorkType + Variant */}
+                                            {(t.workTypeName ||
+                                              t.checklistVariantName) && (
+                                              <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
+                                                {t.workTypeName && (
+                                                  <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                                                    {t.workTypeName}
+                                                  </span>
+                                                )}
+                                                {t.checklistVariantName && (
+                                                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    {t.checklistVariantName}
                                                   </span>
                                                 )}
                                               </div>
-
-                                              {/* WorkType + Variant */}
-                                              {(t.workTypeName || t.checklistVariantName) && (
-                                                <div className="mt-1.5 flex items-center gap-1.5 text-[10px]">
-                                                  {t.workTypeName && (
-                                                    <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
-                                                      {t.workTypeName}
-                                                    </span>
-                                                  )}
-                                                  {t.checklistVariantName && (
-                                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                      {t.checklistVariantName}
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
+                                            )}
+                                          </div>
+                                        ))}
                                       </div>
-                                    );
-                                  });
-                                })()}
-                              </div>
-                            )}
+                                    </div>
+                                  );
+                                }
+                              );
+                            })()}
                           </div>
-
-                          {/* Footer */}
-                          <div className="px-6 py-3 border-t bg-gray-50 text-center">
-                            <button
-                              onClick={() => setShowLeaderOwnCompletedAll(false)}
-                              className="text-xs text-gray-500 hover:text-gray-700"
-                            >
-                              Đóng
-                            </button>
-                          </div>
-                        </div>
+                        )}
                       </div>
-                    )}
+
+                      {/* Footer */}
+                      <div className="px-6 py-3 border-t bg-gray-50 text-center">
+                        <button
+                          onClick={() => setShowLeaderOwnCompletedAll(false)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -2137,7 +2434,9 @@ export const ConversationDetailPanel: React.FC<{
           workTypeName={workTypeName}
           template={workTypeTemplate}
           checklistVariants={checklistVariants}
-          activeVariantId={activeVariantId !== "__default__" ? activeVariantId : undefined}
+          activeVariantId={
+            activeVariantId !== "__default__" ? activeVariantId : undefined
+          }
           onChangeVariant={(variantId) => {
             setTemplateVariantId(variantId);
           }}
@@ -2160,7 +2459,7 @@ export const ConversationDetailPanel: React.FC<{
           onClose={() => setShowViewAllTasksModal(false)}
           conversationId={groupId}
           conversationName={groupName}
-          tasks={(linkedTasksData ?? []).map(t => ({
+          tasks={(linkedTasksData ?? []).map((t) => ({
             taskId: t.id,
             messageId: t.messageId ?? null,
             task: {
@@ -2222,7 +2521,5 @@ export const ConversationDetailPanel: React.FC<{
   }
 `}</style>
     </aside>
-
-    
   );
 };

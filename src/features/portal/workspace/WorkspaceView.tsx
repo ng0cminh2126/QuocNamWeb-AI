@@ -25,10 +25,18 @@ import { MessageSquareIcon, ClipboardListIcon, UserIcon } from "lucide-react";
 import { useConversationMembers } from "@/hooks/queries/useConversationMembers";
 import { useAllTasks } from "@/hooks/queries/useTasks";
 import { useMessages, flattenMessages } from "@/hooks/queries/useMessages";
-import { transformMembersToMinimal, sortMembersWithLeadersFirst } from "@/utils/memberTransform";
+import {
+  transformMembersToMinimal,
+  sortMembersWithLeadersFirst,
+} from "@/utils/memberTransform";
 import { transformTasksToLocal } from "@/utils/taskTransform";
 
-type ChatTarget = { type: "group" | "dm"; id: string; name?: string; memberCount?: number };
+type ChatTarget = {
+  type: "group" | "dm";
+  id: string;
+  name?: string;
+  memberCount?: number;
+};
 
 interface WorkspaceViewProps {
   groups: GroupChat[];
@@ -155,7 +163,6 @@ interface WorkspaceViewProps {
   checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
 
   onOpenWorkTypeManager?: () => void;
-  
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
@@ -233,7 +240,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onUpdateTaskChecklist,
     checklistTemplates,
 
-    onOpenWorkTypeManager,    
+    onOpenWorkTypeManager,
   } = props;
   console.log(selectedChat);
   const isMobile = layoutMode === "mobile";
@@ -400,7 +407,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     isLoading: membersLoading,
     isError: membersError,
   } = useConversationMembers({
-    conversationId: selectedChat?.id || '',
+    conversationId: selectedChat?.id || "",
     enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
   });
 
@@ -418,7 +425,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   // Fetch messages for the conversation from Chat API
   // This will re-fetch whenever selectedChat changes (conversation switch)
   const messagesQuery = useMessages({
-    conversationId: selectedChat?.id || '',
+    conversationId: selectedChat?.id || "",
     enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
   });
 
@@ -432,13 +439,13 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     if (!membersFromAPI || membersFromAPI.length === 0) {
       return groupMembers; // Fallback to prop members if no API data
     }
-    
+
     // Transform API members to local MinimalMember format
     const transformedMembers = transformMembersToMinimal(membersFromAPI);
-    
+
     // Sort with Leaders first
     const sortedTransformed = sortMembersWithLeadersFirst(transformedMembers);
-    
+
     return sortedTransformed;
   }, [membersFromAPI, groupMembers]);
 
@@ -448,21 +455,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     if (!selectedChat?.id) {
       return [];
     }
-    
+
     if (!tasksFromAPI || tasksFromAPI.length === 0) {
       return tasks; // Fallback to prop tasks if no API data
     }
-    
+
     // Transform API tasks to local format
     const transformedTasks = transformTasksToLocal(
       tasksFromAPI,
-      selectedChat?.id || '',
-      selectedWorkTypeId || ''
+      selectedChat?.id || "",
+      selectedWorkTypeId || ""
     );
-    
+
     return transformedTasks;
   }, [tasksFromAPI, tasks, selectedChat?.id, selectedWorkTypeId]);
-
 
   // Handler to update conversation name when selecting from API
   const handleApiSelectChat = React.useCallback(
@@ -488,9 +494,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   };
 
   if (isMobile) {
-    const [showQuickMessageMobile, setShowQuickMessageMobile] = React.useState(false);
+    const [showQuickMessageMobile, setShowQuickMessageMobile] =
+      React.useState(false);
     const [showTodoListMobile, setShowTodoListMobile] = React.useState(false);
-    const [showPinnedMessagesMobile, setShowPinnedMessagesMobile] = React.useState(false);
+    const [showPinnedMessagesMobile, setShowPinnedMessagesMobile] =
+      React.useState(false);
 
     return (
       <div
@@ -554,14 +562,20 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                       onTogglePin={
                         onTogglePin
                           ? (messageId: string, isPinned: boolean) => {
-                              onTogglePin({ id: messageId, isPinned } as Message);
+                              onTogglePin({
+                                id: messageId,
+                                isPinned,
+                              } as Message);
                             }
                           : undefined
                       }
                       onToggleStar={
                         onToggleStar
                           ? (messageId: string, isStarred: boolean) => {
-                              onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                              onToggleStar({
+                                id: messageId,
+                                isStarred,
+                              } as unknown as Message);
                             }
                           : undefined
                       }
@@ -615,6 +629,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 onOpenTaskLog={onOpenTaskLog}
                 onOpenSourceMessage={onOpenSourceMessage}
                 messages={chatMessages}
+                messagesQuery={messagesQuery}
               />
             </div>
           )}
@@ -670,7 +685,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
         {/* Todo List Modal */}
         {showTodoListMobile && (
           <TodoListManagerMobile
-            open={showTodoListMobile} 
+            open={showTodoListMobile}
             onClose={() => setShowTodoListMobile(false)}
           />
         )}
@@ -766,7 +781,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               onToggleStar
                 ? (messageId: string, isStarred: boolean) => {
                     // Create a minimal Message object for the handler
-                    onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                    onToggleStar({
+                      id: messageId,
+                      isStarred,
+                    } as unknown as Message);
                   }
                 : undefined
             }
@@ -830,6 +848,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             onOpenTaskLog={onOpenTaskLog}
             onOpenSourceMessage={onOpenSourceMessage}
             messages={chatMessages}
+            messagesQuery={messagesQuery}
           />
         </div>
       )}

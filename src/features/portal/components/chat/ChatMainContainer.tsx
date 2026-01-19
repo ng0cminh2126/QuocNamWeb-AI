@@ -69,7 +69,7 @@ import MessageImage from "@/features/portal/workspace/MessageImage";
 import FilePreviewModal from "@/components/FilePreviewModal";
 import type { ChatMessage } from "@/types/messages";
 import type { SelectedFile, FileUploadProgressState } from "@/types/files";
-import { FILE_CATEGORIES } from "@/types/files";
+import { FILE_CATEGORIES, MAX_FILES_PER_MESSAGE } from "@/types/files";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 /**
@@ -297,15 +297,31 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     return groupMessages(messagesWithTimestamp, 10 * 60 * 1000); // 10 minutes
   }, [messages]);
 
-  // Auto scroll to bottom when conversation changes or data loads successfully
+  // Auto scroll to bottom ONLY when conversation changes (not on load more)
+  const prevConversationIdForScrollRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (messagesQuery.isSuccess && messages.length > 0) {
+    const isNewConversation =
+      conversationId !== prevConversationIdForScrollRef.current;
+
+    if (isNewConversation && messagesQuery.isSuccess && messages.length > 0) {
       // Use setTimeout to ensure DOM is fully rendered (including image placeholders)
       setTimeout(() => {
         bottomRef.current?.scrollIntoView({ behavior: "auto" });
       }, 200); // Increased timeout to allow all image placeholders to render and calculate height
+
+      prevConversationIdForScrollRef.current = conversationId;
+    } else if (
+      !prevConversationIdForScrollRef.current &&
+      messagesQuery.isSuccess &&
+      messages.length > 0
+    ) {
+      // Initial load (first conversation)
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 200);
+      prevConversationIdForScrollRef.current = conversationId;
     }
-  }, [conversationId, messagesQuery.isSuccess, messages.length]); // ✅ Also trigger on messages.length change
+  }, [conversationId, messagesQuery.isSuccess, messages.length]); // Keep dependencies but only scroll on conversation change
 
   // Phase 2: Auto-focus input when conversation changes
   useEffect(() => {
@@ -451,19 +467,73 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     }
   };
 
-  // Handle file selection (Phase 2: Batch upload - allow 2-10 files)
+  // Compute file limit status
+  const totalSize = selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+  const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+  const remainingSize = MAX_TOTAL_SIZE - totalSize;
+
+  const isFileLimitReached =
+    selectedFiles.length >= MAX_FILES_PER_MESSAGE || remainingSize < 1024; // Less than 1KB space left
+
+  // Handle file selection (Phase 2: Batch upload - allow up to 10 files, 100MB total)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
+    const currentCount = selectedFiles.length;
+    const remainingSlots = MAX_FILES_PER_MESSAGE - currentCount;
 
-    // Phase 2: Validate batch file selection
+    // STEP 1: Check total size FIRST (highest priority)
+    const currentTotalSize = selectedFiles.reduce(
+      (sum, f) => sum + f.file.size,
+      0
+    );
+    const newFilesSize = fileArray.reduce((sum, f) => sum + f.size, 0);
+    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+    const remainingSize = MAX_TOTAL_SIZE - currentTotalSize;
+
+    if (currentTotalSize + newFilesSize > MAX_TOTAL_SIZE) {
+      toast.error(
+        remainingSize <= 0
+          ? "Đã đạt giới hạn 100MB. Vui lòng xóa file cũ để chọn file mới."
+          : `Tổng dung lượng vượt quá 100MB. Còn trống ${formatFileSize(
+              remainingSize
+            )}.`
+      );
+      e.target.value = "";
+      return;
+    }
+
+    // STEP 2: Check if already at file count limit
+    if (remainingSlots === 0) {
+      toast.error(
+        `Đã đủ ${MAX_FILES_PER_MESSAGE} file. Vui lòng xóa file cũ để chọn file mới.`
+      );
+      e.target.value = "";
+      return;
+    }
+
+    // If selecting more than remaining, take only what fits (PARTIAL ACCEPT)
+    let filesToAdd = fileArray;
+    let showWarning = false;
+    if (fileArray.length > remainingSlots) {
+      filesToAdd = fileArray.slice(0, remainingSlots);
+      const discardedCount = fileArray.length - remainingSlots;
+      toast.warning(
+        remainingSlots === MAX_FILES_PER_MESSAGE
+          ? `Chỉ chọn được ${MAX_FILES_PER_MESSAGE} file. Đã tự động bỏ ${discardedCount} file.`
+          : `Đã có ${currentCount} file. Chỉ chọn thêm được ${remainingSlots} file nữa.`
+      );
+      showWarning = true;
+    }
+
+    // Then validate batch (size, type) for files to add
     const validationError = validateBatchFileSelection(
-      fileArray,
-      10, // Max 10 files
-      10 * 1024 * 1024, // Max 10MB per file
-      50 * 1024 * 1024 // Max 50MB total
+      filesToAdd,
+      MAX_FILES_PER_MESSAGE, // 10 files (API limit)
+      10 * 1024 * 1024, // 10MB per file
+      100 * 1024 * 1024 // 100MB total (API limit)
     );
 
     if (validationError) {
@@ -473,9 +543,14 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     }
 
     // Add validated files
-    const validFiles = validateAndAdd(fileArray, selectedFiles.length);
+    const validFiles = validateAndAdd(filesToAdd, currentCount);
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles]);
+
+      // Show success toast only if no warning was shown
+      if (!showWarning) {
+        toast.success(`Đã thêm ${validFiles.length} file`);
+      }
 
       // Auto-focus input after file selection
       setTimeout(() => {
@@ -506,9 +581,29 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   }, [selectedFiles]);
 
   // Handle load more (older messages)
-  const handleLoadMore = () => {
+  const handleLoadMore = async () => {
     if (messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage) {
-      messagesQuery.fetchNextPage();
+      // Save scroll position BEFORE loading more messages
+      const container = messagesContainerRef.current;
+      if (!container) return;
+
+      const scrollHeightBefore = container.scrollHeight;
+      const scrollTopBefore = container.scrollTop;
+
+      // Fetch next page
+      await messagesQuery.fetchNextPage();
+
+      // Restore scroll position AFTER new messages are added
+      // Wait for DOM to update
+      setTimeout(() => {
+        if (container) {
+          const scrollHeightAfter = container.scrollHeight;
+          const addedHeight = scrollHeightAfter - scrollHeightBefore;
+
+          // Adjust scroll position to maintain user's view
+          container.scrollTop = scrollTopBefore + addedHeight;
+        }
+      }, 0);
     }
   };
 
@@ -551,12 +646,15 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   const handleCreateTask = useCallback(
     (messageId: string) => {
       // Find the message to get its content
-      const message = groupedMessages.find((g) => g.message.id === messageId)?.message;
+      const message = groupedMessages.find(
+        (g) => g.message.id === messageId
+      )?.message;
       if (!message) return;
 
       openCreateTaskModal({
         messageId,
-        messageContent: message.content || message.attachments?.[0]?.fileName || '',
+        messageContent:
+          message.content || message.attachments?.[0]?.fileName || "",
         conversationId,
       });
     },
@@ -606,7 +704,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Format status line
   const isDirect = conversationType === "DM";
-  console.log({ status, memberCount, onlineCount, isDirect });
+  // console.log({ status, memberCount, onlineCount, isDirect });
   const statusLine = formatStatusLine(
     status,
     memberCount || 0,
@@ -874,7 +972,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={sendMessageMutation.isPending}
+            disabled={sendMessageMutation.isPending || isFileLimitReached}
             className="shrink-0 hover:bg-gray-100"
             aria-label="Đính kèm file"
             data-testid="file-upload-button"
@@ -888,7 +986,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => imageInputRef.current?.click()}
-            disabled={sendMessageMutation.isPending}
+            disabled={sendMessageMutation.isPending || isFileLimitReached}
             className="shrink-0 hover:bg-gray-100"
             aria-label="Đính kèm hình ảnh"
             data-testid="image-upload-button"
@@ -902,6 +1000,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             type="file"
             className="hidden"
             onChange={handleFileSelect}
+            disabled={isFileLimitReached}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
             multiple
             data-testid="file-input"
@@ -911,6 +1010,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             type="file"
             className="hidden"
             onChange={handleFileSelect}
+            disabled={isFileLimitReached}
             accept={FILE_CATEGORIES.IMAGE.join(",")}
             multiple
             data-testid="image-input"
