@@ -13,21 +13,22 @@ import type {
 interface GetMessagesParams {
   conversationId: string;
   limit?: number;
-  cursor?: string;
+  beforeMessageId?: string; // UUID - Load messages BEFORE (older than) this message
 }
 
 /**
  * GET /api/conversations/{guid}/messages
- * Fetch messages for a conversation with pagination
+ * Fetch messages for a conversation with cursor-based pagination
+ * @param beforeMessageId - UUID of message to load messages before (older messages)
  */
 export const getMessages = async ({
   conversationId,
   limit = 50,
-  cursor,
+  beforeMessageId,
 }: GetMessagesParams): Promise<GetMessagesResponse> => {
   const params: Record<string, unknown> = { limit };
-  if (cursor) {
-    params.cursor = cursor;
+  if (beforeMessageId) {
+    params.beforeMessageId = beforeMessageId;
   }
 
   const response = await apiClient.get<GetMessagesResponse>(
@@ -119,7 +120,7 @@ export const linkTaskToMessage = async (
   taskId: string
 ): Promise<LinkTaskToMessageResponse> => {
   const payload: LinkTaskToMessageRequest = { taskId };
-  console.log('API: Calling PATCH /api/messages/{messageId}/link-task', {
+  console.log("API: Calling PATCH /api/messages/{messageId}/link-task", {
     messageId,
     taskId,
     payload,
@@ -128,6 +129,6 @@ export const linkTaskToMessage = async (
     `/api/messages/${messageId}/link-task`,
     payload
   );
-  console.log('API: Response from link-task:', response.data);
+  console.log("API: Response from link-task:", response.data);
   return response.data;
 };

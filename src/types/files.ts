@@ -133,10 +133,17 @@ export interface FileValidationRules {
   allowedTypes: string[]; // MIME types allowed
 }
 
+/**
+ * Maximum number of files that can be attached to a single message
+ * Applies to both images and other file types combined
+ * API limit: 10 files, 100MB total
+ */
+export const MAX_FILES_PER_MESSAGE = 10;
+
 // Default validation rules for client-side validation
 export const DEFAULT_FILE_RULES: FileValidationRules = {
-  maxSize: 10 * 1024 * 1024, // 10MB
-  maxFiles: 5,
+  maxSize: 10 * 1024 * 1024, // 10MB per file
+  maxFiles: MAX_FILES_PER_MESSAGE, // 10 files (API limit)
   allowedTypes: [
     // Documents
     "application/pdf",

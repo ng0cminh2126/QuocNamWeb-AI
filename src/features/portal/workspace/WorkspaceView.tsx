@@ -25,14 +25,19 @@ import { MessageSquareIcon, ClipboardListIcon, UserIcon } from "lucide-react";
 import { useConversationMembers } from "@/hooks/queries/useConversationMembers";
 import { useAllTasks } from "@/hooks/queries/useTasks";
 import { useMessages, flattenMessages } from "@/hooks/queries/useMessages";
-import { transformMembersToMinimal, sortMembersWithLeadersFirst } from "@/utils/memberTransform";
+import { useQuery } from "@tanstack/react-query";
+import { checklistTemplatesApi } from "@/api/checklist-templates.api";
+import {
+  transformMembersToMinimal,
+  sortMembersWithLeadersFirst,
+} from "@/utils/memberTransform";
 import { transformTasksToLocal } from "@/utils/taskTransform";
+import { useConversationStore, type ChatTarget } from "@/stores";
 
-type ChatTarget = { type: "group" | "dm"; id: string; name?: string; memberCount?: number };
+// Note: ChatTarget type moved to conversationStore
 
 interface WorkspaceViewProps {
   groups: GroupChat[];
-  selectedGroup?: GroupChat;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   onSelectGroup: (groupId: string) => void;
@@ -83,15 +88,15 @@ interface WorkspaceViewProps {
 
   openPreview: (file: FileAttachment) => void;
 
-  tab: "info" | "order" | "tasks";
-  setTab: (v: "info" | "order" | "tasks") => void;
+  tab: "info" | "order" | "tasks" | "chat";
+  setTab: (v: "info" | "order" | "tasks" | "chat") => void;
   tasks: Task[];
   // onChangeTaskStatus: (id: string, nextStatus: Task["status"]) => void;
   // onToggleChecklist: (taskId: string, itemId: string, done: boolean) => void;
   // onUpdateTaskChecklist: (taskId: string, next: ChecklistItem[]) => void;
   applyTemplateToTasks?: (
     workTypeId: string,
-    template: ChecklistTemplateItem[]
+    template: ChecklistTemplateItem[],
   ) => void;
   // checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
   setChecklistTemplates: React.Dispatch<
@@ -120,7 +125,6 @@ interface WorkspaceViewProps {
   currentUserName: string;
   currentUserDepartment?: string;
   onLogout?: () => void;
-  selectedChat: ChatTarget | null;
   onClearSelectedChat?: () => void;
 
   onReceiveInfo?: (message: Message) => void;
@@ -155,18 +159,15 @@ interface WorkspaceViewProps {
   checklistTemplates: Record<string, Record<string, ChecklistTemplateItem[]>>;
 
   onOpenWorkTypeManager?: () => void;
-  
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   const {
     groups,
-    selectedGroup,
     messages,
     setMessages,
     onSelectGroup,
     contacts,
-    selectedChat,
     onSelectChat,
 
     showRight,
@@ -233,9 +234,9 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     onUpdateTaskChecklist,
     checklistTemplates,
 
-    onOpenWorkTypeManager,    
+    onOpenWorkTypeManager,
   } = props;
-  console.log(selectedChat);
+
   const isMobile = layoutMode === "mobile";
   const bottomItems = [
     {
@@ -254,6 +255,27 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   const [mobileTab, setMobileTab] = React.useState<
     "messages" | "work" | "profile"
   >("messages");
+
+  // Use conversation store instead of local state
+  const selectedConversation = useConversationStore(
+    (state) => state.selectedConversation,
+  );
+  const setSelectedConversation = useConversationStore(
+    (state) => state.setSelectedConversation,
+  );
+
+  // console.log(
+  //   "🟣 [WorkspaceView] Current selectedConversation from store:",
+  //   selectedConversation,
+  // );
+
+  // Track whenever selectedConversation changes
+  // React.useEffect(() => {
+  //   console.log(
+  //     "🟣🟣 [WorkspaceView useEffect] selectedConversation CHANGED to:",
+  //     selectedConversation,
+  //   );
+  // }, [selectedConversation]);
 
   // Track conversation name
   const [apiConversationName, setApiConversationName] = React.useState<
@@ -304,10 +326,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
       const minRight = MIN_RIGHT_WIDTH;
       return Math.max(
         minRight,
-        Math.min(candidate, Math.max(minRight, maxRight))
+        Math.min(candidate, Math.max(minRight, maxRight)),
       );
     },
-    [readContentWidth]
+    [readContentWidth],
   );
 
   // Keep width valid on resize/toggles
@@ -365,14 +387,17 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     setShowRight(true);
   }, [readContentWidth, clampRightWidth, setShowRight]);
 
-  // Basic desktop select handlers (unchanged)
+  // Basic desktop select handlers
   const handleSelectGroupDesktop = (id: string) => {
     onSelectGroup(id);
-    onSelectChat({ type: "group", id });
+    const target = { type: "group" as const, id };
+    setSelectedConversation(target);
+    onSelectChat(target);
   };
 
   // Mobile handlers
   const handleMobileSelectChat = (target: ChatTarget) => {
+    setSelectedConversation(target);
     onSelectChat(target);
     if (isMobile) setMobileTab("messages");
   };
@@ -382,44 +407,47 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     if (apiConversationName) {
       return apiConversationName;
     }
-    if (selectedChat?.type === "group") {
-      return groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm";
-    }
-    if (selectedChat?.type === "dm") {
+    if (selectedConversation?.type === "group") {
       return (
-        contacts.find((c) => c.id === selectedChat.id)?.name ?? "Trò chuyện"
+        groups.find((g) => g.id === selectedConversation.id)?.name ?? "Nhóm"
+      );
+    }
+    if (selectedConversation?.type === "dm") {
+      return (
+        contacts.find((c) => c.id === selectedConversation.id)?.name ??
+        "Trò chuyện"
       );
     }
     return "Trò chuyện";
-  }, [apiConversationName, selectedChat, groups, contacts]);
+  }, [apiConversationName, selectedConversation, groups, contacts]);
 
   // Fetch conversation members from Chat API
-  // This will re-fetch whenever selectedChat changes (conversation switch)
+  // This will re-fetch whenever selectedConversation changes (conversation switch)
   const {
     data: membersFromAPI,
     isLoading: membersLoading,
     isError: membersError,
   } = useConversationMembers({
-    conversationId: selectedChat?.id || '',
-    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+    conversationId: selectedConversation?.id || "",
+    enabled: !!selectedConversation?.id, // Only fetch if we have a conversation ID
   });
 
   // Fetch all tasks for the conversation from Task API
-  // This will re-fetch whenever selectedChat changes (conversation switch)
+  // This will re-fetch whenever selectedConversation changes (conversation switch)
   const {
     data: tasksFromAPI,
     isLoading: tasksLoading,
     isError: tasksError,
   } = useAllTasks({
-    conversationId: selectedChat?.id,
-    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+    conversationId: selectedConversation?.id,
+    enabled: !!selectedConversation?.id, // Only fetch if we have a conversation ID
   });
 
   // Fetch messages for the conversation from Chat API
-  // This will re-fetch whenever selectedChat changes (conversation switch)
+  // This will re-fetch whenever selectedConversation changes (conversation switch)
   const messagesQuery = useMessages({
-    conversationId: selectedChat?.id || '',
-    enabled: !!selectedChat?.id, // Only fetch if we have a conversation ID
+    conversationId: selectedConversation?.id || "",
+    enabled: !!selectedConversation?.id, // Only fetch if we have a conversation ID
   });
 
   // Flatten messages from infinite query pages
@@ -427,54 +455,98 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     return flattenMessages(messagesQuery.data);
   }, [messagesQuery.data]);
 
+  // Fetch checklist templates for the selected conversation
+  const { data: checklistTemplatesData } = useQuery({
+    queryKey: ["checklist-templates", selectedConversation?.id],
+    queryFn: () => checklistTemplatesApi.getTemplates(selectedConversation!.id),
+    enabled: !!selectedConversation?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  // Map checklist templates to variants format
+  const conversationChecklistVariants = React.useMemo(() => {
+    if (!checklistTemplatesData) return undefined;
+
+    return checklistTemplatesData.map((template) => ({
+      id: template.id,
+      name: template.name,
+      isDefault: false, // Can be determined from API or first item
+    }));
+  }, [checklistTemplatesData]);
+
+  // console.log("chatMessages", selectedConversation);
+  // console.log("chatMessages", chatMessages);
   // Transform API members to local format and use as groupMembers
   const apiGroupMembers = React.useMemo(() => {
     if (!membersFromAPI || membersFromAPI.length === 0) {
       return groupMembers; // Fallback to prop members if no API data
     }
-    
+
     // Transform API members to local MinimalMember format
     const transformedMembers = transformMembersToMinimal(membersFromAPI);
-    
+
     // Sort with Leaders first
     const sortedTransformed = sortMembersWithLeadersFirst(transformedMembers);
-    
+
     return sortedTransformed;
   }, [membersFromAPI, groupMembers]);
 
   // Transform API tasks to local format and use as tasks
   const apiTasks = React.useMemo(() => {
     // If no conversation is selected, return empty array (remove tasks list)
-    if (!selectedChat?.id) {
+    if (!selectedConversation?.id) {
       return [];
     }
-    
+
     if (!tasksFromAPI || tasksFromAPI.length === 0) {
       return tasks; // Fallback to prop tasks if no API data
     }
-    
+
     // Transform API tasks to local format
     const transformedTasks = transformTasksToLocal(
       tasksFromAPI,
-      selectedChat?.id || '',
-      selectedWorkTypeId || ''
+      selectedConversation?.id || "",
+      selectedWorkTypeId || "",
     );
-    
-    return transformedTasks;
-  }, [tasksFromAPI, tasks, selectedChat?.id, selectedWorkTypeId]);
 
+    return transformedTasks;
+  }, [tasksFromAPI, tasks, selectedConversation?.id, selectedWorkTypeId]);
 
   // Handler to update conversation name when selecting from API
   const handleApiSelectChat = React.useCallback(
     (target: ChatTarget, name?: string) => {
+      setSelectedConversation(target);
       onSelectChat(target);
       if (name) {
         setApiConversationName(name);
       }
     },
-    [onSelectChat]
+    [onSelectChat, setSelectedConversation],
   );
 
+  // Handler for when LinearTab changes in ChatMainContainer
+  const handleChatChange = React.useCallback(
+    (newChatTarget: ChatTarget) => {
+      console.log(
+        "🟣🔵 [WorkspaceView handleChatChange] CALLED with:",
+        newChatTarget,
+      );
+      console.log(
+        "🟣🔵 [WorkspaceView handleChatChange] About to call setSelectedConversation...",
+      );
+
+      setSelectedConversation(newChatTarget);
+
+      console.log(
+        "🟣🔵 [WorkspaceView handleChatChange] Called setSelectedConversation, now calling onSelectChat...",
+      );
+      onSelectChat(newChatTarget);
+
+      console.log("🟣🔵 [WorkspaceView handleChatChange] DONE");
+    },
+    [onSelectChat, setSelectedConversation],
+  );
+  console.log(selectedConversation);
   const resolvePinnedTime = (msg: Message) => {
     if (msg.createdAt && !isNaN(Date.parse(msg.createdAt)))
       return msg.createdAt;
@@ -488,14 +560,16 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
   };
 
   if (isMobile) {
-    const [showQuickMessageMobile, setShowQuickMessageMobile] = React.useState(false);
+    const [showQuickMessageMobile, setShowQuickMessageMobile] =
+      React.useState(false);
     const [showTodoListMobile, setShowTodoListMobile] = React.useState(false);
-    const [showPinnedMessagesMobile, setShowPinnedMessagesMobile] = React.useState(false);
+    const [showPinnedMessagesMobile, setShowPinnedMessagesMobile] =
+      React.useState(false);
 
     return (
       <div
         className={`relative flex h-full flex-col bg-gray-50 ${
-          mobileTab === "messages" && selectedChat ? "pb-0" : "pb-12"
+          mobileTab === "messages" && selectedConversation ? "pb-0" : "pb-12"
         }`}
       >
         <div className="flex-1 min-h-0">
@@ -514,12 +588,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   onUnpin={onUnpinMessage}
                   onPreview={(file) => openPreview?.(file as any)}
                 />
-              ) : !selectedChat ? (
+              ) : !selectedConversation ? (
                 <div className="h-full min-h-0 overflow-y-auto">
                   <ConversationListSidebar
-                    currentUserId={"u_diem_chi"}
+                    currentUserId={currentUserId}
                     groups={groups}
-                    selectedGroup={selectedGroup as any}
+                    selectedGroup={selectedConversation as any}
                     onSelectGroup={(id) => {
                       onSelectGroup(id);
                       handleMobileSelectChat({ type: "group", id });
@@ -527,6 +601,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                     contacts={contacts}
                     onSelectChat={handleMobileSelectChat}
                     onClearSelectedChat={onClearSelectedChat}
+                    selectedConversationId={
+                      (selectedConversation as ChatTarget | null)?.id
+                    }
+                    selectedCategoryId={
+                      (selectedConversation as ChatTarget | null)?.categoryId
+                    }
                     isMobile={true}
                     onOpenQuickMsg={onOpenQuickMsg}
                     onOpenPinned={onOpenPinned}
@@ -536,32 +616,51 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 </div>
               ) : (
                 <div className="h-full min-h-0">
-                  {selectedChat ? (
+                  {selectedConversation ? (
                     // API-based chat using ChatMainContainer (conversation-detail)
                     <ChatMainContainer
-                      key={selectedChat.id}
-                      conversationId={selectedChat.id}
+                      key={selectedConversation.id}
+                      conversationId={selectedConversation.id}
                       conversationName={chatTitle}
                       conversationType={
-                        selectedChat.type === "group" ? "GRP" : "DM"
+                        selectedConversation.type === "group" ? "GRP" : "DM"
                       }
-                      memberCount={selectedChat.memberCount || 0}
+                      conversationCategory={
+                        selectedConversation.type === "group"
+                          ? selectedConversation.category
+                          : undefined
+                      }
+                      selectedCategoryId={
+                        selectedConversation.type === "group"
+                          ? selectedConversation.categoryId
+                          : undefined
+                      }
+                      memberCount={selectedConversation.memberCount || 0}
                       isMobile={true}
+                      onChatChange={handleChatChange}
                       onBack={() => {
                         onClearSelectedChat?.();
                         setMobileTab("messages");
                       }}
+                      showRightPanel={showRight}
+                      onToggleRightPanel={() => setShowRight(!showRight)}
                       onTogglePin={
                         onTogglePin
                           ? (messageId: string, isPinned: boolean) => {
-                              onTogglePin({ id: messageId, isPinned } as Message);
+                              onTogglePin({
+                                id: messageId,
+                                isPinned,
+                              } as Message);
                             }
                           : undefined
                       }
                       onToggleStar={
                         onToggleStar
                           ? (messageId: string, isStarred: boolean) => {
-                              onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                              onToggleStar({
+                                id: messageId,
+                                isStarred,
+                              } as unknown as Message);
                             }
                           : undefined
                       }
@@ -579,22 +678,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               <ConversationDetailPanel
                 tab={tab}
                 setTab={setTab}
-                groupId={selectedGroup?.id}
-                groupName={
-                  selectedChat?.type === "group"
-                    ? groups.find((g) => g.id === selectedChat.id)?.name ??
-                      "Nhóm"
-                    : "Trò chuyện"
-                }
+                groupId={selectedConversation?.id}
                 workTypeName={
                   workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ??
                   "—"
                 }
-                checklistVariants={
-                  selectedGroup?.workTypes?.find(
-                    (w) => w.id === selectedWorkTypeId
-                  )?.checklistVariants
-                }
+                checklistVariants={conversationChecklistVariants}
                 viewMode={viewMode}
                 selectedWorkTypeId={selectedWorkTypeId}
                 currentUserId={currentUserId}
@@ -615,6 +704,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                 onOpenTaskLog={onOpenTaskLog}
                 onOpenSourceMessage={onOpenSourceMessage}
                 messages={chatMessages}
+                messagesQuery={messagesQuery}
               />
             </div>
           )}
@@ -641,7 +731,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           )}
         </div>
 
-        {!(mobileTab === "messages" && !!selectedChat) && (
+        {!(mobileTab === "messages" && !!selectedConversation) && (
           <div className="absolute bottom-0 left-0 right-0 bg-white border-t">
             <nav className="grid grid-cols-2">
               {bottomItems.map((item) => (
@@ -670,7 +760,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
         {/* Todo List Modal */}
         {showTodoListMobile && (
           <TodoListManagerMobile
-            open={showTodoListMobile} 
+            open={showTodoListMobile}
             onClose={() => setShowTodoListMobile(false)}
           />
         )}
@@ -722,22 +812,30 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           />
         ) : (
           <ConversationListSidebar
-            currentUserId={"u_diem_chi"}
+            currentUserId={currentUserId}
             groups={groups}
-            selectedGroup={selectedGroup as any}
+            selectedGroup={selectedConversation as any}
             onSelectGroup={(id) => {
               onSelectGroup(id);
-              onSelectChat({ type: "group", id });
+              const target = { type: "group" as const, id };
+              setSelectedConversation(target);
+              onSelectChat(target);
             }}
             contacts={contacts}
             onSelectChat={(target) => {
+              setSelectedConversation(target);
               onSelectChat(target);
               if (target.name) {
                 setApiConversationName(target.name);
               }
             }}
             onClearSelectedChat={onClearSelectedChat}
-            selectedConversationId={selectedChat?.id}
+            selectedConversationId={
+              (selectedConversation as ChatTarget | null)?.id
+            }
+            selectedCategoryId={
+              (selectedConversation as ChatTarget | null)?.categoryId
+            }
             useApiData={true}
           />
         )}
@@ -745,15 +843,30 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
 
       {/* Center (Chat Container) — IMPORTANT: allow shrinking by setting min-w-0 */}
       <div className="h-full min-h-0 min-w-0">
-        {selectedChat ? (
+        {selectedConversation ? (
           // API-based chat using ChatMainContainer (conversation-detail)
           <ChatMainContainer
-            key={selectedChat.id}
-            conversationId={selectedChat.id}
+            key={selectedConversation.id}
+            conversationId={selectedConversation.id}
             conversationName={chatTitle}
-            conversationType={selectedChat.type === "group" ? "GRP" : "DM"}
-            memberCount={selectedChat?.memberCount || 0}
+            conversationType={
+              selectedConversation.type === "group" ? "GRP" : "DM"
+            }
+            conversationCategory={
+              selectedConversation.type === "group"
+                ? selectedConversation.category
+                : undefined
+            }
+            selectedCategoryId={
+              selectedConversation.type === "group"
+                ? selectedConversation.categoryId
+                : undefined
+            }
+            memberCount={selectedConversation?.memberCount || 0}
             isMobile={false}
+            onChatChange={handleChatChange}
+            showRightPanel={showRight}
+            onToggleRightPanel={() => setShowRight(!showRight)}
             onTogglePin={
               onTogglePin
                 ? (messageId: string, isPinned: boolean) => {
@@ -766,7 +879,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
               onToggleStar
                 ? (messageId: string, isStarred: boolean) => {
                     // Create a minimal Message object for the handler
-                    onToggleStar({ id: messageId, isStarred } as unknown as Message);
+                    onToggleStar({
+                      id: messageId,
+                      isStarred,
+                    } as unknown as Message);
                   }
                 : undefined
             }
@@ -797,19 +913,11 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
           <ConversationDetailPanel
             tab={tab}
             setTab={setTab}
-            groupId={selectedGroup?.id}
-            groupName={
-              selectedChat?.type === "group"
-                ? groups.find((g) => g.id === selectedChat.id)?.name ?? "Nhóm"
-                : "Trò chuyện"
-            }
+            groupId={selectedConversation?.id}
             workTypeName={
               workTypes?.find((w) => w.id === selectedWorkTypeId)?.name ?? "—"
             }
-            checklistVariants={
-              selectedGroup?.workTypes?.find((w) => w.id === selectedWorkTypeId)
-                ?.checklistVariants
-            }
+            checklistVariants={conversationChecklistVariants}
             viewMode={viewMode}
             selectedWorkTypeId={selectedWorkTypeId}
             currentUserId={currentUserId}
@@ -830,6 +938,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
             onOpenTaskLog={onOpenTaskLog}
             onOpenSourceMessage={onOpenSourceMessage}
             messages={chatMessages}
+            messagesQuery={messagesQuery}
           />
         </div>
       )}

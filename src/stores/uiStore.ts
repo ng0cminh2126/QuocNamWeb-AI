@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getViewModeFromRoles } from '@/utils/roleUtils';
 
 export type ViewMode = 'lead' | 'staff';
 export type CurrentView = 'workspace' | 'lead';
@@ -51,7 +52,7 @@ interface UIState {
 }
 
 const initialState = {
-  viewMode: 'staff' as ViewMode,
+  viewMode: getViewModeFromRoles(),
   currentView: 'workspace' as CurrentView,
   showRightPanel: true,
   rightPanelTab: 'info' as RightPanelTab,

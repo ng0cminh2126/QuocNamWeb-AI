@@ -66,3 +66,17 @@ export const markConversationAsRead = async (
 ): Promise<void> => {
   await apiClient.post(`/api/conversations/${conversationId}/read`);
 };
+
+/**
+ * POST /api/groups/{id}/members
+ * Add a member to a group
+ * Note: This endpoint accepts a single userId, not a list
+ */
+export const addGroupMember = async (
+  groupId: string,
+  userId: string
+): Promise<void> => {
+  await apiClient.post(`/api/groups/${groupId}/members`, {
+    userId,
+  });
+};

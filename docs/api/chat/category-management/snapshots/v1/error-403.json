@@ -1,0 +1,7 @@
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "You don't have permission to perform this action",
+  "traceId": "00-5cf03f4688c45eb7b4df030e1f1f5847-00"
+}

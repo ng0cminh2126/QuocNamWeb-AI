@@ -1,0 +1,87 @@
+[
+  {
+    "id": "tpl-1234-5678-90ab-cdef",
+    "name": "Nhận hàng - Tiêu chuẩn",
+    "description": "Checklist cho quy trình nhận hàng tiêu chuẩn",
+    "conversationId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "items": [
+      {
+        "id": "item-001-aa11-bb22-cc33",
+        "content": "Kiểm tra số lượng hàng hóa",
+        "order": 1
+      },
+      {
+        "id": "item-002-bb22-cc33-dd44",
+        "content": "Kiểm tra chất lượng sản phẩm",
+        "order": 2
+      },
+      {
+        "id": "item-003-cc33-dd44-ee55",
+        "content": "Chụp ảnh xác nhận nhận hàng",
+        "order": 3
+      },
+      {
+        "id": "item-004-dd44-ee55-ff66",
+        "content": "Ký xác nhận biên bản bàn giao",
+        "order": 4
+      }
+    ],
+    "createdAt": "2026-01-01T08:00:00Z",
+    "updatedAt": "2026-01-10T09:30:00Z"
+  },
+  {
+    "id": "tpl-2345-6789-01bc-def0",
+    "name": "Nhận hàng - Nhanh",
+    "description": "Checklist rút gọn cho nhận hàng nhanh",
+    "conversationId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "items": [
+      {
+        "id": "item-005-ee55-ff66-aa77",
+        "content": "Kiểm tra cơ bản số lượng và chất lượng",
+        "order": 1
+      },
+      {
+        "id": "item-006-ff66-aa77-bb88",
+        "content": "Xác nhận nhận hàng trên hệ thống",
+        "order": 2
+      }
+    ],
+    "createdAt": "2026-01-05T09:00:00Z",
+    "updatedAt": null
+  },
+  {
+    "id": "tpl-3456-7890-12cd-ef01",
+    "name": "Giao hàng - Chi tiết",
+    "description": "Checklist đầy đủ cho quy trình giao hàng",
+    "conversationId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "items": [
+      {
+        "id": "item-007-aa88-bb99-cc00",
+        "content": "Kiểm tra địa chỉ giao hàng",
+        "order": 1
+      },
+      {
+        "id": "item-008-bb99-cc00-dd11",
+        "content": "Xác nhận người nhận",
+        "order": 2
+      },
+      {
+        "id": "item-009-cc00-dd11-ee22",
+        "content": "Chụp ảnh giao hàng thành công",
+        "order": 3
+      },
+      {
+        "id": "item-010-dd11-ee22-ff33",
+        "content": "Thu tiền (nếu COD)",
+        "order": 4
+      },
+      {
+        "id": "item-011-ee22-ff33-aa44",
+        "content": "Cập nhật trạng thái trên hệ thống",
+        "order": 5
+      }
+    ],
+    "createdAt": "2026-01-08T10:00:00Z",
+    "updatedAt": "2026-01-14T15:20:00Z"
+  }
+]

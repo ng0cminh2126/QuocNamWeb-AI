@@ -201,6 +201,46 @@ export function clearSelectedConversation(): void {
 }
 
 // ============================================
+// SELECTED CATEGORY PERSISTENCE
+// ============================================
+
+const SELECTED_CATEGORY_KEY = "selected-category-id";
+
+/**
+ * Save selected category ID
+ */
+export function saveSelectedCategory(categoryId: string): void {
+  try {
+    localStorage.setItem(SELECTED_CATEGORY_KEY, categoryId);
+  } catch (error) {
+    console.error("Failed to save selected category:", error);
+  }
+}
+
+/**
+ * Get selected category ID
+ */
+export function getSelectedCategory(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_CATEGORY_KEY);
+  } catch (error) {
+    console.error("Failed to get selected category:", error);
+    return null;
+  }
+}
+
+/**
+ * Clear selected category (e.g., on logout)
+ */
+export function clearSelectedCategory(): void {
+  try {
+    localStorage.removeItem(SELECTED_CATEGORY_KEY);
+  } catch (error) {
+    console.error("Failed to clear selected category:", error);
+  }
+}
+
+// ============================================
 // SCROLL POSITIONS
 // ============================================
 
@@ -240,7 +280,7 @@ export function saveScrollPosition(position: ScrollPosition): void {
  * Get scroll position for a conversation
  */
 export function getScrollPosition(
-  conversationId: string
+  conversationId: string,
 ): ScrollPosition | null {
   try {
     const positions = getAllScrollPositions();

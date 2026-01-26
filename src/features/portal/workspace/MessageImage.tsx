@@ -8,6 +8,8 @@ export interface MessageImageProps {
   onPreviewClick: (fileId: string) => void;
   /** Whether image is displayed in grid layout (2+ images or mixed with files) */
   isInGrid?: boolean;
+  /** Force immediate load without lazy loading (for new messages) */
+  forceLoad?: boolean;
 }
 
 /**
@@ -19,15 +21,22 @@ export default function MessageImage({
   fileName,
   onPreviewClick,
   isInGrid = false,
+  forceLoad = false,
 }: MessageImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(forceLoad); // Start visible if forceLoad
   const [isLoading, setIsLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  // Lazy load: Setup Intersection Observer
+  // Lazy load: Setup Intersection Observer (skip if forceLoad)
   useEffect(() => {
+    // Skip lazy loading if forceLoad is true
+    if (forceLoad) {
+      setIsVisible(true);
+      return;
+    }
+
     // Fallback for browsers without Intersection Observer support
     if (!("IntersectionObserver" in window)) {
       setIsVisible(true); // Load immediately (graceful degradation)
@@ -47,7 +56,7 @@ export default function MessageImage({
       {
         threshold: 0.01, // Trigger when 1% visible
         rootMargin: "100px", // Preload 100px before visible
-      }
+      },
     );
 
     observer.observe(container);
@@ -55,7 +64,7 @@ export default function MessageImage({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [forceLoad]); // Add forceLoad to dependencies
 
   // Fetch thumbnail when visible
   useEffect(() => {
@@ -71,7 +80,7 @@ export default function MessageImage({
         setImageUrl(blobUrl);
       } catch (err) {
         setError(
-          err instanceof Error ? err : new Error("Failed to load image")
+          err instanceof Error ? err : new Error("Failed to load image"),
         );
       } finally {
         setIsLoading(false);
@@ -104,7 +113,7 @@ export default function MessageImage({
         onClick={handleClick}
         className={cn(
           "bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors",
-          isInGrid ? "w-full aspect-square" : "w-[320px] h-[180px]"
+          isInGrid ? "w-full aspect-square" : "w-[320px] h-[180px]",
         )}
       >
         <svg
@@ -135,7 +144,7 @@ export default function MessageImage({
         data-testid="image-skeleton-loader"
         className={cn(
           "bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse rounded-lg",
-          "w-[320px] h-[180px]"
+          "w-[320px] h-[180px]",
         )}
       />
     );
@@ -148,7 +157,7 @@ export default function MessageImage({
       data-testid="message-image-container"
       className={cn(
         "cursor-pointer group overflow-hidden rounded-lg",
-        isInGrid ? "w-full aspect-square" : "w-[320px] h-[180px]"
+        isInGrid ? "w-full aspect-square" : "w-[320px] h-[180px]",
       )}
       onClick={handleClick}
     >
@@ -158,7 +167,7 @@ export default function MessageImage({
         alt={fileName}
         className={cn(
           "w-full h-full transition-all duration-200 group-hover:opacity-90",
-          "object-cover"
+          "object-cover",
         )}
       />
     </div>

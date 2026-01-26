@@ -1,0 +1,102 @@
+import React, { useState } from "react";
+import { Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ConversationCard } from "./ConversationCard";
+import type { GroupChat } from "../../types";
+
+/**
+ * GroupSelector allows selecting a category.
+ * 
+ * CONTEXT: Each category contains multiple conversations/groups.
+ * This selector shows the top-level categories for organization.
+ */
+interface GroupSelectorProps {
+  groups: GroupChat[];
+  onSelect: (group: GroupChat) => void;
+  onClose: () => void;
+  mode?: 'categories' | 'conversations'; // Display mode
+  title?: string; // Optional custom title
+  description?: string; // Optional custom description
+}
+
+export const GroupSelector:  React.FC<GroupSelectorProps> = ({
+  groups,
+  onSelect,
+  onClose,
+  mode = 'categories', // Default to categories
+  title,
+  description,
+}) => {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredGroups = groups.filter((g) =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Determine title and description based on mode
+  const displayTitle = title || "Chọn Loại Việc";
+  const displayDescription = description || 
+    (mode === 'categories' 
+      ? "Chọn loại việc để xem và quản lý các nhóm/conversations" 
+      : "Chọn nhóm chat để quản lý checklist templates");
+
+  return (
+    <div className="flex flex-col max-h-[80vh]">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        <h2 className="text-lg font-semibold text-gray-900">
+          {displayTitle}
+        </h2>
+        {/* <button
+          onClick={onClose}
+          className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X className="h-5 w-5 text-gray-500" />
+        </button> */}
+      </div>
+
+      {/* Description */}
+      <div className="px-6 py-4 bg-gray-50 border-b">
+        <p className="text-sm text-gray-600">
+          {displayDescription}
+        </p>
+      </div>
+
+      {/* Search */}
+      <div className="px-6 py-4 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={mode === 'categories' ? "Tìm loại việc..." : "Tìm nhóm..."}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Group List */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="px-6 py-4 space-y-3">
+          {filteredGroups.length === 0 ? (
+            <div className="text-center py-8 text-sm text-gray-400">
+              {mode === 'categories' 
+                ? "Không tìm thấy loại việc phù hợp"
+                : "Không tìm thấy nhóm phù hợp"}
+            </div>
+          ) : (
+            filteredGroups.map((group) => (
+              <ConversationCard
+                key={group.id}
+                conversation={group}
+                onClick={() => onSelect(group)}
+                mode={mode}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};

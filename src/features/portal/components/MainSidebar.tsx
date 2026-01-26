@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import {
   MessageSquareText,
   Users,
@@ -159,7 +160,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           </button>
 
           {/* Team Monitor (phase next) */}
-          {/* {viewMode === "lead" && (
+          {/* {hasLeaderPermissions() && (
             <button
               title="Team Monitor – Lead"
               onClick={() => onSelect("lead")}
@@ -255,7 +256,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
               </div>
 
               {/* Quản lý loại việc (Leader only) */}
-              {viewMode === 'lead' && (
+              {hasLeaderPermissions() && (
                 <div
                   className="flex flex-col items-center text-center text-gray-500 hover:text-brand-700 cursor-pointer"
                   onClick={() => {
@@ -296,11 +297,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             </div>
             
             <div className="mt-1">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${viewMode === 'lead'
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${hasLeaderPermissions()
                   ? 'bg-brand-100 text-brand-700'
                   : 'bg-gray-100 text-gray-700'
                 }`}>
-                {viewMode === 'lead' ? '🎖️ Trưởng nhóm' : '👤 Nhân viên'}
+                {hasLeaderPermissions() ? '🎖️ Trưởng nhóm' : '👤 Nhân viên'}
               </span>
             </div>
   

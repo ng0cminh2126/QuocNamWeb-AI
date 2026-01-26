@@ -5,19 +5,34 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, Pencil, Star, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Star, AlertCircle, Loader2 } from "lucide-react";
 import { AddEditVariantDialog } from "./AddEditVariantDialog";
+import { useChecklistTemplates } from "@/hooks/queries/useChecklistTemplates";
 import type { WorkType, ChecklistVariant } from "../../types";
 
+/**
+ * ManageVariantsDialog manages checklist variants for a work type.
+ * 
+ * Checklist variants are sub-categories of checklists within a work type.
+ * For example, "Nhận hàng" work type might have variants:
+ * - "Kiểm đếm" (Inventory check)
+ * - "Lưu trữ" (Storage)
+ * - "Thanh toán" (Payment)
+ * 
+ * These variants are used when creating tasks in the conversation/group.
+ * API Reference: docs/modules/chat/using_management_api/api_swaggers/Task swagger.json
+ */
 interface ManageVariantsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workType: WorkType;
   onSave: (variants: ChecklistVariant[]) => void;
+  conversationId?: string; // Optional conversation ID for API filtering (maps to group/conversation)
 }
 
 export const ManageVariantsDialog: React.FC<ManageVariantsDialogProps> = ({
@@ -25,17 +40,40 @@ export const ManageVariantsDialog: React.FC<ManageVariantsDialogProps> = ({
   onOpenChange,
   workType,
   onSave,
+  conversationId,
 }) => {
   const [variants, setVariants] = useState<ChecklistVariant[]>([]);
   const [showAddEdit, setShowAddEdit] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ChecklistVariant | null>(null);
 
-  // Initialize variants from workType
+  // Fetch templates from API if conversationId is provided
+  const { 
+    data: apiTemplates, 
+    isLoading: isLoadingTemplates,
+    error: templatesError,
+    refetch: refetchTemplates
+  } = useChecklistTemplates();
+
+  // Initialize variants from API or workType
   useEffect(() => {
     if (open) {
-      setVariants(workType.checklistVariants ??  []);
+      if (conversationId && apiTemplates) {
+        // Map API templates to ChecklistVariant format
+        const mappedVariants: ChecklistVariant[] = apiTemplates
+          .filter(template => template.name !== null)
+          .map((template, index) => ({
+            id: template.id,
+            name: template.name!,
+            description: template.description || undefined,
+            isDefault: index === 0, // First template as default
+          }));
+        setVariants(mappedVariants);
+      } else {
+        // Fallback to workType variants (existing behavior)
+        setVariants(workType.checklistVariants ??  []);
+      }
     }
-  }, [open, workType]);
+  }, [open, workType, apiTemplates, conversationId]);
 
   const handleAddNew = () => {
     setEditingVariant(null);
@@ -113,6 +151,59 @@ export const ManageVariantsDialog: React.FC<ManageVariantsDialogProps> = ({
 
   const canSave = variants.length > 0;
 
+  // Render loading state
+  if (isLoadingTemplates && conversationId) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[550px] max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>
+              Quản lý Dạng Checklist - {workType.name}
+            </DialogTitle>
+            <DialogDescription>
+              Đang tải dữ liệu...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+              <p className="text-sm text-gray-500">Đang tải templates...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Render error state
+  if (templatesError && conversationId) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-[550px] max-h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>
+              Quản lý Dạng Checklist - {workType.name}
+            </DialogTitle>
+            <DialogDescription>
+              Đã xảy ra lỗi khi tải dữ liệu
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-3 px-6 text-center">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+              <p className="text-sm text-red-600">
+                Không thể tải danh sách templates
+              </p>
+              <Button size="sm" onClick={() => refetchTemplates()}>
+                Thử lại
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -122,6 +213,9 @@ export const ManageVariantsDialog: React.FC<ManageVariantsDialogProps> = ({
             <DialogTitle>
               Quản lý Dạng Checklist - {workType.name}
             </DialogTitle>
+            <DialogDescription>
+              Quản lý các dạng checklist và template cho loại việc này
+            </DialogDescription>
           </DialogHeader>
 
           {/* Description */}
@@ -254,6 +348,7 @@ export const ManageVariantsDialog: React.FC<ManageVariantsDialogProps> = ({
           .filter((v) => v.id !== editingVariant?.id)
           .map((v) => v.name)}
         isFirstVariant={variants.length === 0}
+        conversationId={conversationId || ''}
         onSave={handleSaveVariant}
       />
     </>

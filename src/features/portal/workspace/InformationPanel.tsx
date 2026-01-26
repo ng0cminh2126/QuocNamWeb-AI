@@ -1,12 +1,12 @@
 // InformationPanel - Information tab content for ConversationDetailPanel
 
 import React, { useEffect, useState } from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { RightAccordion } from "../components";
-import { FileManagerPhase1A } from "../components/FileManagerPhase1A";
+import { FileManagerPhase1A, MessageLike } from "../components/FileManagerPhase1A";
 import { Users, Plus, FileText } from "lucide-react";
 import { ViewAllFilesModal } from "@/components/files";
 import { useViewFiles } from "@/hooks/useViewFiles";
-import type { MessageDto } from "@/types/files";
 
 type ViewMode = "lead" | "staff";
 
@@ -21,12 +21,23 @@ interface InformationPanelProps {
   members?: MinimalMember[];
   onAddMember?: () => void;
   onOpenSourceMessage?: (messageId: string) => void;
-  messages?: MessageDto[]; // Messages from chat to extract files from
+
+  /** Callback to navigate to chat tab (Phase 2) */
+  onNavigateToChat?: () => void;
+
+  messages?: MessageLike[]; // Messages from chat to extract files from
+
+  /** Phase 2: Messages query object for auto-loading older messages */
+  messagesQuery?: {
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    fetchNextPage: () => Promise<unknown>;
+  };
 }
 
 /**
  * InformationPanel Component
- * 
+ *
  * Displays information tab content:
  * - Group and work type info
  * - Media files (images/videos)
@@ -42,9 +53,12 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
   members = [],
   onAddMember,
   onOpenSourceMessage,
+  onNavigateToChat,
   messages = [],
+  messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
-  const [conversationMessages, setConversationMessages] = useState<MessageDto[]>(messages);
+  const [conversationMessages, setConversationMessages] =
+    useState<MessageLike[]>(messages);
   const { openModal, closeModal, isOpen } = useViewFiles();
 
   // Update conversation messages when messages prop changes
@@ -54,7 +68,7 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
 
   const handleViewAllFiles = () => {
     // Open modal with messages from conversation
-    openModal(conversationMessages, groupId || '', selectedWorkTypeId);
+    openModal(conversationMessages, groupId || "", selectedWorkTypeId);
   };
 
   return (
@@ -81,7 +95,9 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
             groupId={groupId}
             selectedWorkTypeId={selectedWorkTypeId}
             onOpenSourceMessage={onOpenSourceMessage}
+            onNavigateToChat={onNavigateToChat}
             messages={messages}
+            messagesQuery={messagesQuery}
           />
         </RightAccordion>
       </div>
@@ -110,13 +126,15 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
             groupId={groupId}
             selectedWorkTypeId={selectedWorkTypeId}
             onOpenSourceMessage={onOpenSourceMessage}
+            onNavigateToChat={onNavigateToChat}
             messages={messages}
+            messagesQuery={messagesQuery}
           />
         </RightAccordion>
       </div>
 
       {/* Thành viên (Leader only) */}
-      {viewMode === "lead" && (
+      {hasLeaderPermissions() && (
         <div className="premium-accordion-wrapper">
           <div className="premium-light-bar" />
           <RightAccordion title="Thành viên">
@@ -141,7 +159,10 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
       )}
 
       {/* View All Files Modal - Controlled via props */}
-      <ViewAllFilesModal isOpen={isOpen} onOpenChange={(open) => !open && closeModal()} />
+      <ViewAllFilesModal
+        isOpen={isOpen}
+        onOpenChange={(open) => !open && closeModal()}
+      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { ChevronLeft, Users, Plus, Images, FileText } from "lucide-react";
 import { MobileAccordion } from "./MobileAccordion";
 import { FileManagerPhase1A, Phase1AFileItem } from "../components/FileManagerPhase1A";
@@ -126,7 +127,7 @@ export const TabInfoMobile: React. FC<{
           </MobileAccordion>
 
           {/* Thành viên (Leader only) */}
-          {viewMode === "lead" && (
+          {hasLeaderPermissions() && (
             <MobileAccordion 
               title="Thành viên"
               icon={<Users className="h-4 w-4 text-brand-600" />}

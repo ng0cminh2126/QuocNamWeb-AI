@@ -9,6 +9,8 @@ import {
 import { Zap, Star, ListTodo, RefreshCw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useGroups, flattenGroups } from "@/hooks/queries/useGroups";
+import { useCategories } from "@/hooks/queries/useCategories";
+import { useCategoriesRealtime } from "@/hooks/useCategoriesRealtime";
 import {
   useDirectMessages,
   flattenDirectMessages,
@@ -22,9 +24,13 @@ import type {
 } from "@/types/conversations";
 import ConversationItem from "../components/ConversationItem";
 import { sortConversationsByLatest } from "@/utils/sortConversationsByLatest";
+import { formatRelativeTime } from "@/utils/formatRelativeTime";
+import { formatMessagePreview } from "@/utils/formatMessagePreview";
 import {
   saveSelectedConversation,
   getSelectedConversation,
+  saveSelectedCategory,
+  getSelectedCategory,
 } from "@/utils/storage"; // Phase 6: Conversation persistence
 
 /* ===================== Types (props mới) ===================== */
@@ -32,6 +38,8 @@ type ChatTarget = {
   type: "group" | "dm";
   id: string;
   name?: string;
+  category?: string; // Category/WorkType name for groups
+  categoryId?: string; // 🆕 NEW (CBN-002): Category ID for conversation selector
   memberCount?: number;
 };
 
@@ -62,6 +70,9 @@ export interface LeftSidebarProps {
 
   // Selected conversation ID (for API mode)
   selectedConversationId?: string;
+
+  // Selected category ID (for category-based navigation)
+  selectedCategoryId?: string;
 
   // Use API data instead of props
   useApiData?: boolean;
@@ -120,33 +131,90 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   onSelectChat,
   onClearSelectedChat,
   selectedConversationId,
+  selectedCategoryId,
   useApiData = true,
   isMobile = false,
   onOpenQuickMsg,
   onOpenPinned,
   onOpenTodoList,
 }) => {
-  const [tab, setTab] = React.useState<"groups" | "contacts">("groups"); // mặc định: nhóm
+  const [tab, setTab] = React.useState<"categories" | "contacts">("categories"); // mặc định: nhóm
   const [q, setQ] = React.useState("");
   const [openTools, setOpenTools] = React.useState(false);
   const [hasAutoSelected, setHasAutoSelected] = React.useState(false);
-  const prevTabRef = React.useRef<"groups" | "contacts">("groups");
+  const prevTabRef = React.useRef<"categories" | "contacts">("categories");
   const isAutoSwitchingTabRef = React.useRef(false); // Flag to prevent clearing selection during auto-switch
   const prevSelectedConversationIdRef = React.useRef<string | undefined>(
-    undefined
+    undefined,
   ); // Track previous conversation
 
   // API queries
-  const groupsQuery = useGroups({ enabled: useApiData });
+  // NOTE: No longer using useGroups - conversations are fetched from categories API
+  // const groupsQuery = useGroups({ enabled: useApiData });
+  const categoriesQuery = useCategories();
   const directsQuery = useDirectMessages({ enabled: useApiData });
 
-  // Enable realtime updates with active conversation tracking
-  useConversationRealtime({ activeConversationId: selectedConversationId });
+  // ✅ Real-time updates for categories
+  useCategoriesRealtime(categoriesQuery.data);
+
+  // ❌ REMOVED: Duplicate hook - ChatMainContainer already handles this
+  // useConversationRealtime({ activeConversationId: selectedConversationId });
 
   // Get data from API or props - MEMOIZED to prevent unnecessary re-computation
+  // Build apiGroups from categories.conversations instead of separate API
+  const apiCategories = React.useMemo(() => {
+    return categoriesQuery.data || [];
+  }, [categoriesQuery.data]);
+
   const apiGroups = React.useMemo(() => {
-    return flattenGroups(groupsQuery.data);
-  }, [groupsQuery.data]);
+    if (!categoriesQuery.data) return [];
+
+    // Flatten all conversations from all categories
+    const allConversations: GroupConversation[] = [];
+
+    categoriesQuery.data.forEach((category) => {
+      if (category.conversations) {
+        category.conversations.forEach((conv) => {
+          // Map ConversationInfoDto to GroupConversation
+          allConversations.push({
+            id: conv.conversationId,
+            name: conv.conversationName,
+            type: "GRP",
+            description: "",
+            avatarFileId: null,
+            createdBy: "",
+            createdByName: "",
+            memberCount: conv.memberCount,
+            unreadCount: conv.unreadCount || 0,
+            lastMessage: conv.lastMessage
+              ? {
+                  id: conv.lastMessage.messageId,
+                  conversationId: conv.conversationId,
+                  senderId: conv.lastMessage.senderId,
+                  senderName: conv.lastMessage.senderName,
+                  parentMessageId: null,
+                  content: conv.lastMessage.content,
+                  type: "TXT",
+                  timestamp: conv.lastMessage.sentAt,
+                  isEdited: false,
+                  isPinned: false,
+                  isStarred: false,
+                  attachments: [],
+                  reactions: [],
+                  threadCount: 0,
+                  threadPreview: null,
+                  mentions: [],
+                }
+              : null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as GroupConversation);
+        });
+      }
+    });
+
+    return allConversations;
+  }, [categoriesQuery.data]);
 
   const apiDirects = React.useMemo(() => {
     return flattenDirectMessages(directsQuery.data);
@@ -155,20 +223,20 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   // Determine if loading
   const isLoading =
     useApiData &&
-    ((tab === "groups" && groupsQuery.isLoading) ||
+    ((tab === "categories" && categoriesQuery.isLoading) ||
       (tab === "contacts" && directsQuery.isLoading));
 
   // Determine if error
   const isError =
     useApiData &&
-    ((tab === "groups" && groupsQuery.isError) ||
+    ((tab === "categories" && categoriesQuery.isError) ||
       (tab === "contacts" && directsQuery.isError));
 
   // Retry function
   const handleRetry = () => {
-    if (tab === "groups") {
-      groupsQuery.refetch();
-    } else {
+    if (tab === "categories") {
+      categoriesQuery.refetch();
+    } else if (tab === "contacts") {
       directsQuery.refetch();
     }
   };
@@ -180,23 +248,51 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
   // Filter & Sort groups (API or props) - Memoized để re-render khi data thay đổi
   const filteredApiGroups = React.useMemo(() => {
     return sortConversationsByLatest(
-      apiGroups.filter((g) => match(g.name) || match(g.lastMessage?.content))
+      apiGroups.filter((g) => match(g.name) || match(g.lastMessage?.content)),
     );
   }, [apiGroups, q]); // Re-compute khi apiGroups hoặc search query thay đổi
 
+  // Filter categories by search query and sort by latest message
+  const filteredApiCategories = React.useMemo(() => {
+    return apiCategories
+      .filter((cat) => match(cat.name))
+      .sort((a, b) => {
+        // Get latest message from each category's conversations
+        const getLatestTime = (cat: typeof a) => {
+          const latestConv = cat.conversations
+            ?.filter((conv) => conv.lastMessage !== null)
+            .sort((x, y) => {
+              const timeX = x.lastMessage?.sentAt || "";
+              const timeY = y.lastMessage?.sentAt || "";
+              return new Date(timeY).getTime() - new Date(timeX).getTime();
+            })[0];
+          return latestConv?.lastMessage?.sentAt || "";
+        };
+
+        const timeA = getLatestTime(a);
+        const timeB = getLatestTime(b);
+
+        // Sort by newest first (descending)
+        if (!timeA && !timeB) return 0;
+        if (!timeA) return 1; // No message in A -> push to bottom
+        if (!timeB) return -1; // No message in B -> push to bottom
+        return new Date(timeB).getTime() - new Date(timeA).getTime();
+      });
+  }, [apiCategories, q]);
+
   const filteredPropGroups = (propGroups || []).filter(
-    (g) => match(g.name) || match(g.lastMessage) || match(g.lastSender)
+    (g) => match(g.name) || match(g.lastMessage) || match(g.lastSender),
   );
 
   // Filter & Sort contacts/directs (API or props) - Memoized để re-render khi data thay đổi
   const filteredApiDirects = React.useMemo(() => {
     return sortConversationsByLatest(
-      apiDirects.filter((c) => match(c.name) || match(c.lastMessage?.content))
+      apiDirects.filter((c) => match(c.name) || match(c.lastMessage?.content)),
     );
   }, [apiDirects, q]); // Re-compute khi apiDirects hoặc search query thay đổi
 
   const filteredPropContacts = (propContacts || []).filter(
-    (c) => match(c.name) || match(c.lastMessage)
+    (c) => match(c.name) || match(c.lastMessage),
   );
 
   // Helper: format relative time
@@ -214,18 +310,29 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
 
   // Helper: handle group selection
   const handleGroupSelect = React.useCallback(
-    (group: GroupConversation) => {
-      onSelectGroup?.(group.id);
+    (
+      conversationId: string,
+      conversationName: string,
+      category: string,
+      categoryId: string,
+      unreadCount?: number,
+    ) => {
+      onSelectGroup?.(conversationId);
       onSelectChat({
         type: "group",
-        id: group.id,
-        name: group.name,
-        memberCount: group.memberCount,
+        id: conversationId,
+        name: conversationName,
+        category: category,
+        categoryId: categoryId,
+        memberCount: 0, // Not available from categories API
       });
-      // Phase 6: Save selected conversation to localStorage
-      saveSelectedConversation(group.id);
+      // Phase 6: Save selected conversation AND category to localStorage
+      saveSelectedConversation(conversationId);
+      if (categoryId) {
+        saveSelectedCategory(categoryId);
+      }
     },
-    [onSelectGroup, onSelectChat]
+    [onSelectGroup, onSelectChat],
   );
 
   // Helper: handle DM selection
@@ -233,43 +340,70 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
     onSelectChat({ type: "dm", id: dm.id, name: dm.name });
     // Phase 6: Save selected conversation to localStorage
     saveSelectedConversation(dm.id);
+    // Clear category since DMs don't have categories
+    saveSelectedCategory("");
   };
 
   // Phase 6: Restore selected conversation from localStorage on mount
   React.useEffect(() => {
     // Wait for data to load before restoring
     if (useApiData && !hasAutoSelected) {
-      const isGroupsLoading = groupsQuery.isLoading;
+      const isCategoriesLoading = categoriesQuery.isLoading;
       const isDirectsLoading = directsQuery.isLoading;
 
-      // ⚠️ FIX: Wait for BOTH lists to load completely before restoring
-      // This prevents race condition when one API loads faster than the other
-      if (isGroupsLoading || isDirectsLoading) {
+      // Wait for BOTH lists to load completely before restoring
+      if (isCategoriesLoading || isDirectsLoading) {
         return;
       }
 
       const savedConversationId = getSelectedConversation();
+      const savedCategoryId = getSelectedCategory();
 
       // Try to find and restore saved conversation
       if (savedConversationId) {
-        // Check in groups first
+        // Check in groups (from categories) first
         const savedGroup = apiGroups.find((g) => g.id === savedConversationId);
 
         if (savedGroup) {
-          handleGroupSelect(savedGroup);
-          // Don't setTab here - let the separate effect handle it based on selectedConversationId
+          // 🐛 FIX: Prioritize savedCategoryId from localStorage
+          // Verify conversation belongs to saved category
+          let category = savedCategoryId
+            ? apiCategories.find((cat) => cat.id === savedCategoryId)
+            : undefined;
+
+          // Fallback: If saved category not found or doesn't contain this conversation,
+          // search for category containing the conversation
+          if (
+            !category ||
+            !category.conversations?.some(
+              (c) => c.conversationId === savedConversationId,
+            )
+          ) {
+            category = apiCategories.find((cat) =>
+              cat.conversations?.some(
+                (c) => c.conversationId === savedConversationId,
+              ),
+            );
+          }
+
+          handleGroupSelect(
+            savedGroup.id,
+            savedGroup.name,
+            category?.name || "",
+            category?.id || "",
+            savedGroup.unreadCount,
+          );
           setHasAutoSelected(true);
           return;
         }
 
         // If not in groups, check in directs
         const savedDirect = apiDirects.find(
-          (d) => d.id === savedConversationId
+          (d) => d.id === savedConversationId,
         );
 
         if (savedDirect) {
           handleDirectSelect(savedDirect);
-          // Don't setTab here - let the separate effect handle it based on selectedConversationId
           setHasAutoSelected(true);
           return;
         }
@@ -278,7 +412,17 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
       // If no saved conversation or saved conversation deleted, auto-select first group
       if (apiGroups.length > 0 && !selectedConversationId) {
         const firstGroup = apiGroups[0];
-        handleGroupSelect(firstGroup);
+        const category = apiCategories.find((cat) =>
+          cat.conversations?.some((c) => c.conversationId === firstGroup.id),
+        );
+
+        handleGroupSelect(
+          firstGroup.id,
+          firstGroup.name,
+          category?.name || "",
+          category?.id || "",
+          firstGroup.unreadCount,
+        );
         setHasAutoSelected(true);
       }
     }
@@ -286,10 +430,11 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
     useApiData,
     apiGroups,
     apiDirects,
+    apiCategories,
     hasAutoSelected,
     selectedConversationId,
     handleGroupSelect,
-    groupsQuery.isLoading,
+    categoriesQuery.isLoading,
     directsQuery.isLoading,
   ]);
 
@@ -317,9 +462,9 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
 
     // Check if selected conversation is a group
     const isGroup = apiGroups.some((g) => g.id === selectedConversationId);
-    if (isGroup && tab !== "groups") {
+    if (isGroup && tab !== "categories") {
       isAutoSwitchingTabRef.current = true; // Set flag before switching
-      setTab("groups");
+      setTab("categories");
     }
 
     prevSelectedConversationIdRef.current = selectedConversationId;
@@ -451,11 +596,13 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
               <ToggleGroup
                 type="single"
                 value={tab}
-                onValueChange={(v) => v && setTab(v as "groups" | "contacts")}
+                onValueChange={(v) =>
+                  v && setTab(v as "categories" | "contacts")
+                }
                 className="flex w-full gap-1"
               >
                 <ToggleGroupItem
-                  value="groups"
+                  value="categories"
                   className={`flex-1 rounded-full px-3 py-1 text-sm transition
                   data-[state=on]:bg-white data-[state=on]:text-gray-900 data-[state=on]:shadow
                   data-[state=on]:ring-1 data-[state=on]:ring-emerald-300
@@ -485,7 +632,7 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
             <div className="text-xs">
               <SegmentedTabs
                 tabs={[
-                  { key: "groups", label: "Nhóm" },
+                  { key: "categories", label: "Nhóm" },
                   { key: "contacts", label: "Cá nhân" },
                 ]}
                 active={tab}
@@ -527,43 +674,141 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
           </div>
         )}
 
-        {/* Groups Tab */}
+        {/* Categories Tab - Shows work type categories */}
         {!isLoading &&
           !isError &&
-          tab === "groups" &&
+          tab === "categories" &&
           (useApiData ? (
-            // API Data - Using ConversationItem component
-            <ul className="" data-testid="groups-list">
-              {filteredApiGroups.length === 0 && (
+            // API Data - Show categories (same as workTypes logic)
+            <div className="" data-testid="categories-list">
+              {filteredApiCategories.length === 0 ? (
                 <div className="p-3 text-xs text-gray-500">
                   {q ? "Không tìm thấy kết quả." : "Chưa có nhóm nào."}
                 </div>
-              )}
+              ) : (
+                <ul className="mt-2">
+                  {filteredApiCategories.map((category) => (
+                    <li key={category.id}>
+                      <button
+                        className={`w-full ${rowCls} text-left ${
+                          selectedCategoryId === category.id
+                            ? "bg-brand-50 ring-1 ring-brand-100"
+                            : ""
+                        }`}
+                        data-testid={`category-item-${category.id}`}
+                        onClick={() => {
+                          // Select first conversation in this category
+                          if (
+                            category.conversations &&
+                            category.conversations.length > 0
+                          ) {
+                            const firstConv = category.conversations[0];
+                            handleGroupSelect(
+                              firstConv.conversationId,
+                              firstConv.conversationName,
+                              category.name,
+                              category.id,
+                              firstConv.unreadCount,
+                            );
+                          } else {
+                            // No conversations - show empty state
+                            onSelectChat({
+                              type: "group",
+                              id: "",
+                              name: "",
+                              category: category.name,
+                              categoryId: category.id,
+                              memberCount: 0,
+                            });
+                          }
+                        }}
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/10 text-brand-700 border border-brand-100">
+                          <span className="text-[11px] font-semibold">
+                            {initials(category.name)}
+                          </span>
+                        </div>
 
-              {filteredApiGroups.map((g) => (
-                <li key={g.id}>
-                  <ConversationItem
-                    conversation={g}
-                    isActive={selectedConversationId === g.id}
-                    onClick={() => handleGroupSelect(g as GroupConversation)}
-                  />
-                </li>
-              ))}
+                        <div className="min-w-0 flex-1">
+                          {/* Line 1: Group Name + Timestamp */}
+                          {(() => {
+                            const latestConversation = category.conversations
+                              ?.filter((conv) => conv.lastMessage !== null)
+                              .sort((a, b) => {
+                                const timeA = a.lastMessage?.sentAt || "";
+                                const timeB = b.lastMessage?.sentAt || "";
+                                return (
+                                  new Date(timeB).getTime() -
+                                  new Date(timeA).getTime()
+                                );
+                              })[0];
 
-              {/* Load more button */}
-              {groupsQuery.hasNextPage && (
-                <button
-                  onClick={() => groupsQuery.fetchNextPage()}
-                  disabled={groupsQuery.isFetchingNextPage}
-                  className="w-full py-3 text-sm text-brand-600 hover:bg-brand-50"
-                  data-testid="load-more-groups"
-                >
-                  {groupsQuery.isFetchingNextPage ? "Đang tải..." : "Tải thêm"}
-                </button>
+                            return (
+                              <div className="flex items-center justify-between">
+                                <p className="truncate text-sm font-medium">
+                                  {category.name}
+                                </p>
+                                {latestConversation?.lastMessage && (
+                                  <span className="ml-2 text-xs text-gray-400 flex-shrink-0">
+                                    {formatRelativeTime(
+                                      latestConversation.lastMessage.sentAt,
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Line 2: Sender + Message Preview */}
+                          {(() => {
+                            const latestConversation = category.conversations
+                              ?.filter((conv) => conv.lastMessage !== null)
+                              .sort((a, b) => {
+                                const timeA = a.lastMessage?.sentAt || "";
+                                const timeB = b.lastMessage?.sentAt || "";
+                                return (
+                                  new Date(timeB).getTime() -
+                                  new Date(timeA).getTime()
+                                );
+                              })[0];
+
+                            const totalUnread =
+                              category.conversations?.reduce(
+                                (sum, conv) => sum + (conv.unreadCount || 0),
+                                0,
+                              ) || 0;
+
+                            return latestConversation?.lastMessage ? (
+                              <div className="mt-0.5 flex items-center gap-2">
+                                <span className="text-xs text-gray-500 truncate flex-1">
+                                  {formatMessagePreview(
+                                    latestConversation.lastMessage,
+                                  )}
+                                </span>
+                                {totalUnread > 0 && (
+                                  <span
+                                    className="inline-flex justify-center items-center ml-2 px-1.5 py-0 text-[10px] font-semibold bg-brand-600 text-white rounded-full shrink-0 min-w-[20px] h-4"
+                                    data-testid={`category-unread-badge-${category.id}`}
+                                  >
+                                    {totalUnread > 99 ? "99+" : totalUnread}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="mt-0.5 truncate text-xs text-gray-400">
+                                Chưa có tin nhắn
+                              </p>
+                            );
+                          })()}
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </ul>
+            </div>
           ) : (
-            // Prop Data (backward compatible)
+            // Prop Data (backward compatible) - fallback to old behavior
             <ul className="">
               {filteredPropGroups.length === 0 && (
                 <div className="p-3 text-xs text-gray-500">
@@ -579,7 +824,10 @@ export const ConversationListSidebar: React.FC<LeftSidebarProps> = ({
                       ? "bg-brand-50 ring-1 ring-brand-100"
                       : ""
                   }`}
-                  onClick={() => onSelectGroup?.(g.id)}
+                  onClick={() => {
+                    onSelectGroup?.(g.id);
+                    onSelectChat({ type: "group", id: g.id, name: g.name });
+                  }}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600/10 text-brand-700 border border-brand-100">
                     <span className="text-[11px] font-semibold">

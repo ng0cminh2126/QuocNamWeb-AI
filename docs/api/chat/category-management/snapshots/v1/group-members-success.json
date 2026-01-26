@@ -1,0 +1,100 @@
+[
+  {
+    "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "userName": "Nguyễn Văn A",
+    "role": "OWN",
+    "joinedAt": "2026-01-01T08:00:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "userName": "Nguyễn Văn A",
+      "fullName": "Nguyễn Văn A",
+      "identifier": "NVA001",
+      "roles": "Owner"
+    }
+  },
+  {
+    "userId": "8d7f8a80-8536-41ef-a055-3d9f2e8c1b9f",
+    "userName": "Trần Thị B",
+    "role": "ADM",
+    "joinedAt": "2026-01-05T09:00:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "8d7f8a80-8536-41ef-a055-3d9f2e8c1b9f",
+      "userName": "Trần Thị B",
+      "fullName": "Trần Thị B",
+      "identifier": "TTB002",
+      "roles": "Admin"
+    }
+  },
+  {
+    "userId": "9e8g9b91-9647-42fg-b166-4e0g3f9d2c0g",
+    "userName": "Lê Văn C",
+    "role": "ADM",
+    "joinedAt": "2026-01-06T10:00:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "9e8g9b91-9647-42fg-b166-4e0g3f9d2c0g",
+      "userName": "Lê Văn C",
+      "fullName": "Lê Văn C",
+      "identifier": "LVC003",
+      "roles": "Admin"
+    }
+  },
+  {
+    "userId": "0f9h0c02-0758-53gh-c277-5f1h4g0e3d1h",
+    "userName": "Phạm Thị D",
+    "role": "MBR",
+    "joinedAt": "2026-01-10T10:00:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "0f9h0c02-0758-53gh-c277-5f1h4g0e3d1h",
+      "userName": "Phạm Thị D",
+      "fullName": "Phạm Thị D",
+      "identifier": "PTD004",
+      "roles": "Member"
+    }
+  },
+  {
+    "userId": "1g0i1d13-1869-64hi-d388-6g2i5h1f4e2i",
+    "userName": "Hoàng Văn E",
+    "role": "MBR",
+    "joinedAt": "2026-01-11T11:00:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "1g0i1d13-1869-64hi-d388-6g2i5h1f4e2i",
+      "userName": "Hoàng Văn E",
+      "fullName": "Hoàng Văn E",
+      "identifier": "HVE005",
+      "roles": "Member"
+    }
+  },
+  {
+    "userId": "2h1j2e24-2970-75ij-e499-7h3j6i2g5f3j",
+    "userName": "Vũ Thị F",
+    "role": "MBR",
+    "joinedAt": "2026-01-12T08:30:00Z",
+    "isMuted": false,
+    "userInfo": {
+      "id": "2h1j2e24-2970-75ij-e499-7h3j6i2g5f3j",
+      "userName": "Vũ Thị F",
+      "fullName": "Vũ Thị F",
+      "identifier": "VTF006",
+      "roles": "Member"
+    }
+  },
+  {
+    "userId": "3i2k3f35-3081-86jk-f500-8i4k7j3h6g4k",
+    "userName": "Đặng Văn G",
+    "role": "MBR",
+    "joinedAt": "2026-01-13T09:00:00Z",
+    "isMuted": true,
+    "userInfo": {
+      "id": "3i2k3f35-3081-86jk-f500-8i4k7j3h6g4k",
+      "userName": "Đặng Văn G",
+      "fullName": "Đặng Văn G",
+      "identifier": "DVG007",
+      "roles": "Member"
+    }
+  }
+]

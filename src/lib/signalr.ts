@@ -164,7 +164,7 @@ class ChatHubConnection {
       // Don't log AbortError as it's expected when connection is stopped during negotiation
       if (error instanceof Error && error.name === "AbortError") {
         console.log(
-          "SignalR: Connection aborted (likely due to unmount or auth change)"
+          "SignalR: Connection aborted (likely due to unmount or auth change)",
         );
       } else {
         console.error("SignalR: Connection failed", error);
@@ -192,25 +192,21 @@ class ChatHubConnection {
   // Group/Conversation management
   async joinGroup(conversationId: string): Promise<void> {
     if (this.connection?.state !== signalR.HubConnectionState.Connected) {
-      console.warn("SignalR: Cannot join conversation - not connected");
+      console.warn(`[SignalR] Cannot join - not connected`);
       return;
     }
     try {
-      // Try JoinConversation first (correct method name from backend)
       await this.connection.invoke(
         SIGNALR_EVENTS.JOIN_CONVERSATION,
-        conversationId
+        conversationId,
       );
-      // console.log(`SignalR: Joined conversation ${conversationId}`);
     } catch (error) {
-      // Fallback to JoinGroup if JoinConversation doesn't exist
       try {
         await this.connection.invoke(SIGNALR_EVENTS.JOIN_GROUP, conversationId);
-        // console.log(`SignalR: Joined group ${conversationId} (fallback)`);
       } catch (fallbackError) {
-        console.warn(
-          "SignalR: Could not join conversation/group",
-          fallbackError
+        console.error(
+          `[SignalR] Failed to join ${conversationId}:`,
+          fallbackError,
         );
       }
     }
@@ -223,13 +219,13 @@ class ChatHubConnection {
     try {
       await this.connection.invoke(
         SIGNALR_EVENTS.LEAVE_CONVERSATION,
-        conversationId
+        conversationId,
       );
     } catch {
       try {
         await this.connection.invoke(
           SIGNALR_EVENTS.LEAVE_GROUP,
-          conversationId
+          conversationId,
         );
       } catch {
         // Ignore errors when leaving
@@ -282,6 +278,22 @@ class ChatHubConnection {
 
   onMessageRead(callback: (event: MessageReadEvent) => void): void {
     this.connection?.on(SIGNALR_EVENTS.MESSAGE_READ, callback);
+  }
+
+  onMessageSent(callback: (event: NewMessageEvent) => void): void {
+    console.log(
+      `[SignalR] 📡 Registering MessageSent handler via onMessageSent()`,
+    );
+
+    const wrappedCallback = (event: NewMessageEvent) => {
+      console.log(`[SignalR] ✅ MessageSent handler CALLED with event:`, event);
+      callback(event);
+    };
+
+    this.connection?.on(SIGNALR_EVENTS.MESSAGE_SENT, wrappedCallback);
+    console.log(
+      `[SignalR] ✅ MessageSent handler registered for event: "${SIGNALR_EVENTS.MESSAGE_SENT}"`,
+    );
   }
 
   // Remove listeners

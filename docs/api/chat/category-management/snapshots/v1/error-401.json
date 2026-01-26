@@ -1,0 +1,7 @@
+{
+  "type": "https://tools.ietf.org/html/rfc7235#section-3.1",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Invalid or expired authentication token",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00"
+}

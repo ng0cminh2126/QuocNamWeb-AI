@@ -1,4 +1,5 @@
 import React from 'react';
+import { hasLeaderPermissions } from '@/utils/roleUtils';
 import { useCallback, useEffect, useRef } from 'react';
 import {
   Search,
@@ -289,7 +290,7 @@ export const ChatMain: React.FC<{
 
   // Calculate waiting info count for badge
   const waitingInfoCount = React.useMemo(() => {
-    if (viewMode !== 'lead' || !isMobile) return 0;
+    if (!hasLeaderPermissions() || !isMobile) return 0;
     return receivedInfos?.filter(info => info.status === 'waiting').length ?? 0;
   }, [receivedInfos, viewMode, isMobile]);
 
@@ -506,7 +507,7 @@ export const ChatMain: React.FC<{
 
   // Calculate leader's active task count for badge
   const leaderOwnActiveCount = React.useMemo(() => {
-    if (viewMode !== 'lead' || !currentUserId) return 0;
+    if (!hasLeaderPermissions() || !currentUserId) return 0;
 
     // Helper to check if date is today
     const isToday = (iso?: string) => {
@@ -614,12 +615,12 @@ export const ChatMain: React.FC<{
                           <LayoutList className="h-4 w-4 text-brand-600" />
                         </div>
                         <span className="text-sm font-normal">
-                          Công việc {viewMode === 'lead' ? '(Phòng ban)' : ''}
+                          Công việc {hasLeaderPermissions() ? '(Phòng ban)' : ''}
                         </span>
                       </button>
 
                       {/* Leader own tasks menu item */}
-                      {viewMode === 'lead' && (
+                      {hasLeaderPermissions() && (
                         <button
                           className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-brand-50 text-gray-700"
                           onClick={() => {
@@ -653,7 +654,7 @@ export const ChatMain: React.FC<{
                       )}
 
                       {/* Tiếp nhận công việc */}
-                      {viewMode === 'lead' && (
+                      {hasLeaderPermissions() && (
                         <button
                           className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-brand-50 text-gray-700"
                           onClick={() => {
@@ -686,7 +687,7 @@ export const ChatMain: React.FC<{
                         </button>
                       )}
 
-                      {viewMode === 'lead' && (
+                      {hasLeaderPermissions() && (
                         <button
                           className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-brand-50 text-gray-700"
                           onClick={() => {
@@ -768,7 +769,7 @@ export const ChatMain: React.FC<{
             onChangeWorkType?.(workTypeId);
 
             // Open appropriate task panel based on role
-            if (viewMode === 'lead') {
+            if (hasLeaderPermissions()) {
               setMobileOwnTasksOpen(true); // ✅ Leader sees their own tasks
             } else {
               setMobileTaskOpen(true); // Staff sees team tasks

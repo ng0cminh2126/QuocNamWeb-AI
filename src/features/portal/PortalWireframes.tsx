@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/authStore";
+import { hasLeaderPermissions, getViewModeFromRoles } from "@/utils/roleUtils";
 import { getCurrentUserIdSync } from "@/utils/getCurrentUser";
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from "./components";
 import type {
@@ -49,7 +50,7 @@ export default function PortalWireframes({
   const logout = useAuthStore((state) => state.logout);
 
   // ---------- shared UI state ----------
-  const [tab, setTab] = useState<"info" | "order" | "tasks">("info");
+  const [tab, setTab] = useState<"info" | "order" | "tasks" | "chat">("info");
   const [mode, setMode] = useState<"CSKH" | "THUMUA">("CSKH");
   const [leftTab, setLeftTab] = useState<"contacts" | "messages">("messages");
   const [showAvail, setShowAvail] = useState(false);
@@ -62,7 +63,7 @@ export default function PortalWireframes({
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState("");
   // const [showPinned, setShowPinned] = useState(false);
-  const [viewMode, setViewMode] = React.useState<"lead" | "staff">("lead");
+  const [viewMode, setViewMode] = React.useState<"lead" | "staff">(getViewModeFromRoles());
 
   const [receivedInfos, setReceivedInfos] = useState<ReceivedInfo[]>([]);
 
@@ -96,16 +97,20 @@ export default function PortalWireframes({
   // const mockGroups = [mockGroup_VH_Kho, mockGroup_VH_TaiXe];
 
   // const [selectedGroup, setSelectedGroup] = React.useState(mockGroup_VH_Kho);
-  // Groups will be loaded from API - start with empty array
+  // Groups will be loaded from API using useGroups
+  const { data: groupsData, isLoading: isGroupsLoading } = useGroups();
+
   const groupsMerged: GroupChat[] = React.useMemo(() => {
-    // TODO: Replace with API data from useGroups() hook
-    // For now, return empty to avoid showing mock data
-    return [];
-  }, []);
+    return (flattenGroups(groupsData) as unknown) as GroupChat[];
+  }, [groupsData]);
 
   const [selectedGroup, setSelectedGroup] = React.useState<
     GroupChat | undefined
   >(undefined);
+
+  // Keep a local groups state that updates when API data changes
+  const [groups, setGroups] = React.useState<GroupChat[]>(groupsMerged);
+  React.useEffect(() => setGroups(groupsMerged), [groupsMerged]);
   const [selectedWorkTypeId, setSelectedWorkTypeId] =
     React.useState<string>("wt_default");
 
@@ -122,8 +127,8 @@ export default function PortalWireframes({
   // TODO: Replace with useMessages() hook when conversation is selected
   const [messages, setMessages] = React.useState<Message[]>([]);
 
-  // (1) Groups and contacts will be loaded from API
-  const [groups] = React.useState(groupsMerged); // Empty until API loads
+  // (1) Contacts will be loaded from API
+  // `groups` state is managed above and updated when `useGroups` returns
   const [contacts] = React.useState<
     Array<{
       id: string;
@@ -171,7 +176,7 @@ export default function PortalWireframes({
     type: "group" | "dm";
     id: string;
   } | null>(null);
-
+console.log(selectedChat);
   const onClearSelectedChat = () => setSelectedChat(null);
   const nowIso = () => new Date().toISOString();
 
@@ -192,34 +197,23 @@ export default function PortalWireframes({
     if (user?.identifier) {
       return user.identifier;
     }
-    // Fallback based on viewMode for backward compatibility
-    return viewMode === 'lead' ? 'Thanh Trúc' : 'Diễm Chi';
+    // Fallback based on role permissions
+    return hasLeaderPermissions() ? 'Thanh Trúc' : 'Diễm Chi';
   };
 
-  // Dynamic user based on viewMode
+  // Dynamic user based on role permissions
   const currentUser = getCurrentUserName();
-  const currentUserId = viewMode === 'lead' ? getCurrentUserIdSync() : 'u_diem_chi';
-  const currentUserDepartment = viewMode === 'lead' ? 'Quản lý vận hành' : 'Nhân viên kho';
+  const currentUserId = hasLeaderPermissions() ? getCurrentUserIdSync() : 'u_diem_chi';
+  const currentUserDepartment = hasLeaderPermissions() ? 'Quản lý vận hành' : 'Nhân viên kho';
 
   //const now = new Date().toISOString();
 
   // Available tasks - will be populated from API
   // TODO: Fetch available/unassigned tasks from API
   const [available, setAvailable] = useState<Task[]>([]);
-
-  // const [available, setAvailable] = useState<Task[]>([
-  //   { id: 'PO1246', title: 'PO#1246 – Nhận hàng', status: 'waiting', createdAt: '15’ trước' },
-  //   { id: 'PO1247', title: 'PO#1247 – Trả hàng', status: 'waiting', createdAt: '10’ trước' },
-  //   { id: 'CSKH002', title: 'Vựa', status: 'waiting', createdAt: '8’ trước' },
-  // ]);
-
   // My work tasks - will be populated from API
   // TODO: Fetch current user's assigned tasks from API
   const [myWork, setMyWork] = useState<Task[]>([]);
-  // const [myWork, setMyWork] = useState<Task[]>([
-  //   { id: 'PO1245', title: 'PO#1245 – Nhận hàng', status: 'processing', updatedAt: '2 phút trước' },
-  //   { id: 'CSKH001', title: 'CSKH – Lên đơn', status: 'waiting', updatedAt: '15 phút trước' },
-  // ]);
 
   // Lead threads - will be populated from API
   // TODO: Fetch team threads/tasks from API for leader view
@@ -693,9 +687,15 @@ export default function PortalWireframes({
     );
   };
 
+  // Subscribe to auth changes and update viewMode based on roles
   React.useEffect(() => {
-    const saved = localStorage.getItem("viewMode");
-    if (saved === "staff" || saved === "lead") setViewMode(saved);
+    const unsubscribe = useAuthStore.subscribe(
+      (state) => {
+        const newViewMode = getViewModeFromRoles();
+        setViewMode(newViewMode);
+      }
+    );
+    return unsubscribe;
   }, []);
 
   React.useEffect(() => {
@@ -967,8 +967,10 @@ export default function PortalWireframes({
       g.id === groupId ? { ...g, workTypes: updatedWorkTypes } : g
     );
 
-    // Note: Since groups is const from useState, we need to update via parent
-    // For now, we'll update local selectedGroup if it matches
+    // Update groups state so ConversationDetailPanel sees the changes
+    setGroups(newGroups);
+
+    // 2. Update local selectedGroup if it matches
     if (selectedGroup?.id === groupId) {
       setSelectedGroup({
         ...selectedGroup,
@@ -1085,12 +1087,7 @@ export default function PortalWireframes({
     }));
   };
 
-  // Helper:  Get groups where user is Leader
-  const leaderGroups = React.useMemo(() => {    
-    return groups.filter((g) =>
-      g.members?.some((m) => m.userId === currentUserId && m.role === "leader")
-    );
-  }, [groups, currentUserId]);
+  // NOTE: Use `groups` directly where needed (no leaderGroups memo)
 
   //DEBUG:
   // const leaderGroups = React.useMemo(() => {
@@ -1201,12 +1198,10 @@ export default function PortalWireframes({
           <WorkspaceView
             layoutMode={portalMode === "mobile" ? "mobile" : "desktop"}
             groups={groupsMerged}
-            selectedGroup={selectedGroup}
             messages={messages}
             setMessages={setMessages}
             onSelectGroup={handleSelectGroup}
             contacts={contacts}
-            selectedChat={selectedChat}
             onSelectChat={handleSelectChat}
             onClearSelectedChat={onClearSelectedChat}
             leftTab={leftTab}
@@ -1330,6 +1325,7 @@ export default function PortalWireframes({
           messageContent={assignSheet.message?.content}
           onClose={() => setAssignSheet({ open: false })}
           onTaskCreated={() => setAssignSheet({ open: false })}
+          onTabChange={(tab) => setTab(tab)}
         />
 
         <GroupTransferSheet
@@ -1364,7 +1360,7 @@ export default function PortalWireframes({
         <WorkTypeManagerDialog
           open={showWorkTypeManager}
           onOpenChange={setShowWorkTypeManager}
-          groups={leaderGroups}
+          groups={groups}
           onSave={handleUpdateGroupWorkTypes}
         />
       )}

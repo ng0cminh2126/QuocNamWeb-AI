@@ -1,8 +1,11 @@
 // useConversationRealtime hook - Handle realtime conversation list updates (UPGRADED)
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useQueryClient, InfiniteData } from "@tanstack/react-query";
 import { chatHub, SIGNALR_EVENTS } from "@/lib/signalr";
+import { useSignalRConnection } from "@/providers/SignalRProvider";
+import { useAuthStore } from "@/stores/authStore";
+import { useCategories } from "./queries/useCategories"; // 🆕 To get ALL conversations
 import { conversationKeys } from "./queries/keys/conversationKeys";
 import type { ChatMessage } from "@/types/messages";
 import type {
@@ -52,6 +55,7 @@ interface UseConversationRealtimeOptions {
  * - Listen MessageRead: Clear unreadCount
  * - Auto sort conversations by latest message
  * - Optimistic updates without full refetch
+ * - Auto join/leave conversation groups for realtime updates
  *
  * @example
  * ```tsx
@@ -66,10 +70,14 @@ interface UseConversationRealtimeOptions {
  * ```
  */
 export function useConversationRealtime(
-  options: UseConversationRealtimeOptions = {}
+  options: UseConversationRealtimeOptions = {},
 ) {
   const { activeConversationId, onNewMessage } = options;
   const queryClient = useQueryClient();
+  const joinedGroupsRef = useRef<Set<string>>(new Set());
+  const { isConnected } = useSignalRConnection();
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const { data: categories } = useCategories(); // 🆕 Get ALL categories to join ALL conversations
 
   // Handle MessageSent event
   const handleMessageSent = useCallback(
@@ -86,6 +94,7 @@ export function useConversationRealtime(
       }
 
       const isActiveConversation = activeConversationId === conversationId;
+      const isOwnMessage = message.senderId === currentUserId;
 
       // Update groups cache
       try {
@@ -98,6 +107,17 @@ export function useConversationRealtime(
             ...page,
             items: (page.items || []).map((conv) => {
               if (conv.id === conversationId) {
+                // 🐛 FIX: Get LATEST unreadCount from CURRENT cache before update
+                const currentUnreadCount = conv.unreadCount ?? 0;
+
+                // CRITICAL: Only increment if:
+                // 1. NOT the active conversation
+                // 2. NOT own message (to prevent duplicate increment)
+                const shouldIncrement = !isActiveConversation && !isOwnMessage;
+                const newUnreadCount = shouldIncrement
+                  ? currentUnreadCount + 1
+                  : 0;
+
                 return {
                   ...conv,
                   lastMessage: {
@@ -120,7 +140,7 @@ export function useConversationRealtime(
                     mentions: message.mentions,
                   },
                   // Increment unreadCount ONLY if not active
-                  unreadCount: isActiveConversation ? 0 : conv.unreadCount + 1,
+                  unreadCount: newUnreadCount,
                 };
               }
               return conv;
@@ -132,11 +152,12 @@ export function useConversationRealtime(
             pages: updatedPages,
           });
 
-          // Force notify subscribers without refetching
-          queryClient.invalidateQueries({
-            queryKey: conversationKeys.groups(),
-            refetchType: "none",
-          });
+          // 🐛 FIX: Don't invalidate immediately to preserve cache state
+          // Just setting data is enough to trigger re-render
+          // queryClient.invalidateQueries({
+          //   queryKey: conversationKeys.groups(),
+          //   refetchType: "none",
+          // });
         }
       } catch (error) {
         console.error("[Realtime] Error updating groups cache:", error);
@@ -153,6 +174,13 @@ export function useConversationRealtime(
             ...page,
             items: (page.items || []).map((conv) => {
               if (conv.id === conversationId) {
+                // Same logic: Only increment if NOT active AND NOT own message
+                const currentUnreadCount = conv.unreadCount ?? 0;
+                const shouldIncrement = !isActiveConversation && !isOwnMessage;
+                const newUnreadCount = shouldIncrement
+                  ? currentUnreadCount + 1
+                  : 0;
+
                 return {
                   ...conv,
                   lastMessage: {
@@ -174,7 +202,7 @@ export function useConversationRealtime(
                     threadPreview: message.threadPreview,
                     mentions: message.mentions,
                   },
-                  unreadCount: isActiveConversation ? 0 : conv.unreadCount + 1,
+                  unreadCount: newUnreadCount,
                 };
               }
               return conv;
@@ -186,11 +214,12 @@ export function useConversationRealtime(
             pages: updatedPages,
           });
 
-          // Force notify subscribers without refetching
-          queryClient.invalidateQueries({
-            queryKey: conversationKeys.directs(),
-            refetchType: "none",
-          });
+          // 🐛 FIX: Don't invalidate immediately to preserve cache state
+          // Just setting data is enough to trigger re-render
+          // queryClient.invalidateQueries({
+          //   queryKey: conversationKeys.directs(),
+          //   refetchType: "none",
+          // });
         }
       } catch (error) {
         console.error("[Realtime] Error updating directs cache:", error);
@@ -198,7 +227,7 @@ export function useConversationRealtime(
 
       onNewMessage?.(message);
     },
-    [queryClient, activeConversationId, onNewMessage]
+    [queryClient, activeConversationId, onNewMessage, currentUserId],
   );
 
   // Handle MessageRead event
@@ -226,7 +255,7 @@ export function useConversationRealtime(
         const updatedPages = groupsData.pages.map((page) => ({
           ...page,
           items: (page.items || []).map((conv) =>
-            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv,
           ),
         }));
 
@@ -235,10 +264,11 @@ export function useConversationRealtime(
           pages: updatedPages,
         });
 
-        queryClient.invalidateQueries({
-          queryKey: conversationKeys.groups(),
-          refetchType: "none",
-        });
+        // 🐛 FIX: Removed invalidateQueries to prevent cache conflicts
+        // queryClient.invalidateQueries({
+        //   queryKey: conversationKeys.groups(),
+        //   refetchType: "none",
+        // });
       }
 
       // Update directs cache
@@ -250,7 +280,7 @@ export function useConversationRealtime(
         const updatedPages = directsData.pages.map((page) => ({
           ...page,
           items: (page.items || []).map((conv) =>
-            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+            conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv,
           ),
         }));
 
@@ -259,27 +289,37 @@ export function useConversationRealtime(
           pages: updatedPages,
         });
 
-        queryClient.invalidateQueries({
-          queryKey: conversationKeys.directs(),
-          refetchType: "none",
-        });
+        // 🐛 FIX: Removed invalidateQueries to prevent cache conflicts
+        // queryClient.invalidateQueries({
+        //   queryKey: conversationKeys.directs(),
+        //   refetchType: "none",
+        // });
       }
     },
-    [queryClient]
+    [queryClient],
   );
 
   // Handle ConversationUpdated event (fallback - full refetch)
   const handleConversationUpdated = useCallback(
     (...args: any[]) => {
-      queryClient.invalidateQueries({
-        queryKey: conversationKeys.all,
-      });
+      // 🐛 FIX: Removed full invalidateQueries to prevent resetting unread counts
+      // Only use this as last resort if specific handlers fail
+      console.warn(
+        "⚠️ [Realtime] ConversationUpdated fallback triggered - consider handling specifically",
+      );
+      // queryClient.invalidateQueries({
+      //   queryKey: conversationKeys.all,
+      // });
     },
-    [queryClient]
+    [queryClient],
   );
 
   // Setup SignalR listeners
   useEffect(() => {
+    if (!isConnected) {
+      return;
+    }
+
     // Subscribe to events
     // Note: Use 'any' type to accept both object and multiple params from backend
     chatHub.on(SIGNALR_EVENTS.MESSAGE_SENT, handleMessageSent as any);
@@ -290,10 +330,8 @@ export function useConversationRealtime(
 
     chatHub.on(
       SIGNALR_EVENTS.CONVERSATION_UPDATED,
-      handleConversationUpdated as any
+      handleConversationUpdated as any,
     );
-    console.log("✅ [DEBUG] Registered:", SIGNALR_EVENTS.CONVERSATION_UPDATED);
-    console.log("✅ [DEBUG] Registered:", SIGNALR_EVENTS.CONVERSATION_UPDATED);
 
     // Cleanup
     return () => {
@@ -302,8 +340,90 @@ export function useConversationRealtime(
       chatHub.off(SIGNALR_EVENTS.MESSAGE_READ, handleMessageRead as any);
       chatHub.off(
         SIGNALR_EVENTS.CONVERSATION_UPDATED,
-        handleConversationUpdated as any
+        handleConversationUpdated as any,
       );
     };
-  }, [handleMessageSent, handleMessageRead, handleConversationUpdated]);
+  }, [
+    handleMessageSent,
+    handleMessageRead,
+    handleConversationUpdated,
+    isConnected,
+  ]);
+
+  // Join all conversations in the list to receive realtime updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Get all conversation IDs from cache
+    const groupsData = queryClient.getQueryData<InfiniteData<ConversationPage>>(
+      conversationKeys.groups(),
+    );
+    const directsData = queryClient.getQueryData<
+      InfiniteData<ConversationPage>
+    >(conversationKeys.directs());
+
+    const allConversationIds = new Set<string>();
+
+    // 🆕 PRIORITY 1: Collect from ALL categories (to receive all messages)
+    if (categories && categories.length > 0) {
+      categories.forEach((category) => {
+        category.conversations?.forEach((conv) => {
+          if (conv.conversationId) allConversationIds.add(conv.conversationId);
+        });
+      });
+    }
+
+    // PRIORITY 2: Collect from groups cache (fallback)
+    groupsData?.pages?.forEach((page) => {
+      page.items?.forEach((conv) => {
+        if (conv.id) allConversationIds.add(conv.id);
+      });
+    });
+
+    // PRIORITY 3: Collect from directs cache
+    // Collect from directs
+    directsData?.pages?.forEach((page) => {
+      page.items?.forEach((conv) => {
+        if (conv.id) allConversationIds.add(conv.id);
+      });
+    });
+
+    // Join new groups
+    const newGroups = Array.from(allConversationIds).filter(
+      (id) => !joinedGroupsRef.current.has(id),
+    );
+
+    newGroups.forEach((conversationId) => {
+      chatHub
+        .joinGroup(conversationId)
+        .then(() => {
+          joinedGroupsRef.current.add(conversationId);
+        })
+        .catch((error) => {
+          console.error(
+            `❌ [SignalR] Join failed ${conversationId.substring(0, 8)}:`,
+            error,
+          );
+        });
+    });
+
+    // Leave old groups that are no longer in the list
+    const currentGroups = Array.from(joinedGroupsRef.current);
+    const groupsToLeave = currentGroups.filter(
+      (id) => !allConversationIds.has(id),
+    );
+
+    groupsToLeave.forEach((conversationId) => {
+      chatHub.leaveGroup(conversationId);
+      joinedGroupsRef.current.delete(conversationId);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      joinedGroupsRef.current.forEach((conversationId) => {
+        chatHub.leaveGroup(conversationId);
+      });
+      joinedGroupsRef.current.clear();
+    };
+  }, [queryClient, isConnected, activeConversationId, categories]); // 🐛 FIX: Add categories to join ALL conversations
 }

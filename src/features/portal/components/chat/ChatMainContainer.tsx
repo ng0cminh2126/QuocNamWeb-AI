@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useCallback,
   useState,
@@ -9,21 +10,34 @@ import React, {
 } from "react";
 import { useMessages, flattenMessages } from "@/hooks/queries/useMessages";
 import { useSendMessage } from "@/hooks/mutations/useSendMessage";
+import { useMarkConversationAsRead } from "@/hooks/mutations/useMarkConversationAsRead";
 import { usePinnedMessages } from "@/hooks/queries/usePinnedMessages";
 import {
   useStarredMessages,
   useConversationStarredMessages,
 } from "@/hooks/queries/useStarredMessages";
 import { useMessageRealtime } from "@/hooks/useMessageRealtime";
+import { useConversationRealtime } from "@/hooks/useConversationRealtime"; // 🐛 FIX: Join category conversations
 import { useSendTypingIndicator } from "@/hooks/useSendTypingIndicator";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useAuthStore } from "@/stores/authStore";
 import { useCreateTaskStore } from "@/stores/createTaskStore";
+import { useCategories } from "@/hooks/queries/useCategories"; // 🆕 NEW (CBN-002)
+import { useGroups, flattenGroups } from "@/hooks/queries/useGroups"; // 🆕 NEW (v2.1.2): Realtime unread count
+import {
+  saveSelectedConversation,
+  getSelectedConversation,
+  saveSelectedCategory,
+  getSelectedCategory,
+} from "@/utils/storage"; // 🆕 NEW: Persist active conversation + category
 // import { MessageSkeleton } from "../components/MessageSkeleton";
 import { MessageSkeleton } from "../MessageSkeleton";
 import { groupMessages } from "@/utils/messageGrouping";
 import { MessageBubbleSimple } from "./MessageBubbleSimple";
-import { OfflineBanner } from "@/components/OfflineBanner";
+import { SystemMessageBubble } from "./SystemMessageBubble";
+import { ChatHeader } from "./ChatHeader";
+import { EmptyCategoryState } from "./EmptyCategoryState"; // 🆕 NEW (CBN-002)
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import {
   RefreshCw,
   Send,
@@ -49,6 +63,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import FileIcon from "@/components/FileIcon";
 import { cn } from "@/lib/utils";
@@ -69,7 +84,8 @@ import MessageImage from "@/features/portal/workspace/MessageImage";
 import FilePreviewModal from "@/components/FilePreviewModal";
 import type { ChatMessage } from "@/types/messages";
 import type { SelectedFile, FileUploadProgressState } from "@/types/files";
-import { FILE_CATEGORIES } from "@/types/files";
+import type { ConversationInfoDto } from "@/types/categories"; // 🆕 NEW (CBN-002)
+import { FILE_CATEGORIES, MAX_FILES_PER_MESSAGE } from "@/types/files";
 import ImagePreviewModal from "@/components/ImagePreviewModal";
 
 /**
@@ -125,6 +141,22 @@ interface ChatMainContainerProps {
   onTogglePin?: (messageId: string, isPinned: boolean) => void;
   onToggleStar?: (messageId: string, isStarred: boolean) => void;
   onMessagesLoaded?: (messages: any[]) => void;
+
+  // 🆕 NEW: Right panel toggle
+  showRightPanel?: boolean;
+  onToggleRightPanel?: () => void;
+  onChatChange?: (target: {
+    type: "group" | "dm";
+    id: string;
+    name?: string;
+    category?: string;
+    categoryId?: string;
+    memberCount?: number;
+  }) => void;
+
+  // 🆕 NEW (CBN-002): Category-based navigation
+  selectedCategoryId?: string; // If provided, enables conversation selector
+  conversationCategory?: string; // Category name for display (optional, can be derived from selectedCategoryId)
 }
 
 /**
@@ -150,9 +182,58 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   onTogglePin,
   onToggleStar,
   onMessagesLoaded,
+
+  // 🆕 NEW: Right panel toggle
+  showRightPanel,
+  onToggleRightPanel,
+  onChatChange,
+
+  // 🆕 NEW (CBN-002): Category-based navigation
+  selectedCategoryId,
+  conversationCategory: conversationCategoryProp,
 }) => {
   const user = useAuthStore((state) => state.user);
   const openCreateTaskModal = useCreateTaskStore((state) => state.openModal);
+
+  // 🆕 NEW: Category state with localStorage persistence
+  const [internalSelectedCategoryId, setInternalSelectedCategoryId] = useState<
+    string | undefined
+  >(() => {
+    // Priority: localStorage > prop > undefined (restore from localStorage on reload)
+    const stored = getSelectedCategory();
+    if (stored) return stored;
+    if (selectedCategoryId) return selectedCategoryId;
+    return undefined;
+  });
+
+  // 🐛 FIX: Sync prop changes to internal state (when user clicks category in sidebar)
+  useEffect(() => {
+    if (
+      selectedCategoryId &&
+      selectedCategoryId !== internalSelectedCategoryId
+    ) {
+      setInternalSelectedCategoryId(selectedCategoryId);
+    }
+  }, [selectedCategoryId]);
+
+  // Use internal state or prop
+  const activeCategoryId = selectedCategoryId ?? internalSelectedCategoryId;
+
+  // 🐛 FIX: Save to localStorage when internal state changes (user action)
+  const isFirstCategoryMountRef = useRef(true);
+  useEffect(() => {
+    // Skip saving on first mount to preserve localStorage value
+    if (isFirstCategoryMountRef.current) {
+      isFirstCategoryMountRef.current = false;
+      return;
+    }
+
+    // Save when internal state changes (from user action or prop sync)
+    if (internalSelectedCategoryId) {
+      saveSelectedCategory(internalSelectedCategoryId);
+    }
+  }, [internalSelectedCategoryId]);
+
   const [inputValue, setInputValue] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<
@@ -179,9 +260,114 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const prevConversationIdRef = useRef<string | undefined>(undefined);
 
+  // 🆕 NEW (CBN-002): Fetch categories (only if category-based navigation enabled)
+  const categoriesQuery = useCategories();
+  const categories = activeCategoryId ? categoriesQuery.data : undefined;
+
+  // 🆕 NEW (v2.1.2): Fetch groups for realtime unread count
+  const groupsQuery = useGroups({ enabled: !!activeCategoryId });
+  const apiGroups = flattenGroups(groupsQuery.data);
+
+  // 🆕 NEW (CBN-002): Extract conversations from selected category with realtime unread count
+  const categoryConversations = useMemo<ConversationInfoDto[]>(() => {
+    if (!activeCategoryId || !categories) return [];
+
+    const selectedCategory = categories.find(
+      (cat) => cat.id === activeCategoryId,
+    );
+
+    // Merge unread count from groups (realtime) into category conversations
+    const conversations = selectedCategory?.conversations ?? [];
+    return conversations.map((conv) => {
+      const groupData = apiGroups.find((g) => g.id === conv.conversationId);
+      return {
+        ...conv,
+        // Use realtime unread count from groups if available
+        unreadCount: groupData?.unreadCount ?? conv.unreadCount ?? 0,
+      };
+    });
+  }, [activeCategoryId, categories, apiGroups, groupsQuery.dataUpdatedAt]); // 🐛 FIX: Add trigger for realtime updates
+
+  // 🆕 NEW (CBN-002): Get category name for display (prioritize prop over derived)
+  const conversationCategory = useMemo(() => {
+    // If category name provided via prop, use it (higher priority)
+    if (conversationCategoryProp) return conversationCategoryProp;
+
+    // Otherwise, derive from selected category
+    if (!activeCategoryId || !categories) return undefined;
+    const selectedCategory = categories.find(
+      (cat) => cat.id === activeCategoryId,
+    );
+    return selectedCategory?.name;
+  }, [conversationCategoryProp, activeCategoryId, categories]);
+
+  // 🆕 NEW (CBN-002): Auto-select first conversation when category changes
+  useEffect(() => {
+    if (activeCategoryId && categoryConversations.length > 0 && onChatChange) {
+      // Auto-select first conversation if no conversation selected
+      if (!conversationId) {
+        const firstConv = categoryConversations[0];
+        onChatChange({
+          type: "group",
+          id: firstConv.conversationId,
+          name: firstConv.conversationName,
+          category: conversationCategory,
+          categoryId: activeCategoryId,
+        });
+      }
+      // Fallback: If selected conversation doesn't exist in category, select first
+      else if (
+        !categoryConversations.find((c) => c.conversationId === conversationId)
+      ) {
+        const firstConv = categoryConversations[0];
+        onChatChange({
+          type: "group",
+          id: firstConv.conversationId,
+          name: firstConv.conversationName,
+          category: conversationCategory,
+          categoryId: activeCategoryId,
+        });
+      }
+    }
+  }, [
+    activeCategoryId,
+    categoryConversations,
+    conversationId,
+    onChatChange,
+    conversationCategory,
+  ]);
+
+  // Handler for when user changes conversation via LinearTab
+  const handleConversationChange = useCallback(
+    (newConversationId: string) => {
+      // Notify parent of the change
+      if (onChatChange) {
+        const conversation = categoryConversations.find(
+          (c) => c.conversationId === newConversationId,
+        );
+        if (conversation) {
+          const chatTarget = {
+            type: "group" as const,
+            id: newConversationId,
+            name: conversation.conversationName,
+            category: conversationCategory,
+            categoryId: activeCategoryId,
+          };
+          onChatChange(chatTarget);
+        }
+      }
+    },
+    [
+      onChatChange,
+      categoryConversations,
+      conversationCategory,
+      activeCategoryId,
+    ],
+  );
+
   // Fetch messages
   const messagesQuery = useMessages({
-    conversationId,
+    conversationId, // Use conversation ID from props
     enabled: !!conversationId,
   });
 
@@ -212,7 +398,13 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     },
   });
 
-  // Realtime updates
+  // ✅ Realtime updates for conversation list unread counts
+  // This is the ONLY place that handles MessageSent for unread count updates
+  useConversationRealtime({
+    activeConversationId: conversationId,
+  });
+
+  // Realtime updates for message list (current conversation only)
   const { typingUsers } = useMessageRealtime({
     conversationId,
     onNewMessage: () => {
@@ -236,7 +428,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   const handleScrollToMessage = useCallback(async (messageId: string) => {
     // First, check if message exists in current view
     const messageElement = document.querySelector(
-      `[data-testid="message-bubble-${messageId}"]`
+      `[data-testid="message-bubble-${messageId}"]`,
     );
 
     if (messageElement) {
@@ -249,7 +441,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         messageElement.classList.remove(
           "ring-2",
           "ring-amber-400",
-          "ring-offset-2"
+          "ring-offset-2",
         );
       }, 2000);
     } else {
@@ -275,6 +467,47 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   // Get flattened messages
   const messages = flattenMessages(messagesQuery.data);
 
+  // 🐛 FIX: Mark conversation as read when switching conversations OR receiving new messages
+  const markAsReadMutation = useMarkConversationAsRead();
+  const isFirstMountRef = useRef(true);
+  const lastMarkedMessageIdRef = useRef<string | undefined>(undefined);
+
+  // Get last message ID from current messages
+  const lastMessageId =
+    messages.length > 0 ? messages[messages.length - 1]?.id : undefined;
+
+  useEffect(() => {
+    // Skip only on first mount
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      prevConversationIdRef.current = conversationId;
+      lastMarkedMessageIdRef.current = lastMessageId;
+      return;
+    }
+
+    // Case 1: Switching to different conversation
+    const isConversationChanged =
+      conversationId && prevConversationIdRef.current !== conversationId;
+
+    // Case 2: New message arrived in current conversation
+    const hasNewMessage =
+      conversationId &&
+      conversationId === prevConversationIdRef.current &&
+      lastMessageId &&
+      lastMessageId !== lastMarkedMessageIdRef.current;
+
+    if (isConversationChanged || hasNewMessage) {
+      // Mark as read up to last message ID (optimistic update in conversation list)
+      markAsReadMutation.mutate({ conversationId, messageId: lastMessageId });
+
+      // Update refs
+      lastMarkedMessageIdRef.current = lastMessageId;
+    }
+
+    prevConversationIdRef.current = conversationId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, lastMessageId]); // Trigger on conversation change OR new message
+
   // Call onMessagesLoaded callback when messages are loaded (only when data changes)
   const prevMessagesRef = React.useRef<string | null>(null);
   useEffect(() => {
@@ -297,15 +530,42 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     return groupMessages(messagesWithTimestamp, 10 * 60 * 1000); // 10 minutes
   }, [messages]);
 
-  // Auto scroll to bottom when conversation changes or data loads successfully
+  // Auto scroll to bottom when conversation changes (always scroll, even when revisiting)
+  const prevConversationIdForScrollRef = useRef<string | undefined>(undefined);
+  const lastMessageIdRef = useRef<string | undefined>(undefined);
+  const shouldScrollOnLoadRef = useRef<boolean>(false);
+
   useEffect(() => {
-    if (messagesQuery.isSuccess && messages.length > 0) {
-      // Use setTimeout to ensure DOM is fully rendered (including image placeholders)
-      setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: "auto" });
-      }, 200); // Increased timeout to allow all image placeholders to render and calculate height
+    if (conversationId !== prevConversationIdForScrollRef.current) {
+      prevConversationIdForScrollRef.current = conversationId;
+      shouldScrollOnLoadRef.current = true; // Flag to scroll when messages load
     }
-  }, [conversationId, messagesQuery.isSuccess, messages.length]); // ✅ Also trigger on messages.length change
+  }, [conversationId]);
+
+  // Scroll to bottom after messages are loaded for the active conversation
+  // BUT NOT when loading more older messages
+  useEffect(() => {
+    if (conversationId && messagesQuery.isSuccess && messages.length > 0) {
+      const isLoadingMore = scrollPositionRef.current?.shouldRestore === true;
+      const currentLastMessageId = messages[messages.length - 1]?.id;
+      const hasNewMessage = currentLastMessageId !== lastMessageIdRef.current;
+      const shouldScrollOnLoad = shouldScrollOnLoadRef.current;
+
+      // Only auto-scroll if:
+      // 1. NOT loading more older messages, AND
+      // 2. (New message arrived OR conversation just loaded)
+      if (!isLoadingMore && (hasNewMessage || shouldScrollOnLoad)) {
+        // Use setTimeout to ensure DOM is fully rendered (including image placeholders)
+        setTimeout(() => {
+          bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+
+        // Update last message ID and reset scroll flag
+        lastMessageIdRef.current = currentLastMessageId;
+        shouldScrollOnLoadRef.current = false;
+      }
+    }
+  }, [conversationId, messagesQuery.isSuccess, messages]); // Trigger when messages change
 
   // Phase 2: Auto-focus input when conversation changes
   useEffect(() => {
@@ -372,7 +632,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         // Send message with single attachment (as array)
         const attachment = formatAttachment(
           result.files[0].originalFile,
-          result.files[0].uploadResult
+          result.files[0].uploadResult,
         );
 
         await sendMessageMutation.mutateAsync({
@@ -400,7 +660,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         // Show warning for partial success
         if (batchResult.partialSuccess) {
           toast.warning(
-            `${batchResult.successCount}/${batchResult.totalFiles} file upload thành công`
+            `${batchResult.successCount}/${batchResult.totalFiles} file upload thành công`,
           );
         }
 
@@ -451,19 +711,73 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     }
   };
 
-  // Handle file selection (Phase 2: Batch upload - allow 2-10 files)
+  // Compute file limit status
+  const totalSize = selectedFiles.reduce((sum, f) => sum + f.file.size, 0);
+  const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+  const remainingSize = MAX_TOTAL_SIZE - totalSize;
+
+  const isFileLimitReached =
+    selectedFiles.length >= MAX_FILES_PER_MESSAGE || remainingSize < 1024; // Less than 1KB space left
+
+  // Handle file selection (Phase 2: Batch upload - allow up to 10 files, 100MB total)
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
+    const currentCount = selectedFiles.length;
+    const remainingSlots = MAX_FILES_PER_MESSAGE - currentCount;
 
-    // Phase 2: Validate batch file selection
+    // STEP 1: Check total size FIRST (highest priority)
+    const currentTotalSize = selectedFiles.reduce(
+      (sum, f) => sum + f.file.size,
+      0,
+    );
+    const newFilesSize = fileArray.reduce((sum, f) => sum + f.size, 0);
+    const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+    const remainingSize = MAX_TOTAL_SIZE - currentTotalSize;
+
+    if (currentTotalSize + newFilesSize > MAX_TOTAL_SIZE) {
+      toast.error(
+        remainingSize <= 0
+          ? "Đã đạt giới hạn 100MB. Vui lòng xóa file cũ để chọn file mới."
+          : `Tổng dung lượng vượt quá 100MB. Còn trống ${formatFileSize(
+              remainingSize,
+            )}.`,
+      );
+      e.target.value = "";
+      return;
+    }
+
+    // STEP 2: Check if already at file count limit
+    if (remainingSlots === 0) {
+      toast.error(
+        `Đã đủ ${MAX_FILES_PER_MESSAGE} file. Vui lòng xóa file cũ để chọn file mới.`,
+      );
+      e.target.value = "";
+      return;
+    }
+
+    // If selecting more than remaining, take only what fits (PARTIAL ACCEPT)
+    let filesToAdd = fileArray;
+    let showWarning = false;
+    if (fileArray.length > remainingSlots) {
+      filesToAdd = fileArray.slice(0, remainingSlots);
+      const discardedCount = fileArray.length - remainingSlots;
+      toast.warning(
+        remainingSlots === MAX_FILES_PER_MESSAGE
+          ? `Chỉ chọn được ${MAX_FILES_PER_MESSAGE} file. Đã tự động bỏ ${discardedCount} file.`
+          : `Đã có ${currentCount} file. Chỉ chọn thêm được ${remainingSlots} file nữa.`,
+      );
+      showWarning = true;
+    }
+
+    // Then validate batch (size, type) for files to add
     const validationError = validateBatchFileSelection(
-      fileArray,
-      10, // Max 10 files
-      10 * 1024 * 1024, // Max 10MB per file
-      50 * 1024 * 1024 // Max 50MB total
+      filesToAdd,
+      MAX_FILES_PER_MESSAGE, // 10 files (API limit)
+      10 * 1024 * 1024, // 10MB per file
+      100 * 1024 * 1024, // 100MB total (API limit)
     );
 
     if (validationError) {
@@ -472,8 +786,8 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
       return;
     }
 
-    // Add validated files
-    const validFiles = validateAndAdd(fileArray, selectedFiles.length);
+    // Add validated files (toast notification handled by hook)
+    const validFiles = validateAndAdd(filesToAdd, currentCount);
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles]);
 
@@ -505,12 +819,53 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     };
   }, [selectedFiles]);
 
+  // Track scroll position before loading more messages
+  const scrollPositionRef = useRef<{
+    scrollHeight: number;
+    scrollTop: number;
+    shouldRestore: boolean;
+  } | null>(null);
+
   // Handle load more (older messages)
-  const handleLoadMore = () => {
+  const handleLoadMore = async () => {
     if (messagesQuery.hasNextPage && !messagesQuery.isFetchingNextPage) {
-      messagesQuery.fetchNextPage();
+      // Save scroll position BEFORE loading more messages
+      const container = messagesContainerRef.current;
+      if (!container) return;
+
+      scrollPositionRef.current = {
+        scrollHeight: container.scrollHeight,
+        scrollTop: container.scrollTop,
+        shouldRestore: true,
+      };
+
+      // Fetch next page
+      await messagesQuery.fetchNextPage();
     }
   };
+
+  // Restore scroll position AFTER new messages are rendered
+  // Use pages.length as dependency to only trigger when load more happens
+  const pageCount = messagesQuery.data?.pages.length ?? 0;
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    const scrollPos = scrollPositionRef.current;
+
+    if (container && scrollPos?.shouldRestore) {
+      // Use requestAnimationFrame to ensure DOM is fully updated
+      requestAnimationFrame(() => {
+        const scrollHeightAfter = container.scrollHeight;
+        const addedHeight = scrollHeightAfter - scrollPos.scrollHeight;
+
+        // Adjust scroll position to maintain user's view
+        // Keep the same visible content in view
+        container.scrollTop = scrollPos.scrollTop + addedHeight;
+
+        // Reset flag
+        scrollPositionRef.current = null;
+      });
+    }
+  }, [pageCount]); // Only trigger when page count changes (load more)
 
   // Phase 7: Handle retry failed message
   const handleRetry = useCallback(
@@ -522,7 +877,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
       // Check network status
       if (!isOnline) {
         toast.error(
-          "Không có kết nối mạng. Vui lòng kiểm tra kết nối của bạn."
+          "Không có kết nối mạng. Vui lòng kiểm tra kết nối của bạn.",
         );
         return;
       }
@@ -535,7 +890,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         // TODO: Handle attachment retry if needed
       });
     },
-    [messages, conversationId, sendMessageMutation, isOnline]
+    [messages, conversationId, sendMessageMutation, isOnline],
   );
 
   // Format time for message
@@ -551,16 +906,19 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   const handleCreateTask = useCallback(
     (messageId: string) => {
       // Find the message to get its content
-      const message = groupedMessages.find((g) => g.message.id === messageId)?.message;
+      const message = groupedMessages.find(
+        (g) => g.message.id === messageId,
+      )?.message;
       if (!message) return;
 
       openCreateTaskModal({
         messageId,
-        messageContent: message.content || message.attachments?.[0]?.fileName || '',
+        messageContent:
+          message.content || message.attachments?.[0]?.fileName || "",
         conversationId,
       });
     },
-    [conversationId, openCreateTaskModal, groupedMessages]
+    [conversationId, openCreateTaskModal, groupedMessages],
   );
 
   // Get display name from DM format
@@ -586,7 +944,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     status: string,
     memberCount: number,
     onlineCount?: number,
-    isDirect?: boolean
+    isDirect?: boolean,
   ): string => {
     const parts: string[] = [];
     parts.push(translateStatus(status));
@@ -606,12 +964,12 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
 
   // Format status line
   const isDirect = conversationType === "DM";
-  console.log({ status, memberCount, onlineCount, isDirect });
+  // console.log({ status, memberCount, onlineCount, isDirect });
   const statusLine = formatStatusLine(
     status,
     memberCount || 0,
     onlineCount,
-    isDirect
+    isDirect,
   );
 
   // Container classes
@@ -619,27 +977,39 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     ? "flex flex-col w-full h-full min-h-0 bg-white"
     : "flex flex-col w-full rounded-2xl border border-gray-300 bg-white shadow-sm h-full min-h-0";
 
+  // 🆕 NEW (CBN-002): Empty state check - Show notification if category has no conversations
+  if (selectedCategoryId && categoryConversations.length === 0) {
+    return (
+      <div className={mainContainerCls} data-testid="chat-main-empty-category">
+        <EmptyCategoryState categoryName={conversationCategory} />
+      </div>
+    );
+  }
+
   // Loading state
   if (messagesQuery.isLoading) {
     return (
       <div className={mainContainerCls} data-testid="chat-main-loading">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b p-4">
-          {isMobile && onBack && (
-            <IconButton
-              className="rounded-full bg-white"
-              onClick={onBack}
-              icon={<ChevronLeft className="h-5 w-5 text-brand-600" />}
-            />
-          )}
-          <Avatar name={displayName} avatarUrl={avatarUrl} />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-800 truncate">
-              {displayName}
-            </div>
-            <div className="text-xs text-gray-500">Đang tải...</div>
-          </div>
-        </div>
+        <ChatHeader
+          conversationId={conversationId}
+          conversationName={conversationName}
+          conversationType={conversationType}
+          conversationCategory={conversationCategory}
+          onlineCount={onlineCount}
+          status={status}
+          avatarUrl={avatarUrl}
+          isMobile={isMobile}
+          onBack={onBack}
+          showRightPanel={showRightPanel}
+          onToggleRightPanel={onToggleRightPanel}
+          categoryConversations={
+            selectedCategoryId ? categoryConversations : undefined
+          }
+          onChangeConversation={
+            selectedCategoryId ? handleConversationChange : undefined
+          }
+        />
 
         {/* Skeleton */}
         <MessageSkeleton count={8} />
@@ -657,27 +1027,25 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     return (
       <div className={mainContainerCls} data-testid="chat-main-error">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b p-4">
-          {isMobile && onBack && (
-            <IconButton
-              className="rounded-full bg-white"
-              onClick={onBack}
-              icon={<ChevronLeft className="h-5 w-5 text-brand-600" />}
-            />
-          )}
-          <Avatar name={displayName} avatarUrl={avatarUrl} />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-800 truncate">
-              {displayName}
-            </div>
-            <div
-              className="text-xs font-medium text-brand-600"
-              data-testid="conversation-status-line"
-            >
-              {statusLine}
-            </div>
-          </div>
-        </div>
+        <ChatHeader
+          conversationId={conversationId}
+          conversationName={conversationName}
+          conversationType={conversationType}
+          conversationCategory={conversationCategory}
+          onlineCount={onlineCount}
+          status={status}
+          avatarUrl={avatarUrl}
+          isMobile={isMobile}
+          onBack={onBack}
+          showRightPanel={showRightPanel}
+          onToggleRightPanel={onToggleRightPanel}
+          categoryConversations={
+            selectedCategoryId ? categoryConversations : undefined
+          }
+          onChangeConversation={
+            selectedCategoryId ? handleConversationChange : undefined
+          }
+        />
 
         {/* Error message */}
         <div className="flex-1 flex items-center justify-center">
@@ -702,80 +1070,30 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   return (
     <div className={mainContainerCls} data-testid="chat-main-container">
       {/* Header */}
-      <div className="flex items-center justify-between border-b p-4 shrink-0">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {isMobile && onBack && (
-            <IconButton
-              className="rounded-full bg-white shrink-0"
-              onClick={onBack}
-              icon={<ChevronLeft className="h-5 w-5 text-brand-600" />}
-            />
-          )}
-          <Avatar name={displayName} avatarUrl={avatarUrl} />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-gray-800 truncate">
-              {displayName}
-            </div>
-            <div
-              className="text-xs font-medium text-brand-600"
-              data-testid="conversation-status-line"
-            >
-              {statusLine}
-            </div>
-          </div>
-        </div>
-
-        {/* Header actions menu */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              data-testid="chat-header-menu-button"
-            >
-              <MoreVertical className="h-5 w-5 text-gray-600" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-2" align="end">
-            <div className="flex flex-col gap-1">
-              <Button
-                variant="ghost"
-                className="justify-start gap-2 text-sm"
-                onClick={() => {
-                  setShowPinnedModal(true);
-                }}
-                data-testid="open-pinned-modal-button"
-              >
-                <Pin className="h-4 w-4 text-amber-600" />
-                Tin nhắn đã ghim
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start gap-2 text-sm"
-                onClick={() => {
-                  setShowConversationStarredModal(true);
-                }}
-                data-testid="open-conversation-starred-modal-button"
-              >
-                <Star className="h-4 w-4 text-amber-600" />
-                Tin nhắn đã đánh dấu
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start gap-2 text-sm"
-                onClick={() => {
-                  setShowAllStarredModal(true);
-                }}
-                data-testid="open-all-starred-modal-button"
-              >
-                <Star className="h-4 w-4 text-blue-600" />
-                Tất cả tin nhắn đã đánh dấu
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+      <ChatHeader
+        conversationId={conversationId}
+        conversationName={conversationName}
+        conversationType={conversationType}
+        conversationCategory={conversationCategory}
+        onlineCount={onlineCount}
+        status={status}
+        avatarUrl={avatarUrl}
+        isMobile={isMobile}
+        onBack={onBack}
+        onOpenPinnedModal={() => setShowPinnedModal(true)}
+        onOpenConversationStarredModal={() =>
+          setShowConversationStarredModal(true)
+        }
+        onOpenAllStarredModal={() => setShowAllStarredModal(true)}
+        showRightPanel={showRightPanel}
+        onToggleRightPanel={onToggleRightPanel}
+        categoryConversations={
+          selectedCategoryId ? categoryConversations : undefined
+        }
+        onChangeConversation={
+          selectedCategoryId ? handleConversationChange : undefined
+        }
+      />
 
       {/* Phase 7: Network status banner */}
       {(isOnline === false || wasOffline) && (
@@ -816,6 +1134,19 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         ) : (
           groupedMessages.map((groupedMsg) => {
             const message = groupedMsg.message;
+            
+            // Render system messages differently
+            if (message.contentType === "SYS") {
+              return (
+                <SystemMessageBubble
+                  key={message.id}
+                  message={message}
+                  formatTime={formatTime}
+                />
+              );
+            }
+            
+            // Render regular messages
             return (
               <MessageBubbleSimple
                 key={message.id}
@@ -874,7 +1205,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={sendMessageMutation.isPending}
+            disabled={sendMessageMutation.isPending || isFileLimitReached}
             className="shrink-0 hover:bg-gray-100"
             aria-label="Đính kèm file"
             data-testid="file-upload-button"
@@ -888,7 +1219,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => imageInputRef.current?.click()}
-            disabled={sendMessageMutation.isPending}
+            disabled={sendMessageMutation.isPending || isFileLimitReached}
             className="shrink-0 hover:bg-gray-100"
             aria-label="Đính kèm hình ảnh"
             data-testid="image-upload-button"
@@ -902,6 +1233,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             type="file"
             className="hidden"
             onChange={handleFileSelect}
+            disabled={isFileLimitReached}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
             multiple
             data-testid="file-input"
@@ -911,6 +1243,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
             type="file"
             className="hidden"
             onChange={handleFileSelect}
+            disabled={isFileLimitReached}
             accept={FILE_CATEGORIES.IMAGE.join(",")}
             multiple
             data-testid="image-input"
@@ -971,6 +1304,9 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
               <Pin className="h-5 w-5 text-amber-600" />
               Tin nhắn đã ghim
             </DialogTitle>
+            <DialogDescription>
+              Xem tất cả tin nhắn đã được ghim trong cuộc trò chuyện này
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 pr-2">
             {pinnedMessages.length === 0 ? (
@@ -1000,7 +1336,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(pinned.pinnedAt).toLocaleDateString(
-                            "vi-VN"
+                            "vi-VN",
                           )}
                         </span>
                       </div>
@@ -1027,6 +1363,9 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
               <Star className="h-5 w-5 text-amber-600" />
               Tin nhắn đã đánh dấu
             </DialogTitle>
+            <DialogDescription>
+              Xem tất cả tin nhắn đã được đánh dấu trong cuộc trò chuyện này
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 pr-2">
             {conversationStarredMessages.length === 0 ? (
@@ -1056,7 +1395,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(starred.starredAt).toLocaleDateString(
-                            "vi-VN"
+                            "vi-VN",
                           )}
                         </span>
                       </div>
@@ -1080,6 +1419,9 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
               <Star className="h-5 w-5 text-blue-600" />
               Tất cả tin nhắn đã đánh dấu
             </DialogTitle>
+            <DialogDescription>
+              Xem tất cả tin nhắn đã được đánh dấu từ mọi cuộc trò chuyện
+            </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 pr-2">
             {allStarredMessages.length === 0 ? (
@@ -1115,7 +1457,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                         </span>
                         <span className="text-xs text-gray-500">
                           {new Date(starred.starredAt).toLocaleDateString(
-                            "vi-VN"
+                            "vi-VN",
                           )}
                         </span>
                       </div>

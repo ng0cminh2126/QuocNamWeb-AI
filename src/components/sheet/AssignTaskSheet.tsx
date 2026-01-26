@@ -14,6 +14,8 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { taskKeys } from "@/hooks/queries/keys/taskKeys";
 import { toast } from "sonner";
 import type { CreateTaskRequest } from "@/types/tasks_api";
+import { sendMessage } from "@/api/messages.api";
+import type { SendChatMessageRequest } from "@/types/messages";
 
 interface Props {
   open: boolean;
@@ -22,6 +24,7 @@ interface Props {
   messageContent?: string;
   onClose: () => void;
   onTaskCreated?: () => void;
+  onTabChange?: (tab: "info" | "order" | "tasks" | "chat") => void;
 }
 
 interface FormData {
@@ -59,6 +62,7 @@ export function AssignTaskSheet({
   messageContent,
   onClose,
   onTaskCreated,
+  onTabChange,
 }: Props) {
   const currentUser = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -77,7 +81,7 @@ export function AssignTaskSheet({
 
   // Link task to message mutation
   const linkTaskMutation = useLinkTaskToMessage({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       // Both task creation and linking successful - invalidate linked tasks and close sheet
       if (conversationId) {
         // Invalidate the query to mark it as stale
@@ -90,8 +94,30 @@ export function AssignTaskSheet({
           queryKey: taskKeys.linkedTasks(conversationId),
         });
       }
-      toast.success('Công việc đã được giao thành công');      // Call onTaskCreated callback to refresh parent component
-      onTaskCreated?.();      onClose();
+      
+      toast.success('Công việc đã được giao thành công');
+      
+      // Switch to tasks tab
+      onTabChange?.("order");
+
+      // Send system message about task creation
+      if (conversationId) {
+        try {
+          const systemMessageData: SendChatMessageRequest = {
+            conversationId,
+            content: `Công việc "${formData.title}" đã được tạo và giao thành công`,
+            messageType: "SYS", // System message type
+          };
+          await sendMessage(systemMessageData);
+        } catch (error) {
+          console.error('Failed to send system message:', error);
+          // Don't fail the whole operation if system message fails
+        }
+      }
+      
+      // Call onTaskCreated callback to refresh parent component
+      onTaskCreated?.();
+      onClose();
     },
     onError: (error) => {
       console.error('Failed to link task to message:', error);
@@ -163,22 +189,44 @@ export function AssignTaskSheet({
   useEffect(() => {
     if (!open) return;
 
-    // Auto-fill title from message content
-    if (messageContent) {
+    // Auto-fill title from message content (only if empty)
+    if (messageContent && !formData.title) {
       setFormData((prev) => ({
         ...prev,
         title: messageContent.substring(0, 255),
       }));
     }
+  }, [open, messageContent, formData.title]);
 
-    // Set assignee to current user if available
-    if (currentUser?.id && !formData.assignTo) {
-      setFormData((prev) => ({
-        ...prev,
-        assignTo: currentUser.id,
-      }));
-    }
-  }, [open, messageContent, currentUser, formData.assignTo]);
+  // Set default assignee when sheet opens and user is available
+  useEffect(() => {
+    if (!open || !currentUser?.id || formData.assignTo) return;
+    
+    setFormData((prev) => ({
+      ...prev,
+      assignTo: currentUser.id,
+    }));
+  }, [open, currentUser?.id, formData.assignTo]);
+
+  // Set default priority when priorities load
+  useEffect(() => {
+    if (!open || priorities.length === 0 || formData.priority) return;
+    
+    setFormData((prev) => ({
+      ...prev,
+      priority: priorities[0].code || priorities[0].id,
+    }));
+  }, [open, priorities, formData.priority]);
+
+  // Set default checklist template when templates load
+  useEffect(() => {
+    if (!open || templates.length === 0 || formData.checklistTemplateId) return;
+    
+    setFormData((prev) => ({
+      ...prev,
+      checklistTemplateId: templates[0].id,
+    }));
+  }, [open, templates, formData.checklistTemplateId]);
 
   // Reset form when sheet closes
   useEffect(() => {

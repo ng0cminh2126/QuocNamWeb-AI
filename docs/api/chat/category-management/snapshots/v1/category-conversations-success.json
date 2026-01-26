@@ -1,0 +1,112 @@
+[
+  {
+    "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "type": "GRP",
+    "name": "Nhóm ABC",
+    "description": "Nhóm làm việc dự án ABC",
+    "avatarFileId": null,
+    "createdBy": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "createdByName": "Nguyễn Văn A",
+    "createdAt": "2026-01-12T08:00:00Z",
+    "updatedAt": "2026-01-16T10:30:00Z",
+    "memberCount": 24,
+    "unreadCount": 5,
+    "lastMessage": {
+      "id": "msg-123-456-789",
+      "conversationId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "senderId": "8d7f8a80-8536-41ef-a055-3d9f2e8c1b9f",
+      "senderName": "Trần Thị B",
+      "senderIdentifier": "TTB001",
+      "senderFullName": "Trần Thị B",
+      "senderRoles": "Member",
+      "parentMessageId": null,
+      "content": "Đã xong task rồi nhé",
+      "contentType": "TXT",
+      "sentAt": "2026-01-16T08:30:00Z",
+      "editedAt": null,
+      "linkedTaskId": null,
+      "reactions": [],
+      "attachments": [],
+      "replyCount": 0,
+      "isStarred": false,
+      "isPinned": false,
+      "threadPreview": null,
+      "parentMessagePreview": null,
+      "mentions": []
+    },
+    "categories": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Dự án A"
+      }
+    ]
+  },
+  {
+    "id": "b2c3d4e5-6789-01bc-def0-234567890abc",
+    "type": "GRP",
+    "name": "Nhóm XYZ",
+    "description": null,
+    "avatarFileId": null,
+    "createdBy": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "createdByName": "Nguyễn Văn A",
+    "createdAt": "2026-01-10T09:00:00Z",
+    "updatedAt": null,
+    "memberCount": 15,
+    "unreadCount": 0,
+    "lastMessage": null,
+    "categories": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Dự án A"
+      }
+    ]
+  },
+  {
+    "id": "c3d4e5f6-7890-12cd-ef01-345678901bcd",
+    "type": "GRP",
+    "name": "Nhóm DEF",
+    "description": "Nhóm phát triển tính năng mới",
+    "avatarFileId": "file-avatar-123-456",
+    "createdBy": "8d7f8a80-8536-41ef-a055-3d9f2e8c1b9f",
+    "createdByName": "Trần Thị B",
+    "createdAt": "2026-01-08T07:30:00Z",
+    "updatedAt": "2026-01-15T15:45:00Z",
+    "memberCount": 18,
+    "unreadCount": 2,
+    "lastMessage": {
+      "id": "msg-987-654-321",
+      "conversationId": "c3d4e5f6-7890-12cd-ef01-345678901bcd",
+      "senderId": "9e8g9b91-9647-42fg-b166-4e0g3f9d2c0g",
+      "senderName": "Lê Văn C",
+      "senderIdentifier": "LVC002",
+      "senderFullName": "Lê Văn C",
+      "senderRoles": "Admin",
+      "parentMessageId": null,
+      "content": "Meeting lúc 3pm nhé mọi người",
+      "contentType": "TXT",
+      "sentAt": "2026-01-15T14:30:00Z",
+      "editedAt": null,
+      "linkedTaskId": null,
+      "reactions": [
+        {
+          "emoji": "👍",
+          "count": 3,
+          "reactedByCurrentUser": true
+        }
+      ],
+      "attachments": [],
+      "replyCount": 5,
+      "isStarred": false,
+      "isPinned": true,
+      "threadPreview": null,
+      "parentMessagePreview": null,
+      "mentions": []
+    },
+    "categories": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Dự án A"
+      }
+    ]
+  }
+]
