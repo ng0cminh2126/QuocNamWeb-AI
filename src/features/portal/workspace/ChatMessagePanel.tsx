@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { useCallback, useEffect, useRef } from "react";
 import {
   Search,
@@ -518,7 +519,7 @@ export const ChatMessagePanel: React.FC<{
                         <span className="text-sm font-normal">Công việc</span>
                       </button>
 
-                      {viewMode === "lead" && (
+                      {hasLeaderPermissions() && (
                         <button
                           className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-brand-50 text-gray-700"
                           onClick={() => {

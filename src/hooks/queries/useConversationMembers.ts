@@ -1,8 +1,9 @@
 // useConversationMembers hook - Fetch members of a conversation
 
-import { useQuery } from '@tanstack/react-query';
-import { getConversationMembers } from '@/api/conversations.api';
-import { conversationKeys } from './keys/conversationKeys';
+import { useQuery } from "@tanstack/react-query";
+import { getConversationMembers } from "@/api/conversations.api";
+import { conversationKeys } from "./keys/conversationKeys";
+import type { ConversationMember } from "@/types/conversations";
 
 interface UseConversationMembersOptions {
   conversationId: string;
@@ -11,11 +12,10 @@ interface UseConversationMembersOptions {
 
 /**
  * Hook to fetch members of a specific conversation
- * Used in AssignTaskSheet to populate the AssignTo dropdown
- * API returns array of members directly
+ * Uses TanStack Query for caching and deduplication
  * 
- * @param conversationId - The conversation ID to fetch members for
- * @param enabled - Whether the query is enabled (default: true)
+ * Multiple components can call this with the same conversationId
+ * and they will share the same cached data (no duplicate API calls)
  */
 export function useConversationMembers({
   conversationId,
@@ -24,7 +24,8 @@ export function useConversationMembers({
   return useQuery({
     queryKey: conversationKeys.members(conversationId),
     queryFn: () => getConversationMembers(conversationId),
-    staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: enabled && !!conversationId,
+    staleTime: 1000 * 60 * 5, // 5 minutes - members don't change frequently
+    gcTime: 1000 * 60 * 10, // 10 minutes cache
   });
 }

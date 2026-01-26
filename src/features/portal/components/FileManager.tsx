@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { IconButton } from "@/components/ui/icon-button";
 import {
   Folder as FolderIcon,
@@ -318,7 +319,7 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
 
         {localAttrs.length === 0 && (
           <div className="mb-2 text-[11px] text-gray-500">
-            {viewMode === "lead" ? (
+            {hasLeaderPermissions() ? (
               <>Chưa có thuộc tính nào. Bạn có thể thêm mới bên dưới.</>
             ):(
               <>Thư mục này chưa có thuộc tính nào.</>              
@@ -329,7 +330,7 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
         {/* <div className="max-h-52 overflow-y-auto space-y-1.5">
           {localAttrs.map((a) => (
             <div key={a.id} className="flex items-center gap-2 text-[11px]">
-              {viewMode === "lead" ? (
+              {hasLeaderPermissions() ? (
                 <>
                   <input
                     className="w-28 rounded border px-1 py-0.5 text-[11px]"
@@ -366,7 +367,7 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
               key={a.id}
               className="grid grid-cols-[120px_1fr_auto] items-center gap-2 text-[11px]"
             >
-              {viewMode === "lead" ? (
+              {hasLeaderPermissions() ? (
                 <>
                   <input
                     className="rounded-md border border-gray-200 px-2 py-1 text-[11px] focus:border-emerald-400 focus:ring-emerald-400"
@@ -399,7 +400,7 @@ const FolderAttrEditor: React.FC<FolderAttrEditorProps> = ({
         </div>
 
 
-        {viewMode === "lead" && (
+        {hasLeaderPermissions() && (
           <div className="mt-3 flex justify-between items-center">
             <button
               type="button"
@@ -529,7 +530,7 @@ const DriveGrid: React.FC<DriveGridProps> = ({
   const [renameValue, setRenameValue] = React.useState("");
 
   const canCreateSubFolder =
-    viewMode === "lead" && currentFolder && (currentFolder.level ?? 0) === 0;
+    hasLeaderPermissions() && currentFolder && (currentFolder.level ?? 0) === 0;
 
   return (
     <div className="space-y-3">
@@ -549,7 +550,7 @@ const DriveGrid: React.FC<DriveGridProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {!currentFolder && viewMode === "lead" && (
+          {!currentFolder && hasLeaderPermissions() && (
             <>
               <button
                 onClick={() => onCreateFolder(undefined, 0)}
@@ -690,7 +691,7 @@ const DriveGrid: React.FC<DriveGridProps> = ({
                             onUpdateFolderAttrs={onUpdateFolderAttrs}
                           />
 
-                          {viewMode === "lead" && (
+                          {hasLeaderPermissions() && (
                             <>
                               {/* Đổi tên */}
                               <IconButton
@@ -819,7 +820,7 @@ const DriveList: React.FC<DriveListProps> = ({
   const [renameValue, setRenameValue] = React.useState("");
 
   const canCreateSubFolder =
-    viewMode === "lead" && currentFolder && (currentFolder.level ?? 0) === 0;
+    hasLeaderPermissions() && currentFolder && (currentFolder.level ?? 0) === 0;
 
   return (
     <div className="space-y-3">
@@ -839,7 +840,7 @@ const DriveList: React.FC<DriveListProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {!currentFolder && viewMode === "lead" && (
+          {!currentFolder && hasLeaderPermissions() && (
             <>
               <button
                 onClick={() => onCreateFolder(undefined, 0)}
@@ -958,7 +959,7 @@ const DriveList: React.FC<DriveListProps> = ({
                             className="h-6 w-6"
                           />
 
-                          {viewMode === "lead" && (
+                          {hasLeaderPermissions() && (
                             <IconButton
                               icon={<Trash2 className="h-3.5 w-3.5 text-rose-600" />}
                               label="Xóa thư mục"
@@ -1289,7 +1290,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
   return (
     <div className="space-y-3 relative">
       {/* Popup tạo thư mục mới: chọn loại thuộc tính */}
-      {viewMode === "lead" && createFolderState.open && (
+      {hasLeaderPermissions() && createFolderState.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
           <div className="w-full max-w-sm rounded-xl border bg-white p-4 shadow-lg">
             <div className="mb-3">
@@ -1358,7 +1359,7 @@ export const FileManager: React.FC<FileManagerProps> = ({
         </div>
       )}
 
-      {viewMode === "lead" && showAttrSettings && (
+      {hasLeaderPermissions() && showAttrSettings && (
         <DefaultAttrSettings
           templates={attrTemplates}
           onChange={handleChangeAttrTemplates}

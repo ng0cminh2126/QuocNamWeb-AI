@@ -9,6 +9,7 @@ import { getTokenExpiry } from "@/lib/auth/jwt";
 import type { LoginApiUser } from "@/types/auth";
 import { queryClient } from "@/lib/queryClient";
 import { clearSelectedConversation } from "@/utils/storage";
+import { useConversationStore } from "./conversationStore";
 
 // Auth user type (from login API)
 export interface AuthUser {
@@ -90,6 +91,9 @@ export const useAuthStore = create<AuthState>()(
         // ✅ Clear TanStack Query cache to prevent data leakage between users
         queryClient.clear();
 
+        // ✅ Clear conversation store
+        useConversationStore.getState().clearSelectedConversation();
+
         // Then update Zustand state
         set({
           user: null,
@@ -114,6 +118,9 @@ export const useAuthStore = create<AuthState>()(
 
         // ✅ Clear TanStack Query cache
         queryClient.clear();
+
+        // ✅ Clear conversation store
+        useConversationStore.getState().clearSelectedConversation();
 
         set({
           user: null,
@@ -144,8 +151,8 @@ export const useAuthStore = create<AuthState>()(
         expiresAt: state.expiresAt,
         isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );
 
 export default useAuthStore;

@@ -12,19 +12,21 @@ export const LinearTabs = ({
   active: string;
   onChange: (key: string) => void;
   textClass?: string;
-  noWrap?: boolean;  
+  noWrap?: boolean;
 }) => {
   return (
-    <div className="relative flex items-center gap-6 border-b border-gray-200">
+    <div className="relative flex items-center gap-4">
       {tabs.map((tab) => {
         const isActive = tab.key === active;
 
         return (
           <button
             key={tab.key}
-            onClick={() => onChange(tab.key)}
+            onClick={() => {
+              onChange(tab.key);
+            }}
             className={`
-              relative pb-2 select-none transition-all outline-none
+              relative px-3 py-2 select-none transition-all outline-none
               ${noWrap ? "text-nowrap" : ""}
               ${textClass}
               ${

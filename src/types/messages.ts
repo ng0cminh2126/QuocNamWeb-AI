@@ -189,6 +189,7 @@ export interface GetMessagesResponse {
 export interface SendChatMessageRequest {
   conversationId: string; // Required - in request body
   content: string | null; // Nullable - optional if attachments exist
+  messageType?: ChatMessageContentType; // Optional - defaults to TXT if not specified
   parentMessageId?: string | null;
   mentions?: MentionInputDto[] | null;
   attachments?: AttachmentInputDto[] | null; // PLURAL - array of files (Phase 2)
@@ -224,6 +225,15 @@ export function isTaskMessage(msg: ChatMessage): boolean {
 // Request for linking task to message (PATCH /api/messages/{id}/link-task)
 export interface LinkTaskToMessageRequest {
   taskId: string;
+}
+
+// Sender info for message responses
+export interface ChatMessageSender {
+  id: string;
+  name: string;
+  identifier: string | null;
+  fullName: string | null;
+  roles: string | null;
 }
 
 // Response after linking task to message

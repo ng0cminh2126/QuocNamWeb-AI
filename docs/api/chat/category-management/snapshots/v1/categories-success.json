@@ -1,0 +1,29 @@
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "name": "Dự án A",
+    "order": 1,
+    "conversationCount": 12,
+    "createdAt": "2026-01-01T08:00:00Z",
+    "updatedAt": "2026-01-15T10:30:00Z"
+  },
+  {
+    "id": "8b5c2d91-3e4a-4f9d-b2c1-1a7e9f4d3c2b",
+    "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "name": "Dự án B",
+    "order": 2,
+    "conversationCount": 8,
+    "createdAt": "2026-01-05T09:00:00Z",
+    "updatedAt": null
+  },
+  {
+    "id": "4d6f8a92-1b3c-4e5d-a9f7-2c8e3d9b1a4f",
+    "userId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "name": "Khách hàng VIP",
+    "order": 3,
+    "conversationCount": 5,
+    "createdAt": "2026-01-10T14:00:00Z",
+    "updatedAt": "2026-01-14T16:20:00Z"
+  }
+]

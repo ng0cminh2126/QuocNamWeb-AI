@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-26T10:33:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/conversations/{id}/mark-read",
+    "description": "User not a member of conversation error",
+    "testAccount": "test@example.com"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "/api/conversations/770e8400-e29b-41d4-a716-446655440099/mark-read",
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {}
+  },
+  "_response": {
+    "status": 403,
+    "statusText": "Forbidden",
+    "headers": {
+      "content-type": "application/problem+json; charset=utf-8"
+    },
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+      "title": "Forbidden",
+      "status": 403,
+      "detail": "User is not a member of this conversation",
+      "instance": "/api/conversations/770e8400-e29b-41d4-a716-446655440099/mark-read"
+    }
+  },
+  "_notes": [
+    "Returned when user tries to mark a conversation they're not a member of",
+    "This prevents unauthorized access to private conversations"
+  ]
+}

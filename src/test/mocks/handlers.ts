@@ -6,9 +6,10 @@ import type {
   SendChatMessageRequest,
 } from "@/types/messages";
 import type { LoginResponse, LoginErrorResponse } from "@/types/auth";
+import { env } from "process";
 
 const API_BASE_URL = "http://localhost:3000";
-const IDENTITY_API_URL = "https://vega-identity-api-dev.allianceitsc.com";
+const IDENTITY_API_URL = env.IDENTITY_API_URL || "http://localhost:4000";
 
 // Mock data
 export const mockMessages: ChatMessage[] = [
@@ -17,6 +18,9 @@ export const mockMessages: ChatMessage[] = [
     conversationId: "conv-123",
     senderId: "user-1",
     senderName: "Nguyễn Văn A",
+    senderIdentifier: "user-1",
+    senderFullName: "Nguyễn Văn A",
+    senderRoles: "Member",
     parentMessageId: null,
     content: "Xin chào!",
     contentType: "TXT",
@@ -36,6 +40,9 @@ export const mockMessages: ChatMessage[] = [
     conversationId: "conv-123",
     senderId: "user-2",
     senderName: "Trần Thị B",
+    senderIdentifier: "user-2",
+    senderFullName: "Trần Thị B",
+    senderRoles: "Member",
     parentMessageId: null,
     content: "Chào bạn!",
     contentType: "TXT",
@@ -55,6 +62,9 @@ export const mockMessages: ChatMessage[] = [
     conversationId: "conv-123",
     senderId: "user-1",
     senderName: "Nguyễn Văn A",
+    senderIdentifier: "user-1",
+    senderFullName: "Nguyễn Văn A",
+    senderRoles: "Member",
     parentMessageId: null,
     content: "Hôm nay công việc thế nào?",
     contentType: "TXT",
@@ -164,9 +174,12 @@ export const handlers = [
       conversationId: body.conversationId,
       senderId: "current-user",
       senderName: "Bạn",
+      senderIdentifier: "current-user",
+      senderFullName: "Người dùng hiện tại",
+      senderRoles: "Member",
       parentMessageId: body.parentMessageId ?? null,
       content: body.content,
-      contentType: body.contentType,
+      contentType: body.messageType || "TXT",
       sentAt: new Date().toISOString(),
       editedAt: null,
       linkedTaskId: null,

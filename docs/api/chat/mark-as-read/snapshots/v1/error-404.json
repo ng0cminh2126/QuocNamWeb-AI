@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-26T10:32:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/conversations/{id}/mark-read",
+    "description": "Conversation not found error",
+    "testAccount": "test@example.com"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "/api/conversations/00000000-0000-0000-0000-000000000000/mark-read",
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {}
+  },
+  "_response": {
+    "status": 404,
+    "statusText": "Not Found",
+    "headers": {
+      "content-type": "application/problem+json; charset=utf-8"
+    },
+    "body": {
+      "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+      "title": "Not Found",
+      "status": 404,
+      "detail": "Conversation with ID '00000000-0000-0000-0000-000000000000' not found",
+      "instance": "/api/conversations/00000000-0000-0000-0000-000000000000/mark-read"
+    }
+  },
+  "_notes": [
+    "Returned when conversation ID does not exist in database",
+    "Use this to handle deleted conversations gracefully"
+  ]
+}

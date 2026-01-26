@@ -1,9 +1,16 @@
 // SignalR Provider - Manages SignalR connection lifecycle
 // Automatically connects when user is authenticated
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { chatHub, type SignalRConnectionState } from '@/lib/signalr';
-import { useAuthStore } from '@/stores/authStore';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { chatHub, type SignalRConnectionState } from "@/lib/signalr";
+import { useAuthStore } from "@/stores/authStore";
 
 interface SignalRContextValue {
   connectionState: SignalRConnectionState;
@@ -19,7 +26,8 @@ interface SignalRProviderProps {
 }
 
 export function SignalRProvider({ children }: SignalRProviderProps) {
-  const [connectionState, setConnectionState] = useState<SignalRConnectionState>('Disconnected');
+  const [connectionState, setConnectionState] =
+    useState<SignalRConnectionState>("Disconnected");
   const accessToken = useAuthStore((state) => state.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const connectionAttemptRef = useRef(false);
@@ -29,30 +37,26 @@ export function SignalRProvider({ children }: SignalRProviderProps) {
   // Connect to SignalR
   const connect = useCallback(async () => {
     if (connectionAttemptRef.current) {
-      console.log('SignalR: Connection already in progress, skipping');
       return;
     }
-    
+
     if (!shouldConnectRef.current) {
-      console.log('SignalR: Should not connect (auth state changed), skipping');
       return;
     }
 
     connectionAttemptRef.current = true;
 
     try {
-      setConnectionState('Connecting');
-      console.log('SignalR: Starting connection...');
+      setConnectionState("Connecting");
       await chatHub.start(accessToken || undefined);
-      
+
       if (mountedRef.current && shouldConnectRef.current) {
-        setConnectionState('Connected');
-        console.log('SignalR: Connected successfully');
+        setConnectionState("Connected");
       }
     } catch (error) {
       if (mountedRef.current) {
-        console.error('SignalR: Connection failed', error);
-        setConnectionState('Disconnected');
+        console.error("SignalR connection failed:", error);
+        setConnectionState("Disconnected");
       }
     } finally {
       connectionAttemptRef.current = false;
@@ -64,10 +68,10 @@ export function SignalRProvider({ children }: SignalRProviderProps) {
     try {
       await chatHub.stop();
       if (mountedRef.current) {
-        setConnectionState('Disconnected');
+        setConnectionState("Disconnected");
       }
     } catch (error) {
-      console.error('SignalR: Disconnect failed', error);
+      // Silent fail on disconnect
     }
   }, []);
 
@@ -122,22 +126,20 @@ export function SignalRProvider({ children }: SignalRProviderProps) {
 
   const value: SignalRContextValue = {
     connectionState,
-    isConnected: connectionState === 'Connected',
+    isConnected: connectionState === "Connected",
     connect,
     disconnect,
   };
 
   return (
-    <SignalRContext.Provider value={value}>
-      {children}
-    </SignalRContext.Provider>
+    <SignalRContext.Provider value={value}>{children}</SignalRContext.Provider>
   );
 }
 
 export function useSignalRConnection() {
   const context = useContext(SignalRContext);
   if (!context) {
-    throw new Error('useSignalRConnection must be used within SignalRProvider');
+    throw new Error("useSignalRConnection must be used within SignalRProvider");
   }
   return context;
 }

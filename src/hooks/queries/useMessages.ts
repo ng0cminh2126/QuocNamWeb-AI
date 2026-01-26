@@ -39,7 +39,9 @@ export function useMessages({
       return lastPage.hasMore ? lastPage.nextCursor : undefined;
     },
     initialPageParam: undefined as string | undefined,
-    staleTime: 1000 * 30, // 30 seconds (from requirements)
+    staleTime: 1000 * 30, // 30 seconds - data is fresh for 30s
+    gcTime: 1000 * 60 * 5, // 5 minutes - cache garbage collection time
+    refetchOnMount: "always", // ✅ Always refetch when component mounts with this conversation
     enabled: enabled && !!conversationId,
   });
 }
@@ -49,7 +51,7 @@ export function useMessages({
  * Returns messages in chronological order (oldest first)
  */
 export function flattenMessages(
-  data: ReturnType<typeof useMessages>["data"]
+  data: ReturnType<typeof useMessages>["data"],
 ): ChatMessage[] {
   if (!data?.pages) return [];
 
@@ -66,7 +68,7 @@ export function flattenMessages(
  * Get total message count across all pages
  */
 export function getMessageCount(
-  data: ReturnType<typeof useMessages>["data"]
+  data: ReturnType<typeof useMessages>["data"],
 ): number {
   return data?.pages.reduce((acc, page) => acc + page.items.length, 0) ?? 0;
 }

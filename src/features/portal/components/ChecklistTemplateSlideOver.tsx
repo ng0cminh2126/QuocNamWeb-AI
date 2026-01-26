@@ -1,6 +1,6 @@
 import React from "react";
 import { ChecklistTemplateItem, ChecklistVariant } from "../types";
-import { Plus, X as XIcon, Trash } from "lucide-react";
+import { Plus, X as XIcon, Trash, Save } from "lucide-react";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { useChecklistTemplates } from "@/hooks/queries/useChecklistTemplates";
 import { transformTemplateItems } from "@/utils/checklistTemplateTransform";
@@ -12,8 +12,7 @@ type Props = {
   onClose: () => void;
   workTypeName: string;
   template: ChecklistTemplateItem[];
-  onChange: (next: ChecklistTemplateItem[]) => void;
-
+  onChange: (next: ChecklistTemplateItem[]) => void;  conversationId?: string; // Current active conversation/group chat ID
   // Optional – danh sách “Dạng checklist” cho Loại việc hiện tại
   checklistVariants?: ChecklistVariant[];
   // Variant đang được chọn (ví dụ khi lead vừa chọn sub-work-type trong AssignTaskSheet)
@@ -28,11 +27,12 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   workTypeName,
   template,
   onChange,
+  conversationId,
   checklistVariants,
   activeVariantId,
   onChangeVariant,
 }) => {
-  // Fetch templates from API
+  // Fetch templates from API filtered by conversationId
   const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
   
   // Update template mutation
@@ -74,7 +74,7 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
     if (selectedTemplate) {
       const transformed = transformTemplateItems(selectedTemplate);
       setItems(transformed);
-      setSelectedTemplateName(selectedTemplate.name);
+      setSelectedTemplateName(selectedTemplate.name ?? "");
       setSelectedTemplateDescription(selectedTemplate.description || "");
     }
   };

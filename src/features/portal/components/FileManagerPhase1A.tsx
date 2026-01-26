@@ -41,7 +41,7 @@ export type FileManagerPhase1AMode = "media" | "docs";
 
 type AttachmentType = "pdf" | "excel" | "word" | "image" | "other";
 
-type MessageLike = {
+export type MessageLike = {
   id: string;
   groupId?: string;
   sender?: string;
@@ -51,10 +51,10 @@ type MessageLike = {
   time?: string;
   attachments?: {
     fileId?: string;
-    fileName?: string;
+    fileName?: string | null;
     name?: string;
     url?: string;
-    contentType?: string;
+    contentType?: string | null;
     type?: AttachmentType;
     fileSize?: number;
     size?: string;
@@ -329,7 +329,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
   messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
   const [previewFile, setPreviewFile] = React.useState<Phase1AFileItem | null>(
-    null
+    null,
   );
   const [showAll, setShowAll] = React.useState(false);
 
@@ -356,7 +356,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           "ring-offset-2",
           "bg-orange-50/80",
           "transition-all",
-          "duration-300"
+          "duration-300",
         );
 
         setTimeout(() => {
@@ -366,14 +366,14 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
             "ring-offset-2",
             "bg-orange-50/80",
             "transition-all",
-            "duration-300"
+            "duration-300",
           );
         }, 2500);
       };
 
       // Step 1: Try to find message in current DOM
       let messageElement = document.querySelector(
-        `[data-testid="message-bubble-${messageId}"]`
+        `[data-testid="message-bubble-${messageId}"]`,
       );
 
       if (messageElement) {
@@ -402,7 +402,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
 
           // Check again
           messageElement = document.querySelector(
-            `[data-testid="message-bubble-${messageId}"]`
+            `[data-testid="message-bubble-${messageId}"]`,
           );
 
           if (messageElement) {
@@ -422,7 +422,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         duration: 3000,
       });
     },
-    [messagesQuery, onNavigateToChat]
+    [messagesQuery, onNavigateToChat],
   );
 
   // ----- Lấy list message tương ứng group + workType từ API -----
@@ -445,7 +445,11 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
     const media: Phase1AFileItem[] = [];
     const docs: Phase1AFileItem[] = [];
 
-    messageList.forEach((m) => {
+    // Process messages in reverse order to get newest first
+    // (messageList is typically sorted oldest → newest from flattenMessages)
+    const messagesNewestFirst = [...messageList].reverse();
+
+    messagesNewestFirst.forEach((m) => {
       const attachmentList: {
         name: string;
         url: string;
@@ -536,6 +540,16 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         }
       });
     });
+
+    // Sort files by date - newest first (descending)
+    const sortByDateDesc = (a: Phase1AFileItem, b: Phase1AFileItem) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // Descending (newest first)
+    };
+
+    media.sort(sortByDateDesc);
+    docs.sort(sortByDateDesc);
 
     return { mediaFiles: media, docFiles: docs };
   }, [messageList]);

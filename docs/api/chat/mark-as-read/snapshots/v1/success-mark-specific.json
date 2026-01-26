@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "capturedAt": "2026-01-26T10:31:00Z",
+    "environment": "dev",
+    "endpoint": "POST /api/conversations/{id}/mark-read",
+    "description": "Mark messages as read up to specific messageId",
+    "testAccount": "test@example.com"
+  },
+  "_request": {
+    "method": "POST",
+    "url": "/api/conversations/550e8400-e29b-41d4-a716-446655440000/mark-read",
+    "headers": {
+      "Authorization": "Bearer [REDACTED]",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "messageId": "660e8400-e29b-41d4-a716-446655440111"
+    }
+  },
+  "_response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "content-length": "0"
+    },
+    "body": null
+  },
+  "_notes": [
+    "Success response has no body - just HTTP 200 status",
+    "Backend marks messages as read up to (and including) the specified messageId",
+    "Messages after messageId remain unread"
+  ]
+}

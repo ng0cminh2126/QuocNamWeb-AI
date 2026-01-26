@@ -20,6 +20,7 @@ interface ConversationListContainerProps {
   onSelect: (conversation: Conversation) => void;
   selectedId?: string;
   searchQuery?: string;
+  activeConversationId?: string; // 🆕 For realtime unread count
 }
 
 /**
@@ -33,7 +34,7 @@ interface ConversationListContainerProps {
  */
 export const ConversationListContainer: React.FC<
   ConversationListContainerProps
-> = ({ type, onSelect, selectedId, searchQuery }) => {
+> = ({ type, onSelect, selectedId, searchQuery, activeConversationId }) => {
   // Fetch data based on type
   const groupsQuery = useGroups({ enabled: type === "groups" });
   const directsQuery = useDirectMessages({ enabled: type === "directs" });
@@ -45,8 +46,8 @@ export const ConversationListContainer: React.FC<
       ? flattenGroups(groupsQuery.data)
       : flattenDirectMessages(directsQuery.data);
 
-  // Enable realtime updates
-  useConversationRealtime();
+  // ❌ REMOVED: Moved to ChatMainContainer to avoid duplicate event listeners
+  // useConversationRealtime({ activeConversationId });
 
   // Filter by search query
   const filteredConversations = React.useMemo(() => {
@@ -96,8 +97,8 @@ export const ConversationListContainer: React.FC<
         {searchQuery
           ? "Không tìm thấy kết quả phù hợp."
           : type === "groups"
-          ? "Chưa có nhóm nào."
-          : "Chưa có cuộc trò chuyện nào."}
+            ? "Chưa có nhóm nào."
+            : "Chưa có cuộc trò chuyện nào."}
       </div>
     );
   }

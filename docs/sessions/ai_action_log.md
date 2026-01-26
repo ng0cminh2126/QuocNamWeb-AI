@@ -5,6 +5,275 @@
 
 ---
 
+## [2026-01-20 18:15] Implementation Plan & Test Requirements - Role System Migration
+
+### Summary:
+
+**Task:** Create detailed implementation plan and test requirements based on approved analysis
+
+**Input:** 
+- Analysis document with HUMAN decisions filled in
+- 6 key decisions: Remove ViewModeSwitcher, Admin wins, Big bang, Do nothing (runtime), Do nothing (deprecated props), Full E2E
+
+**Output:** 3 comprehensive documents in `docs/modules/role_system_changes/`
+
+### Actions Performed:
+
+| #   | Time  | Action | File(s)                                                          | Result |
+| --- | ----- | ------ | ---------------------------------------------------------------- | ------ |
+| 1   | 18:05 | CREATE | docs/modules/role_system_changes/                                | ✅     |
+| 2   | 18:06 | CREATE | docs/modules/role_system_changes/00_README.md                    | ✅     |
+| 3   | 18:10 | CREATE | docs/modules/role_system_changes/01_implementation_plan.md       | ✅     |
+| 4   | 18:13 | CREATE | docs/modules/role_system_changes/02_test_requirements.md         | ✅     |
+| 5   | 18:15 | CREATE | docs/modules/role_system_changes/03_progress.md                  | ✅     |
+
+### Documents Created:
+
+#### 1. **00_README.md** (Overview - 120 lines)
+- Module structure
+- Key decisions summary
+- Impact summary (files to create/modify)
+- Implementation order diagram
+- Estimated timeline: 12 hours
+- Links to related documents
+
+#### 2. **01_implementation_plan.md** (Implementation Plan - 800+ lines)
+**Structure:**
+- 7 implementation phases with detailed instructions
+- Phase 1: Foundation (roleUtils.ts + tests) - 1h
+- Phase 2: State Management (uiStore.ts) - 0.5h
+- Phase 3: Root Component (PortalWireframes.tsx) - 1h
+- Phase 4: High Priority Files (4 files) - 3h
+- Phase 5: Medium Priority Files (5 files) - 1.5h
+- Phase 6: Low Priority Files (4+ files) - 2h
+- Phase 7: Cleanup & Documentation - 1h
+
+**Key Features:**
+- Exact code changes for each file
+- Before/After examples
+- Line number references
+- Task checklists for each phase
+- Import statements to add
+- Pattern replacements (viewMode → hasLeaderPermissions())
+- Complete test file implementation
+- Risk mitigation strategies
+
+**Decisions Applied:**
+- ✅ ViewModeSwitcher: Remove completely (Task 5.1)
+- ✅ Multi-role priority: Admin wins (hierarchy model)
+- ✅ Migration: Big bang (all phases sequentially)
+- ✅ Runtime changes: Do nothing (keep for later)
+- ✅ Deprecated props: Keep with comments (gradual migration)
+- ✅ Tests: Full E2E coverage
+
+#### 3. **02_test_requirements.md** (Test Requirements - 600+ lines)
+**Structure:**
+- Test coverage matrix
+- Unit tests: 30+ cases for roleUtils.ts
+- Integration tests: 10+ scenarios
+- E2E tests: 15+ full user flows
+
+**Test Suites:**
+- Unit: hasRole, hasAnyRole, hasLeaderPermissions, etc. (30+ cases)
+- Integration: Auth flow, UI store, component permissions (10+ cases)
+- E2E with Playwright: Login scenarios, feature permissions, edge cases (15+ cases)
+
+**Test Data:**
+- 6 test users with different role combinations
+- Database seed script
+- Test helper functions
+- Manual testing checklist (40+ items)
+
+**Execution Plan:**
+```bash
+npm run test -- roleUtils.test.ts           # Unit
+npm run test -- integration/                # Integration
+npx playwright test tests/role-system.spec.ts  # E2E
+```
+
+#### 4. **03_progress.md** (Progress Tracker - 400+ lines)
+- Real-time progress tracking (0% initially)
+- Detailed task breakdown by phase
+- Metrics: files created/modified, tests passing, coverage
+- Session logs placeholder
+- Completion checklist (50+ items)
+- Issues & blockers section
+- Quality metrics
+
+### Key Implementation Details:
+
+**roleUtils.ts Functions:**
+- `hasRole(role)` - Check single role
+- `hasAnyRole(...roles)` - Check any of roles
+- `hasAllRoles(...roles)` - Check all roles
+- `hasLeaderPermissions()` - Admin or Leader ✅ PRIMARY FUNCTION
+- `hasStaffPermissions()` - Staff only without Admin/Leader
+- `getCurrentUserRoles()` - Get normalized roles array
+- `getHighestRole()` - Get highest priority role
+- `getViewModeFromRoles()` - Backward compatibility helper
+- `hasPermissionLevel(role)` - Hierarchy-based permission check
+
+**Migration Pattern:**
+```typescript
+// BEFORE:
+{viewMode === "lead" && <LeaderFeature />}
+
+// AFTER:
+import { hasLeaderPermissions } from '@/utils/roleUtils';
+{hasLeaderPermissions() && <LeaderFeature />}
+```
+
+**Files to Modify (Priority Order):**
+1. HIGH: uiStore, PortalWireframes, ConversationDetailPanel, ChatMain, TabTaskMobile, FileManager (6 files, ~50 changes)
+2. MEDIUM: MainSidebar, WorkspaceView, ChatMessagePanel, InformationPanel (5 files, ~7 changes)
+3. LOW: MessageBubble, TabInfoMobile, TabOwnTasksMobile, DefaultChecklistMobile (4+ files, ~8 changes)
+
+**Total Changes:** ~70 replacements across 16 files + 2 new files + 1 deletion
+
+### Testing Coverage:
+
+**Unit Tests (30+ cases):**
+- hasRole: 5 cases
+- hasAnyRole: 2 cases
+- hasAllRoles: 2 cases
+- hasLeaderPermissions: 5 cases
+- hasStaffPermissions: 3 cases
+- getCurrentUserRoles: 4 cases
+- getHighestRole: 3 cases
+- getViewModeFromRoles: 4 cases
+- hasPermissionLevel: 2 cases
+
+**E2E Tests (15+ scenarios):**
+- Admin login → See Leader UI
+- Leader login → See Leader UI
+- Staff login → See Staff UI
+- Admin+Staff → Admin wins (Leader UI)
+- Feature permissions (assign tasks, create folders, team monitor)
+- ViewModeSwitcher not visible
+- Edge cases (empty roles, unknown roles, localStorage changes)
+
+### Timeline Estimate:
+
+| Phase | Time | Tasks |
+|-------|------|-------|
+| Phase 1-2 | 2h | Foundation + State |
+| Phase 3 | 4h | Root + HIGH priority |
+| Phase 4 | 2h | MEDIUM priority |
+| Phase 5 | 3h | LOW priority |
+| Phase 6 | 1h | Cleanup |
+| **Total** | **12h** | **~70 changes** |
+
+### Status:
+
+- ✅ Analysis complete with HUMAN decisions
+- ✅ Implementation plan created (01_implementation_plan.md)
+- ✅ Test requirements created (02_test_requirements.md)
+- ✅ Progress tracker created (03_progress.md)
+- ⏳ Awaiting HUMAN approval to begin Phase 1 (implementation)
+
+### Notes:
+
+- All documents follow copilot instructions format
+- Each document has HUMAN CONFIRMATION section
+- Implementation plan has exact code changes with line numbers
+- Test requirements include complete test files
+- Progress tracker ready to track real-time progress
+- No breaking changes - backward compatible migration
+- Rollback possible with git revert
+- 100% coverage target for roleUtils.ts
+
+---
+
+## [2026-01-20 17:45] Role System Analysis - Multi-Role Migration Plan
+
+### Summary:
+
+**Task:** Analyze current role system and create migration plan for multi-role support
+
+**Current System:**
+- Binary viewMode: "lead" or "staff" (hard-coded checks in 50+ files)
+- Single role assumption per user
+- Mock data dependency for role determination
+
+**Target System:**
+- Multi-role support: Users can have ["Admin", "Leader", "Staff"]
+- Role source: `localStorage["auth-storage"].state.user.roles` (array)
+- Permission model: Admin/Leader → Leader UI, Staff → Staff UI
+
+**Analysis Scope:**
+- Mapped complete file dependency tree starting from WorkspaceView
+- Identified 35+ files with role checks
+- Categorized by impact: HIGH (6 files), MEDIUM (5 files), LOW (20+ files)
+- Created migration strategy with 5 phases
+- Defined role utilities architecture
+
+### Actions Performed:
+
+| #   | Time  | Action | File(s)                                | Result |
+| --- | ----- | ------ | -------------------------------------- | ------ |
+| 1   | 17:10 | READ   | WorkspaceView.tsx                      | ✅     |
+| 2   | 17:12 | READ   | PortalWireframes.tsx                   | ✅     |
+| 3   | 17:15 | READ   | authStore.ts                           | ✅     |
+| 4   | 17:18 | READ   | getCurrentUser.ts                      | ✅     |
+| 5   | 17:20 | READ   | uiStore.ts                             | ✅     |
+| 6   | 17:22 | READ   | ViewModeSwitcher.tsx                   | ✅     |
+| 7   | 17:25 | SEARCH | grep: viewMode checks (50+ files)      | ✅     |
+| 8   | 17:28 | SEARCH | grep: role checks                      | ✅     |
+| 9   | 17:30 | READ   | ConversationDetailPanel.tsx            | ✅     |
+| 10  | 17:32 | READ   | ChatMain.tsx                           | ✅     |
+| 11  | 17:35 | READ   | MainSidebar.tsx                        | ✅     |
+| 12  | 17:40 | CREATE | docs/analysis/role_system_analysis.md  | ✅     |
+
+### Document Created:
+
+**docs/analysis/role_system_analysis.md** (350+ lines)
+
+**Sections:**
+1. Executive Summary - Current vs Target state
+2. Current System Architecture - ViewMode management, role data sources, check patterns
+3. File Dependency Tree - Complete mapping from WorkspaceView (35+ files)
+4. Migration Strategy - 5 phases with code examples
+5. Impact Summary - Files to create/modify (categorized by priority)
+6. Testing Requirements - Unit, integration, E2E test specs
+7. Risks & Considerations - 5 major risks with mitigations
+8. Pending Decisions - 6 questions requiring HUMAN input
+9. Human Confirmation - Approval checklist
+
+**Key Findings:**
+- `authStore.ts` already supports roles array ✅
+- `getCurrentUser.ts` already returns roles array ✅
+- Need to create `roleUtils.ts` with helper functions
+- 15 core files need modification (HIGH/MEDIUM priority)
+- 20+ low-priority files with minor changes
+- No new dependencies required
+
+**Migration Phases:**
+1. Create role utilities (roleUtils.ts)
+2. Update state management (uiStore.ts)
+3. Replace direct role checks (high-priority files)
+4. Update root component (PortalWireframes.tsx)
+5. Remove/update ViewModeSwitcher
+
+### Pending Decisions (Requires HUMAN):
+
+1. Keep ViewModeSwitcher? (Remove / Dev-only / Keep)
+2. Role priority for multi-role users (Admin wins / User chooses / Show both)
+3. Migration approach (Big bang / Gradual / Feature flag)
+4. Handle runtime role changes (Re-login / Auto-update / Notification)
+5. Deprecated viewMode prop (Remove / Keep with warning / Keep indefinitely)
+6. Test coverage target (Utils only / Utils + components / Full E2E)
+
+### Notes:
+
+- Document follows copilot instructions format
+- Includes IMPACT SUMMARY with detailed file lists
+- Includes PENDING DECISIONS table (6 items)
+- Includes HUMAN CONFIRMATION section
+- Status: ⏳ PENDING HUMAN APPROVAL
+- AI BLOCKED from implementation until approval received
+
+---
+
 ## [2026-01-14 16:35] Fix Message Image Loading Skeleton
 
 ### Summary:

@@ -1,8 +1,14 @@
 import React from "react";
+import { hasLeaderPermissions, hasStaffPermissions } from "@/utils/roleUtils";
 import { RightAccordion } from "../components";
 import { LinkedTasksPanel } from "../components/LinkedTasksPanel";
 import { ViewAllTasksModal } from "../components/ViewAllTasksModal";
 import { SegmentedTabs } from "../components/SegmentedTabs";
+import { AddMemberDialog } from "./AddMemberDialog";
+import type {
+  FileManagerPhase1AProps,
+  MessageLike,
+} from "../components/FileManagerPhase1A";
 import type {
   Task,
   ReceivedInfo,
@@ -55,9 +61,12 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { Button } from "@/components/ui/button";
 import { HintBubble } from "../components/HintBubble";
+import { useAuthStore } from "@/stores/authStore";
+import { useConversationStore } from "@/stores";
 import { FileNode } from "../components/FileManager";
 import { FileManagerPhase1A } from "../components/FileManagerPhase1A";
 import { group } from "console";
+import { set } from "date-fns";
 
 export const formatTime = (iso: string) => {
   const d = new Date(iso);
@@ -158,7 +167,7 @@ const TaskCard: React.FC<{
   const assigneeName =
     members.find((m) => m.id === t.assignTo)?.name ?? t.assignTo;
   const [editingItem, setEditingItem] = React.useState<ChecklistItem | null>(
-    null
+    null,
   );
   const [newLabel, setNewLabel] = React.useState("");
 
@@ -181,7 +190,7 @@ const TaskCard: React.FC<{
     (total ? `${doneCount}/${total} mục` : "Không có checklist");
 
   const [editChecklist, setEditChecklist] = React.useState(false);
-  const canEditStructure = viewMode === "lead" && t.status.code === "todo";
+  const canEditStructure = hasLeaderPermissions() && t.status.code === "todo";
 
   // Get permissions from task (from API)
   const permissions = t.permissions;
@@ -234,7 +243,7 @@ const TaskCard: React.FC<{
                     // For editing existing items, use the old callback
                     // (API doesn't have an update endpoint yet)
                     const updated = (t.checklist ?? []).map((i) =>
-                      i.id === editingItem.id ? { ...i, label: newLabel } : i
+                      i.id === editingItem.id ? { ...i, label: newLabel } : i,
                     );
                     onUpdateTaskChecklist?.(t.id, updated);
                     setEditingItem(null);
@@ -355,7 +364,7 @@ const TaskCard: React.FC<{
                 </>
               )} */}
 
-              {viewMode === "lead" && (
+              {hasLeaderPermissions() && (
                 <>
                   <span>•</span>
                   <span>
@@ -477,7 +486,7 @@ const TaskCard: React.FC<{
                               } catch (error) {
                                 console.error(
                                   "Failed to toggle checklist item:",
-                                  error
+                                  error,
                                 );
                               }
                             }}
@@ -512,7 +521,7 @@ const TaskCard: React.FC<{
                               className="w-3.5 h-3.5 text-rose-500 cursor-pointer hover:text-rose-600"
                               onClick={() => {
                                 const updated = (t.checklist ?? []).filter(
-                                  (i) => i.id !== c.id
+                                  (i) => i.id !== c.id,
                                 );
                                 onUpdateTaskChecklist?.(t.id, updated);
                               }}
@@ -740,14 +749,14 @@ const ReceivedInfoSection: React.FC<{
 /* =============== ConversationDetailPanel =============== */
 export const ConversationDetailPanel: React.FC<{
   // Tabs
-  tab: "info" | "order" | "tasks";
-  setTab: (v: "info" | "order" | "tasks") => void;
+  tab: "info" | "order" | "tasks" | "chat";
+  setTab: (v: "info" | "order" | "tasks" | "chat") => void;
 
   // Context
   viewMode?: ViewMode; // 'lead' | 'staff'
   groupId?: string;
-  groupName?: string;
   workTypeName?: string;
+  // Note: groupName and categoryName removed - now from store
 
   // Members (for "Thành viên" accordion)
   members?: MinimalMember[];
@@ -771,7 +780,7 @@ export const ConversationDetailPanel: React.FC<{
   >;
   applyTemplateToTasks?: (
     workTypeId: string,
-    template: ChecklistTemplateItem[]
+    template: ChecklistTemplateItem[],
   ) => void;
   taskLogs?: Record<string, TaskLogMessage[]>;
   onOpenTaskLog?: (taskId: string) => void;
@@ -790,8 +799,8 @@ export const ConversationDetailPanel: React.FC<{
   setTab,
   viewMode = "staff",
   groupId,
-  groupName = "Nhóm",
   workTypeName = "—",
+  // categoryName and groupName removed from props
   members = [],
   onAddMember,
   tasks = [],
@@ -815,10 +824,19 @@ export const ConversationDetailPanel: React.FC<{
   messages = [],
   messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
+  // Read conversation data from store
+  const categoryName = useConversationStore((s) => s.getConversationCategory());
+  const groupName =
+    useConversationStore((s) => s.getConversationName()) || "Nhóm";
+
   // State for View All Tasks Modal
+
   const [showViewAllTasksModal, setShowViewAllTasksModal] =
     React.useState(false);
+  // State for Add Member Dialog
+  const [showAddMemberDialog, setShowAddMemberDialog] = React.useState(false);
 
+  // console.log("chatMessages", messages);
   // Fetch all tasks for conversation (no user task filter)
   const {
     data: linkedTasksData,
@@ -911,7 +929,7 @@ export const ConversationDetailPanel: React.FC<{
         checklistVariants.find((v) => v.isDefault) ?? checklistVariants[0];
       // Nếu state hiện tại không hợp lệ, reset về default
       setTemplateVariantId((prev) =>
-        prev && checklistVariants.some((v) => v.id === prev) ? prev : def?.id
+        prev && checklistVariants.some((v) => v.id === prev) ? prev : def?.id,
       );
     } else {
       setTemplateVariantId(undefined);
@@ -953,32 +971,37 @@ export const ConversationDetailPanel: React.FC<{
   const tasksByWorkRaw = React.useMemo(
     () =>
       tasks.filter(
-        (t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId
+        (t) => !selectedWorkTypeId || t.workTypeId === selectedWorkTypeId,
       ),
-    [tasks, selectedWorkTypeId]
+    [tasks, selectedWorkTypeId],
   );
 
   // Leader thấy toàn bộ task của hôm nay
   // Staff chỉ thấy task của mình trong hôm nay
   const tasksToday = React.useMemo(() => {
-    if (viewMode === "lead") {
+    if (hasLeaderPermissions()) {
       return tasksByWorkRaw.filter((t) => isToday(t.createdAt));
     }
-    if (viewMode === "staff") {
+    if (hasStaffPermissions()) {
       return tasksByWorkRaw.filter(
-        (t) => t.assignTo === currentUserId && isToday(t.createdAt)
+        (t) => t.assignTo === currentUserId && isToday(t.createdAt),
       );
     }
     return tasksByWorkRaw;
-  }, [tasksByWorkRaw, viewMode, currentUserId]);
+  }, [tasksByWorkRaw, currentUserId]);
+  // Get auth user as fallback when currentUserId prop is not provided
+  const authUser = useAuthStore((state) => state.user);
+  const effectiveUserId = currentUserId ?? authUser?.id;
 
   // Filter leader's own tasks
   console.log("currentUserId", currentUserId);
+  console.log("authUser", authUser);
+  console.log("effectiveUserId", effectiveUserId);
   const leaderOwnTasks = React.useMemo(() => {
-    if (viewMode !== "lead" || !currentUserId) return [];
+    if (!hasLeaderPermissions() || !effectiveUserId) return [];
 
-    return tasksToday.filter((t) => t.assignTo === currentUserId);
-  }, [tasksToday, viewMode, currentUserId]);
+    return tasksByWorkRaw.filter((t) => t.assignTo === effectiveUserId);
+  }, [tasksByWorkRaw, viewMode, effectiveUserId]);
 
   console.log("Leader own tasks:", leaderOwnTasks);
   // Group leader own tasks by status
@@ -986,41 +1009,41 @@ export const ConversationDetailPanel: React.FC<{
     () => ({
       todo: leaderOwnTasks.filter((t) => t.status.code === "todo"),
       inProgress: leaderOwnTasks.filter((t) => t.status.code === "doing"),
-      // Done TODAY only (for inline display)
+      // All done tasks (not just today)
       doneToday: leaderOwnTasks.filter(
         (t) =>
-          (t.status.code === "need_to_verified" ||
-            t.status.code === "finished") &&
-          isToday(t.updatedAt || t.createdAt)
+          t.status.code === "need_to_verified" || t.status.code === "finished",
       ),
     }),
-    [leaderOwnTasks]
+    [leaderOwnTasks],
   );
 
   // All completed tasks (any date) for modal
   const leaderOwnAllCompleted = React.useMemo(() => {
-    if (viewMode !== "lead" || !currentUserId) return [];
+    if (!hasLeaderPermissions() || !effectiveUserId) return [];
 
     return tasksByWorkRaw
       .filter(
         (t) =>
-          t.assignTo === currentUserId &&
+          t.assignTo === effectiveUserId &&
           (t.status.code === "need_to_verified" ||
             t.status.code === "finished") &&
-          (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId)
+          (!selectedWorkTypeId || t.workTypeId === selectedWorkTypeId),
       )
       .sort((a, b) => {
         const da = new Date(a.updatedAt || a.createdAt || "");
         const db = new Date(b.updatedAt || b.createdAt || "");
         return db.getTime() - da.getTime(); // Newest first
       });
-  }, [tasksByWorkRaw, viewMode, currentUserId, selectedWorkTypeId]);
+  }, [tasksByWorkRaw, viewMode, effectiveUserId, selectedWorkTypeId]);
 
-  const myTasks = tasksToday;
-  // const myTasks = React.useMemo(
-  //   () => (currentUserId ? tasksByWork.filter((t) => t.assignTo === currentUserId) : tasksByWork),
-  //   [tasksByWork, currentUserId]
-  // );
+  const myTasks = React.useMemo(
+    () =>
+      effectiveUserId
+        ? tasksByWorkRaw.filter((t) => t.assignTo === effectiveUserId)
+        : tasksByWorkRaw,
+    [tasksByWorkRaw, effectiveUserId],
+  );
 
   const splitByStatus = (list: Task[]) => ({
     todo: list.filter((t) => t.status.code === "todo"),
@@ -1030,17 +1053,13 @@ export const ConversationDetailPanel: React.FC<{
   });
   const staffBuckets = splitByStatus(myTasks);
   const [assigneeFilter, setAssigneeFilter] = React.useState<string>("all");
-  // const leadBuckets = React.useMemo(() => {
-  //   const base = assigneeFilter === "all" ? tasksByWork : tasksByWork.filter((t) => t.assignTo === assigneeFilter);
-  //   return splitByStatus(base);
-  // }, [assigneeFilter, tasksByWork]);
   const leadBuckets = React.useMemo(() => {
     const base =
       assigneeFilter === "all"
-        ? tasksToday
-        : tasksToday.filter((t) => t.assignTo === assigneeFilter);
+        ? tasksByWorkRaw
+        : tasksByWorkRaw.filter((t) => t.assignTo === assigneeFilter);
     return splitByStatus(base);
-  }, [assigneeFilter, tasksToday]);
+  }, [assigneeFilter, tasksByWorkRaw]);
 
   // Toàn bộ task đã hoàn thành (không chỉ hôm nay) cho Leader (lọc theo assigneeFilter + workType)
   const allLeadDoneTasks = React.useMemo(() => {
@@ -1051,7 +1070,7 @@ export const ConversationDetailPanel: React.FC<{
 
     return base.filter(
       (t) =>
-        t.status.code === "finished" || t.status.code === "need_to_verified"
+        t.status.code === "finished" || t.status.code === "need_to_verified",
     );
   }, [assigneeFilter, tasksByWorkRaw]);
 
@@ -1096,11 +1115,11 @@ export const ConversationDetailPanel: React.FC<{
             {/* Group + WorkType */}
             <div className="rounded-xl border p-6 bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50">
               <div className="flex flex-col items-center text-center gap-1">
-                <div className="text-sm font-semibold">{groupName}</div>
+                <div className="text-sm font-semibold">{categoryName}</div>
                 <div className="text-xs text-gray-700">
                   Đang xem thông tin cho{" "}
                   <span className="font-medium text-brand-600">
-                    Loại việc: {workTypeName}
+                    {groupName}
                   </span>
                 </div>
               </div>
@@ -1139,7 +1158,7 @@ export const ConversationDetailPanel: React.FC<{
             </div>
 
             {/* Thành viên (Leader only) */}
-            {viewMode === "lead" && (
+            {hasLeaderPermissions() && (
               <div className="premium-accordion-wrapper">
                 <div className="premium-light-bar" />
                 <RightAccordion title="Thành viên">
@@ -1154,7 +1173,7 @@ export const ConversationDetailPanel: React.FC<{
                       </div>
                     </div>
                     <button
-                      onClick={onAddMember}
+                      onClick={() => setShowAddMemberDialog(true)}
                       className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-brand-50"
                     >
                       <Plus className="h-3.5 w-3.5" /> Thêm
@@ -1168,18 +1187,19 @@ export const ConversationDetailPanel: React.FC<{
           /* TASKS TAB */
           <div className="space-y-4 min-h-0">
             {/* NEW: Linked Tasks Panel - Show for all users */}
-            {groupId && (
+            {/* {groupId && (
               <LinkedTasksPanel
                 conversationId={groupId}
+                currentUserId={currentUserId}
                 onTaskClick={(taskId) => {
                   // TODO: Navigate to task detail or open task modal
                   console.log("Task clicked:", taskId);
                 }}
                 onViewAll={() => setShowViewAllTasksModal(true)}
               />
-            )}
+            )} */}
 
-            {viewMode === "lead" && (
+            {hasLeaderPermissions() && (
               <>
                 {isTasksTab && (
                   <HintBubble
@@ -1206,8 +1226,7 @@ export const ConversationDetailPanel: React.FC<{
                 />
               </>
             )}
-
-            {viewMode === "staff" ? (
+            {hasStaffPermissions() ? (
               <>
                 {/* Primary: Chưa xử lý + Đang xử lý */}
                 <div className="premium-accordion-wrapper">
@@ -1348,17 +1367,17 @@ export const ConversationDetailPanel: React.FC<{
                               (t) =>
                                 (t.status.code === "finished" ||
                                   t.status.code === "need_to_verified") &&
-                                t.assignTo === currentUserId &&
+                                t.assignTo === effectiveUserId &&
                                 (!selectedWorkTypeId ||
-                                  t.workTypeId === selectedWorkTypeId)
+                                  t.workTypeId === selectedWorkTypeId),
                             )
                             .slice()
                             .sort((a, b) => {
                               const da = new Date(
-                                a.updatedAt || a.createdAt || ""
+                                a.updatedAt || a.createdAt || "",
                               );
                               const db = new Date(
-                                b.updatedAt || b.createdAt || ""
+                                b.updatedAt || b.createdAt || "",
                               );
                               return db.getTime() - da.getTime(); // Newest first
                             });
@@ -1430,7 +1449,7 @@ export const ConversationDetailPanel: React.FC<{
                                             {/* Title */}
                                             <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
                                               {truncateMessageTitle(
-                                                t.title || t.description
+                                                t.title || t.description,
                                               )}
                                             </div>
 
@@ -1441,13 +1460,13 @@ export const ConversationDetailPanel: React.FC<{
                                                 <span className="font-medium text-gray-700">
                                                   {t.updatedAt
                                                     ? new Date(
-                                                        t.updatedAt
+                                                        t.updatedAt,
                                                       ).toLocaleTimeString(
                                                         "vi-VN",
                                                         {
                                                           hour: "2-digit",
                                                           minute: "2-digit",
-                                                        }
+                                                        },
                                                       )
                                                     : "--:--"}
                                                 </span>
@@ -1460,7 +1479,7 @@ export const ConversationDetailPanel: React.FC<{
                                                     ✓{" "}
                                                     {
                                                       t.checklist.filter(
-                                                        (c) => c.done
+                                                        (c) => c.done,
                                                       ).length
                                                     }
                                                     /{t.checklist.length} mục
@@ -1489,7 +1508,7 @@ export const ConversationDetailPanel: React.FC<{
                                       </div>
                                     </div>
                                   );
-                                }
+                                },
                               )}
                             </div>
                           );
@@ -1553,7 +1572,7 @@ export const ConversationDetailPanel: React.FC<{
                       {leaderOwnTasks.filter(
                         (t) =>
                           t.status.code !== "need_to_verified" &&
-                          t.status.code !== "finished"
+                          t.status.code !== "finished",
                       ).length > 0 && (
                         <span
                           className="
@@ -1567,7 +1586,7 @@ export const ConversationDetailPanel: React.FC<{
                             leaderOwnTasks.filter(
                               (t) =>
                                 t.status.code !== "need_to_verified" &&
-                                t.status.code !== "finished"
+                                t.status.code !== "finished",
                             ).length
                           }
                         </span>
@@ -1668,7 +1687,7 @@ export const ConversationDetailPanel: React.FC<{
                                     setHighlightAwaiting(true);
                                     setTimeout(
                                       () => setHighlightAwaiting(false),
-                                      700
+                                      700,
                                     );
                                   }
                                   return next;
@@ -1896,7 +1915,7 @@ export const ConversationDetailPanel: React.FC<{
                                         day: "2-digit",
                                         month: "2-digit",
                                         year: "numeric",
-                                      }
+                                      },
                                     );
 
                                     if (!grouped[key]) grouped[key] = [];
@@ -1909,7 +1928,7 @@ export const ConversationDetailPanel: React.FC<{
                                       day: "2-digit",
                                       month: "2-digit",
                                       year: "numeric",
-                                    }
+                                    },
                                   );
 
                                   return Object.entries(grouped).map(
@@ -1938,7 +1957,7 @@ export const ConversationDetailPanel: React.FC<{
                                               >
                                                 <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
                                                   {truncateMessageTitle(
-                                                    t.title || t.description
+                                                    t.title || t.description,
                                                   )}
                                                 </div>
 
@@ -1948,13 +1967,13 @@ export const ConversationDetailPanel: React.FC<{
                                                     <span className="font-medium text-gray-700">
                                                       {t.updatedAt
                                                         ? new Date(
-                                                            t.updatedAt
+                                                            t.updatedAt,
                                                           ).toLocaleTimeString(
                                                             "vi-VN",
                                                             {
                                                               hour: "2-digit",
                                                               minute: "2-digit",
-                                                            }
+                                                            },
                                                           )
                                                         : "--:--"}
                                                     </span>
@@ -1965,7 +1984,7 @@ export const ConversationDetailPanel: React.FC<{
                                                     <span className="font-medium text-gray-700">
                                                       {members.find(
                                                         (m) =>
-                                                          m.id === t.assignTo
+                                                          m.id === t.assignTo,
                                                       )?.name ?? t.assignTo}
                                                     </span>
                                                   </span>
@@ -1977,7 +1996,7 @@ export const ConversationDetailPanel: React.FC<{
                                                       ✓{" "}
                                                       {
                                                         t.checklist.filter(
-                                                          (c) => c.done
+                                                          (c) => c.done,
                                                         ).length
                                                       }
                                                       /{t.checklist.length} mục
@@ -1988,7 +2007,7 @@ export const ConversationDetailPanel: React.FC<{
                                           </div>
                                         </div>
                                       );
-                                    }
+                                    },
                                   );
                                 })()}
                               </div>
@@ -2028,7 +2047,7 @@ export const ConversationDetailPanel: React.FC<{
                         {leaderOwnTasks.filter(
                           (t) =>
                             t.status.code !== "need_to_verified" &&
-                            t.status.code !== "finished"
+                            t.status.code !== "finished",
                         ).length > 0 ? (
                           <>
                             <span className="font-semibold text-brand-700">
@@ -2036,7 +2055,7 @@ export const ConversationDetailPanel: React.FC<{
                                 leaderOwnTasks.filter(
                                   (t) =>
                                     t.status.code !== "need_to_verified" &&
-                                    t.status.code !== "finished"
+                                    t.status.code !== "finished",
                                 ).length
                               }
                             </span>{" "}
@@ -2071,7 +2090,7 @@ export const ConversationDetailPanel: React.FC<{
                     {leaderOwnTasks.filter(
                       (t) =>
                         t.status.code !== "need_to_verified" &&
-                        t.status.code !== "finished"
+                        t.status.code !== "finished",
                     ).length === 0 &&
                       leaderOwnBuckets.doneToday.length === 0 && (
                         <div className="rounded-xl border border-dashed bg-white/60 p-8 text-center">
@@ -2313,7 +2332,7 @@ export const ConversationDetailPanel: React.FC<{
                                   day: "2-digit",
                                   month: "2-digit",
                                   year: "numeric",
-                                }
+                                },
                               );
 
                               return Object.entries(grouped).map(
@@ -2345,7 +2364,7 @@ export const ConversationDetailPanel: React.FC<{
                                             {/* Title */}
                                             <div className="text-sm font-medium text-gray-800 leading-snug mb-1">
                                               {truncateMessageTitle(
-                                                t.title || t.description
+                                                t.title || t.description,
                                               )}
                                             </div>
 
@@ -2356,13 +2375,13 @@ export const ConversationDetailPanel: React.FC<{
                                                 <span className="font-medium text-gray-700">
                                                   {t.updatedAt
                                                     ? new Date(
-                                                        t.updatedAt
+                                                        t.updatedAt,
                                                       ).toLocaleTimeString(
                                                         "vi-VN",
                                                         {
                                                           hour: "2-digit",
                                                           minute: "2-digit",
-                                                        }
+                                                        },
                                                       )
                                                     : "--:--"}
                                                 </span>
@@ -2375,7 +2394,7 @@ export const ConversationDetailPanel: React.FC<{
                                                     ✓{" "}
                                                     {
                                                       t.checklist.filter(
-                                                        (c) => c.done
+                                                        (c) => c.done,
                                                       ).length
                                                     }
                                                     /{t.checklist.length} mục
@@ -2404,7 +2423,7 @@ export const ConversationDetailPanel: React.FC<{
                                       </div>
                                     </div>
                                   );
-                                }
+                                },
                               );
                             })()}
                           </div>
@@ -2520,6 +2539,13 @@ export const ConversationDetailPanel: React.FC<{
     max-height:  2000px;
   }
 `}</style>
+      {/* Add Member Dialog */}
+      <AddMemberDialog
+        open={showAddMemberDialog}
+        onClose={() => setShowAddMemberDialog(false)}
+        groupId={groupId}
+        existingMemberIds={members.map((m) => m.id)}
+      />
     </aside>
   );
 };

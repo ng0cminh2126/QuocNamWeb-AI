@@ -1,12 +1,15 @@
 // InformationPanel - Information tab content for ConversationDetailPanel
 
 import React, { useEffect, useState } from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { RightAccordion } from "../components";
-import { FileManagerPhase1A } from "../components/FileManagerPhase1A";
+import {
+  FileManagerPhase1A,
+  MessageLike,
+} from "../components/FileManagerPhase1A";
 import { Users, Plus, FileText } from "lucide-react";
 import { ViewAllFilesModal } from "@/components/files";
 import { useViewFiles } from "@/hooks/useViewFiles";
-import type { MessageDto } from "@/types/files";
 
 type ViewMode = "lead" | "staff";
 
@@ -25,7 +28,7 @@ interface InformationPanelProps {
   /** Callback to navigate to chat tab (Phase 2) */
   onNavigateToChat?: () => void;
 
-  messages?: MessageDto[]; // Messages from chat to extract files from
+  messages?: MessageLike[]; // Messages from chat to extract files from
 
   /** Phase 2: Messages query object for auto-loading older messages */
   messagesQuery?: {
@@ -58,7 +61,7 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
   messagesQuery, // Phase 2: For auto-loading older messages
 }) => {
   const [conversationMessages, setConversationMessages] =
-    useState<MessageDto[]>(messages);
+    useState<MessageLike[]>(messages);
   const { openModal, closeModal, isOpen } = useViewFiles();
 
   // Update conversation messages when messages prop changes
@@ -134,7 +137,7 @@ export const InformationPanel: React.FC<InformationPanelProps> = ({
       </div>
 
       {/* Thành viên (Leader only) */}
-      {viewMode === "lead" && (
+      {hasLeaderPermissions() && (
         <div className="premium-accordion-wrapper">
           <div className="premium-light-bar" />
           <RightAccordion title="Thành viên">

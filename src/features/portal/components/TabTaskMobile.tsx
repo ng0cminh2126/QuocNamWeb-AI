@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions, hasStaffPermissions } from "@/utils/roleUtils";
 import { 
   ChevronLeft, 
   ClipboardList, 
@@ -19,6 +20,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 import {
@@ -41,29 +43,19 @@ const formatTime = (iso: string) => {
 };
 
 const StatusBadge:  React.FC<{ s: Task["status"]; compact?: boolean }> = ({ s, compact = false }) => {
-  const m:  Record<Task["status"], { label: string; shortLabel: string; cls: string }> = {
-    todo: {
-      label: "Chưa xử lý",
-      shortLabel: "Chưa xử lý",
-      cls: "bg-amber-200 text-amber-800 border-amber-300",
-    },
-    in_progress: {
-      label:  "Đang xử lý",
-      shortLabel: "Đang xử lý",
-      cls: "bg-sky-100 text-sky-700 border-sky-200",
-    },
-    awaiting_review: {
-      label: "Chờ duyệt",
-      shortLabel: "Chờ duyệt",
-      cls: "bg-amber-100 text-amber-700 border-amber-200",
-    },
-    done: {
-      label: "Hoàn thành",
-      shortLabel: "Hoàn thành",
-      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    },
+  // Use status from API response
+  const label = s.label || "Unknown";
+  const color = s.color || "#gray";
+  
+  // Map status codes to CSS classes (fallback for styling)
+  const styleMap: Record<string, string> = {
+    todo: "bg-amber-200 text-amber-800 border-amber-300",
+    doing: "bg-sky-100 text-sky-700 border-sky-200",
+    need_to_verified: "bg-amber-100 text-amber-700 border-amber-200",
+    finished: "bg-emerald-100 text-emerald-700 border-emerald-200",
   };
-  const x = m[s] ??  m["todo"];
+  
+  const cls = styleMap[s.code] || "bg-gray-100 text-gray-700 border-gray-200";
 
   return (
     <span
@@ -71,10 +63,10 @@ const StatusBadge:  React.FC<{ s: Task["status"]; compact?: boolean }> = ({ s, c
         inline-flex items-center
         rounded-md px-2 py-0.5 text-[10px] font-medium
         border shadow-sm
-        ${x.cls}
+        ${cls}
       `}
     >
-      {compact ? x.shortLabel : x. label}
+      {label}
     </span>
   );
 };
@@ -108,9 +100,9 @@ const MobileTaskCard: React.FC<{
   const doneCount = t.checklist?. filter((c) => c.done).length ?? 0;
   const progress = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
-  const canEditStructure = viewMode === "lead" && (t.status === "todo" || t.status === "in_progress");
+  const canEditStructure = hasLeaderPermissions() && (t.status.code === "todo" || t.status.code === "doing");
 
-  const assigneeName = members.find((m) => m.id === t.assigneeId)?.name ?? t.assigneeId;  
+  const assigneeName = members.find((m) => m.id === t.assignTo)?.name ?? t.assignTo;  
 
   return (
     <>
@@ -281,12 +273,12 @@ const MobileTaskCard: React.FC<{
           )}
         </div>
 
-        {viewMode === "lead" && (
+        {hasLeaderPermissions() && (
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
             <span>Giao cho:</span>
             <select
               className="rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
-              value={t.assigneeId}
+              value={t.assignTo}
               onChange={(e) => onReassign?.(t.id, e.target.value)}
               onClick={(e) => e.stopPropagation()}
             >
@@ -434,27 +426,27 @@ const MobileTaskCard: React.FC<{
             </button>
 
             {/* Status action buttons */}
-            {viewMode === "staff" && t.status === "todo" && (
+            {hasStaffPermissions() && t.status.code === "todo" && (
               <button
-                onClick={() => onChangeStatus?.(t.id, "in_progress")}
+                onClick={() => onChangeStatus?.(t.id, t.status)}
                 className="px-2 py-1 rounded-md border border-sky-300 text-[10px] text-sky-700 active:bg-sky-50"
               >
                 Bắt đầu
               </button>
             )}
 
-            {viewMode === "staff" && t.status === "in_progress" && (
+            {hasStaffPermissions() && t.status.code === "doing" && (
               <button
-                onClick={() => onChangeStatus?.(t.id, "awaiting_review")}
+                onClick={() => onChangeStatus?.(t.id, t.status)}
                 className="px-2 py-1 rounded-md border border-amber-300 text-[10px] text-amber-700 active:bg-amber-50"
               >
                 Chờ duyệt
               </button>
             )}
 
-            {viewMode === "lead" && ["todo", "in_progress", "awaiting_review"].includes(t.status) && (
+            {hasLeaderPermissions() && ["todo", "doing", "need_to_verified"].includes(t.status.code) && (
               <button
-                onClick={() => onChangeStatus?.(t.id, "done")}
+                onClick={() => onChangeStatus?.(t.id, t.status)}
                 className="px-2 py-1 rounded-md border border-emerald-300 text-[10px] text-emerald-700 active:bg-emerald-50"
               >
                 Hoàn tất
@@ -539,22 +531,22 @@ export const TabTaskMobile: React. FC<{
   );
 
   const tasksToday = React.useMemo(() => {
-    if (viewMode === "lead") {
+    if (hasLeaderPermissions()) {
       return tasksByWorkRaw.filter((t) => isToday(t.createdAt));
     }
-    if (viewMode === "staff") {
+    if (hasStaffPermissions()) {
       return tasksByWorkRaw.filter(
-        (t) => t.assigneeId === currentUserId && isToday(t.createdAt)
+        (t) => t.assignTo === currentUserId && isToday(t.createdAt)
       );
     }
     return tasksByWorkRaw;
-  }, [tasksByWorkRaw, viewMode, currentUserId]);
+  }, [tasksByWorkRaw, currentUserId]);
 
   const splitByStatus = (list: Task[]) => ({
-    todo: list.filter((t) => t.status === "todo"),
-    inProgress: list.filter((t) => t.status === "in_progress"),
-    awaiting: list.filter((t) => t.status === "awaiting_review"),
-    done: list.filter((t) => t.status === "done"),
+    todo: list.filter((t) => t.status.code === "todo"),
+    inProgress: list.filter((t) => t.status.code === "doing"),
+    awaiting: list.filter((t) => t.status.code === "need_to_verified"),
+    done: list.filter((t) => t.status.code === "finished"),
   });
 
   const staffBuckets = splitByStatus(tasksToday);
@@ -563,17 +555,17 @@ export const TabTaskMobile: React. FC<{
     const base =
       assigneeFilter === "all"
         ? tasksToday
-        : tasksToday.filter((t) => t.assigneeId === assigneeFilter);
+        : tasksToday.filter((t) => t.assignTo === assigneeFilter);
     return splitByStatus(base);
   }, [assigneeFilter, tasksToday]);
 
   // All completed tasks (not just today) for "Xem tất cả"
   const allCompletedTasks = React. useMemo(() => {
-    let base = tasksByWorkRaw. filter((t) => t.status === "done");
-    if (viewMode === "staff") {
-      base = base. filter((t) => t.assigneeId === currentUserId);
+    let base = tasksByWorkRaw. filter((t) => t.status.code === "finished");
+    if (hasStaffPermissions()) {
+      base = base. filter((t) => t.assignTo === currentUserId);
     } else if (assigneeFilter !== "all") {
-      base = base.filter((t) => t.assigneeId === assigneeFilter);
+      base = base.filter((t) => t.assignTo === assigneeFilter);
     }
     return base. sort((a, b) => {
       const da = new Date(a.updatedAt || a.createdAt || "");
@@ -608,7 +600,7 @@ export const TabTaskMobile: React. FC<{
             </div>
 
             {/* Filter button (Lead only) */}
-            {viewMode === "lead" && (
+            {hasLeaderPermissions() && (
               <button
                 onClick={() => setShowFilterSheet(true)}
                 className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition"
@@ -624,7 +616,7 @@ export const TabTaskMobile: React. FC<{
 
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 bg-gray-50">
-          {viewMode === "staff" ?  (
+          {hasStaffPermissions() ?  (
             <>
               {/* Staff:  My Tasks */}
               <MobileAccordion
@@ -961,7 +953,7 @@ export const TabTaskMobile: React. FC<{
       </div>
 
       {/* Filter Sheet (Lead only) */}
-      {viewMode === "lead" && (
+      {hasLeaderPermissions() && (
         <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
           <SheetContent
             side="bottom"
@@ -1016,6 +1008,9 @@ export const TabTaskMobile: React. FC<{
             <DialogTitle className="text-sm">
               Tất cả công việc đã hoàn thành
             </DialogTitle>
+            <DialogDescription className="text-xs">
+              Lịch sử các công việc đã hoàn thành
+            </DialogDescription>
           </DialogHeader>
 
           {allCompletedTasks.length === 0 ? (
@@ -1054,10 +1049,10 @@ export const TabTaskMobile: React. FC<{
                         </div>
                         <div className="mt-1 text-xs text-gray-500">
                           {t.workTypeName ??  t.workTypeId}
-                          {viewMode === "lead" && t.assigneeId && (
+                          {hasLeaderPermissions() && t.assignTo && (
                             <>
                               {" • "}
-                              {members.find((m) => m.id === t.assigneeId)?.name ??  t.assigneeId}
+                              {members.find((m) => m.id === t.assignTo)?.name ??  t.assignTo}
                             </>
                           )}
                         </div>

@@ -1,6 +1,7 @@
 // useTaskConfig hook - Fetch task configuration (priorities, statuses, templates)
 
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import {
   getTaskPriorities,
   getTaskStatuses,
@@ -56,10 +57,15 @@ export function useTaskConfig(enabled = true) {
   const statuses = useTaskStatuses(enabled);
   const templates = useChecklistTemplates(enabled);
 
+  // Memoize arrays to prevent infinite loops in components that depend on these values
+  const prioritiesData = useMemo(() => priorities.data ?? [], [priorities.data]);
+  const statusesData = useMemo(() => statuses.data ?? [], [statuses.data]);
+  const templatesData = useMemo(() => templates.data ?? [], [templates.data]);
+
   return {
-    priorities: priorities.data ?? [],
-    statuses: statuses.data ?? [],
-    templates: templates.data ?? [],
+    priorities: prioritiesData,
+    statuses: statusesData,
+    templates: templatesData,
     isLoading: priorities.isLoading || statuses.isLoading || templates.isLoading,
     isError: priorities.isError || statuses.isError || templates.isError,
     error: priorities.error || statuses.error || templates.error,

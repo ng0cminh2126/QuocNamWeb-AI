@@ -1,4 +1,5 @@
 import React from "react";
+import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { createPortal } from "react-dom";
 import type { Message, TaskLogMessage } from "../types";
 import {
@@ -405,7 +406,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <ListTodo className="w-4 h-4" />
                 </button>
               )}
-              {!data.taskId && viewMode === "lead" && (
+              {!data.taskId && hasLeaderPermissions() && (
                 <button title="Giao Task" className="p-1 hover:bg-brand-50 rounded" onClick={() => onAssignFromMessage?.(data)}>
                   <ClipboardPlus className="w-4 h-4 text-brand-600" />
                 </button>
@@ -415,7 +416,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <MessageSquarePlus className="w-4 h-4 text-emerald-600" />
                 </button>
               )}
-              {!isReceived && !data.taskId && viewMode === "lead" && (
+              {!isReceived && !data.taskId && hasLeaderPermissions() && (
                 <button onClick={() => onReceiveInfo?.(data)} title="Tiếp nhận thông tin" className="p-1 rounded hover:bg-brand-50">
                   <Inbox className="w-4 h-4 text-brand-600" />
                 </button>

@@ -1,20 +1,31 @@
 // Conversation related types (matches API contract)
 
-import type { ID } from './common';
+import type { ID } from "./common";
 
 // =============================================================
 // Conversation Types
 // =============================================================
 
-export type ConversationType = 'GRP' | 'DM';
+export type ConversationType = "GRP" | "DM";
+
+// Conversation Member User Info
+export interface ConversationMemberUserInfo {
+  id: string;
+  userName: string;
+  fullName: string;
+  identifier: string;
+  roles: string;
+  avatarUrl: string | null;
+}
 
 // Conversation Member
 export interface ConversationMember {
   userId: string;
   userName: string;
-  userEmail: string | null;
-  role: string | null;
+  role: string;
   joinedAt: string;
+  isMuted: boolean;
+  userInfo: ConversationMemberUserInfo;
 }
 
 // API returns array of members directly
@@ -28,7 +39,7 @@ export interface LastMessage {
   senderName: string;
   parentMessageId: string | null;
   content: string;
-  contentType: 'TXT' | 'IMG' | 'FILE' | 'TASK';
+  contentType: "TXT" | "IMG" | "FILE" | "TASK";
   sentAt: string; // ISO datetime
   editedAt: string | null;
   linkedTaskId: string | null;
@@ -57,14 +68,14 @@ interface BaseConversation {
 
 // Group Conversation (GRP)
 export interface GroupConversation extends BaseConversation {
-  type: 'GRP';
+  type: "GRP";
   description: string;
   memberCount: number;
 }
 
 // Direct Message Conversation (DM)
 export interface DirectConversation extends BaseConversation {
-  type: 'DM';
+  type: "DM";
   memberCount: 2; // Always 2 for DM
 }
 
@@ -91,12 +102,16 @@ export interface GetConversationsResponse {
 // Type Guards
 // =============================================================
 
-export function isGroupConversation(conv: Conversation): conv is GroupConversation {
-  return conv.type === 'GRP';
+export function isGroupConversation(
+  conv: Conversation,
+): conv is GroupConversation {
+  return conv.type === "GRP";
 }
 
-export function isDirectConversation(conv: Conversation): conv is DirectConversation {
-  return conv.type === 'DM';
+export function isDirectConversation(
+  conv: Conversation,
+): conv is DirectConversation {
+  return conv.type === "DM";
 }
 
 // =============================================================
@@ -106,23 +121,23 @@ export function isDirectConversation(conv: Conversation): conv is DirectConversa
 
 export function getDMDisplayName(
   dmName: string,
-  currentUserIdentifier?: string
+  currentUserIdentifier?: string,
 ): string {
   // Remove "DM: " prefix
-  const cleaned = dmName.replace(/^DM:\s*/, '');
-  
+  const cleaned = dmName.replace(/^DM:\s*/, "");
+
   // Split by " <> "
-  const parts = cleaned.split(' <> ');
-  
+  const parts = cleaned.split(" <> ");
+
   if (parts.length !== 2) {
     return cleaned; // Fallback to cleaned name
   }
-  
+
   // Return the other user's name (not current user)
   if (currentUserIdentifier) {
     return parts[0] === currentUserIdentifier ? parts[1] : parts[0];
   }
-  
+
   // If no current user provided, return first part
   return parts[0];
 }
