@@ -1128,7 +1128,10 @@ export const ConversationDetailPanel: React.FC<{
             </div>
 
             {/* Ảnh / Video (GRID) */}
-            <div className="premium-accordion-wrapper">
+            <div
+              className="premium-accordion-wrapper"
+              data-testid="media-section"
+            >
               <div className="premium-light-bar" />
               <RightAccordion title="Ảnh / Video">
                 <FileManagerPhase1A
@@ -1144,7 +1147,10 @@ export const ConversationDetailPanel: React.FC<{
             </div>
 
             {/* Tài liệu (LIST) - Phase 1A (list file từ chat, không thư mục) */}
-            <div className="premium-accordion-wrapper">
+            <div
+              className="premium-accordion-wrapper"
+              data-testid="documents-section"
+            >
               <div className="premium-light-bar" />
               <RightAccordion title="Tài liệu">
                 <FileManagerPhase1A
@@ -1161,7 +1167,10 @@ export const ConversationDetailPanel: React.FC<{
 
             {/* Thành viên (Leader only) */}
             {hasLeaderPermissions() && (
-              <div className="premium-accordion-wrapper">
+              <div
+                className="premium-accordion-wrapper"
+                data-testid="members-section"
+              >
                 <div className="premium-light-bar" />
                 <RightAccordion title="Thành viên">
                   <div className="flex items-center justify-between rounded-lg">
@@ -1177,6 +1186,7 @@ export const ConversationDetailPanel: React.FC<{
                     <button
                       onClick={() => setShowAddMemberDialog(true)}
                       className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-brand-50"
+                      data-testid="add-member-button"
                     >
                       <Plus className="h-3.5 w-3.5" /> Thêm
                     </button>

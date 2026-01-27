@@ -61,10 +61,12 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
   onOpenWorkTypeManager,
 }) => {
   const [openTools, setOpenTools] = React.useState(false);
-  const [openQuickMsg, setOpenQuickMsg] = React.useState(false);  
+  const [openQuickMsg, setOpenQuickMsg] = React.useState(false);
   const [openTodoList, setOpenTodoList] = React.useState(false);
   const [openPending, setOpenPending] = React.useState(false);
-  const [pendingTasks, setPendingTasks] = React.useState<typeof initialPending>(initialPending ?? []);
+  const [pendingTasks, setPendingTasks] = React.useState<typeof initialPending>(
+    initialPending ?? [],
+  );
 
   const [openDateModal, setOpenDateModal] = React.useState(false);
   const [selectedTask, setSelectedTask] = React.useState<string | null>(null);
@@ -110,9 +112,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
   const handleSaveDate = () => {
     if (!newDate || !selectedTask) return;
     const updated = pendingTasks.map((t) =>
-      t.id === selectedTask
-        ? { ...t, pendingUntil: newDate.toISOString() }
-        : t
+      t.id === selectedTask ? { ...t, pendingUntil: newDate.toISOString() } : t,
     );
     setPendingTasks(updated);
     setOpenDateModal(false);
@@ -149,11 +149,12 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           <button
             title="Tin nhắn"
             onClick={() => onSelect("workspace")}
+            data-testid="sidebar-messages-button"
             className={cn(
               "p-2 rounded-lg transition-colors",
               activeView === "workspace" && workspaceMode !== "pinned"
                 ? "bg-white/20 text-white"
-                : "bg-brand-600 text-white/90 hover:text-white hover:bg-white/10"
+                : "bg-brand-600 text-white/90 hover:text-white hover:bg-white/10",
             )}
           >
             <MessageSquareText className="h-6 w-6" />
@@ -174,14 +175,12 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
               <Monitor className="h-6 w-6" />
             </button>
           )} */}
-          
         </div>
       </div>
 
       {/* Bottom buttons */}
       <div className="flex flex-col items-center gap-5 mb-4">
-        
-        {isShowPhasedFeatures && ( 
+        {isShowPhasedFeatures && (
           <>
             {/* Pending Tasks Popover */}
             {/* ... unchanged ... */}
@@ -194,11 +193,12 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             <button
               title="Công cụ"
               onClick={() => setOpenTools(!openTools)}
+              data-testid="sidebar-tools-button"
               className={cn(
                 "p-2 rounded-lg transition-colors",
                 openTools
                   ? "bg-white/20 text-white"
-                  : "bg-brand-600 text-white/90 hover:text-white hover:bg-white/10"
+                  : "bg-brand-600 text-white/90 hover:text-white hover:bg-white/10",
               )}
             >
               <Wrench className="h-6 w-6" />
@@ -208,6 +208,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             align="start"
             side="right"
             className="w-56 rounded-xl border border-gray-200 shadow-lg p-3"
+            data-testid="sidebar-tools-popover"
           >
             <h4 className="px-2 pb-2 text-sm font-semibold text-gray-700 border-b border-gray-100">
               Công cụ
@@ -216,6 +217,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
               {/* Tin nhắn nhanh */}
               <div
                 className="flex flex-col items-center text-center text-gray-500 hover:text-brand-700 cursor-pointer"
+                data-testid="tools-quick-message-button"
                 onClick={() => {
                   setOpenTools(false);
                   setOpenQuickMsg(true);
@@ -230,6 +232,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
               {/* Tin đánh dấu */}
               <div
                 className="flex flex-col items-center text-center text-gray-500 hover:text-brand-700 cursor-pointer"
+                data-testid="tools-pinned-messages-button"
                 onClick={() => {
                   setOpenTools(false);
                   onSelect("pinned");
@@ -244,6 +247,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
               {/* Danh sách việc cần làm */}
               <div
                 className="flex flex-col items-center text-center text-gray-500 hover:text-brand-700 cursor-pointer"
+                data-testid="tools-todo-list-button"
                 onClick={() => {
                   setOpenTools(false);
                   setOpenTodoList(true);
@@ -252,13 +256,16 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 mb-1">
                   <ListTodo className="h-5 w-5 text-brand-600" />
                 </div>
-                <span className="text-xs font-medium">Danh sách việc cần làm</span>
+                <span className="text-xs font-medium">
+                  Danh sách việc cần làm
+                </span>
               </div>
 
               {/* Quản lý loại việc (Leader only) */}
               {hasLeaderPermissions() && (
                 <div
                   className="flex flex-col items-center text-center text-gray-500 hover:text-brand-700 cursor-pointer"
+                  data-testid="tools-worktype-manager-button"
                   onClick={() => {
                     setOpenTools(false);
                     onOpenWorkTypeManager?.();
@@ -280,6 +287,7 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             <button
               title={currentUserName ? currentUserName : "Tài khoản"}
               onClick={() => setOpenProfile(!openProfile)}
+              data-testid="sidebar-profile-button"
               className="group relative h-10 w-10 rounded-full bg-white/10 ring-1 ring-white/20 flex items-center justify-center text-white font-semibold select-none transition hover:bg-white/20"
             >
               <span className="text-sm tracking-wide">{initials}</span>
@@ -289,28 +297,33 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             align="start"
             side="right"
             className="w-56 rounded-xl border border-gray-200 shadow-xl p-2 backdrop-blur bg-white"
+            data-testid="sidebar-profile-popover"
           >
             <div className="px-2 py-2">
               <div className="text-sm font-semibold text-gray-800">
                 Xin chào {currentUserName}
               </div>
             </div>
-            
+
             <div className="mt-1">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${hasLeaderPermissions()
-                  ? 'bg-brand-100 text-brand-700'
-                  : 'bg-gray-100 text-gray-700'
-                }`}>
-                {hasLeaderPermissions() ? '🎖️ Trưởng nhóm' : '👤 Nhân viên'}
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  hasLeaderPermissions()
+                    ? "bg-brand-100 text-brand-700"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {hasLeaderPermissions() ? "🎖️ Trưởng nhóm" : "👤 Nhân viên"}
               </span>
             </div>
-  
+
             <div className="mt-1">
               <button
                 onClick={() => {
                   setOpenProfile(false);
                   onSelect("logout");
                 }}
+                data-testid="profile-logout-button"
                 className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded-md hover:bg-brand-50 text-gray-700"
               >
                 <LogOut className="h-4 w-4 text-gray-600" />
@@ -320,9 +333,9 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           </PopoverContent>
         </Popover>
       </div>
-      
+
       <QuickMessageManager open={openQuickMsg} onOpenChange={setOpenQuickMsg} />
-      <TodoListManager open={openTodoList} onOpenChange={setOpenTodoList} />      
+      <TodoListManager open={openTodoList} onOpenChange={setOpenTodoList} />
 
       {/* Modal chọn ngày */}
       <Dialog open={openDateModal} onOpenChange={setOpenDateModal}>
@@ -340,7 +353,11 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
             />
           </div>
           <DialogFooter className="px-6 py-4 border-t bg-gray-50 mt-auto flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setOpenDateModal(false)} className="w-24" >
+            <Button
+              variant="outline"
+              onClick={() => setOpenDateModal(false)}
+              className="w-24"
+            >
               Hủy
             </Button>
             <Button
@@ -353,6 +370,6 @@ export const MainSidebar: React.FC<MainSidebarProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </aside>    
+    </aside>
   );
 };

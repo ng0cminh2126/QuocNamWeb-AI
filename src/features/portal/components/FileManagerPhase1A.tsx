@@ -246,8 +246,9 @@ const SimpleModal: React.FC<{
   onClose: () => void;
   title?: string;
   maxWidth?: string;
+  testId?: string;
   children: React.ReactNode;
-}> = ({ open, onClose, title, maxWidth = "max-w-5xl", children }) => {
+}> = ({ open, onClose, title, maxWidth = "max-w-5xl", testId, children }) => {
   // Use ref to store onClose to avoid useEffect dependency issues
   const onCloseRef = React.useRef(onClose);
   onCloseRef.current = onClose;
@@ -284,6 +285,7 @@ const SimpleModal: React.FC<{
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={handleBackdropClick}
       onContextMenu={(e) => e.preventDefault()}
+      data-testid={testId ? `${testId}-overlay` : undefined}
     >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/80 animate-in fade-in-0" />
@@ -292,16 +294,24 @@ const SimpleModal: React.FC<{
       <div
         className={`relative z-10 w-full ${maxWidth} max-h-[90vh] bg-white rounded-lg shadow-lg p-6 flex flex-col animate-in zoom-in-95`}
         onContextMenu={(e) => e.preventDefault()}
+        data-testid={testId ? `${testId}-content` : undefined}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between pb-4 border-b">
-            <h2 className="text-lg font-semibold leading-none tracking-tight">
+          <div
+            className="flex items-center justify-between pb-4 border-b"
+            data-testid={testId ? `${testId}-header` : undefined}
+          >
+            <h2
+              className="text-lg font-semibold leading-none tracking-tight"
+              data-testid={testId ? `${testId}-title` : undefined}
+            >
               {title}
             </h2>
             <button
               onClick={onClose}
               className="p-1 hover:bg-gray-100 rounded transition-colors"
+              data-testid={testId ? `${testId}-close-button` : undefined}
             >
               <X className="h-5 w-5" />
             </button>
@@ -309,7 +319,12 @@ const SimpleModal: React.FC<{
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto mt-4">{children}</div>
+        <div
+          className="flex-1 overflow-y-auto mt-4"
+          data-testid={testId ? `${testId}-body` : undefined}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -646,6 +661,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           }}
           className="absolute right-1.5 top-1.5 h-6 w-6 p-0 bg-white/90 rounded-md opacity-0
              group-hover:opacity-100 hover:opacity-100 shadow-sm"
+          data-testid={`view-source-message-media-${f.id}`}
         />
       )}
     </div>
@@ -684,6 +700,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
           }}
           className="absolute right-1.5 top-1.5 h-6 w-6 p-0 bg-white/90 rounded-md opacity-0
              group-hover:opacity-100 hover:opacity-100 shadow-sm"
+          data-testid={`view-source-message-doc-${f.id}`}
         />
       )}
     </div>
@@ -717,6 +734,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         <button
           type="button"
           className="mt-2 w-full rounded-md bg-gray-100 py-1.5 text-center text-xs text-gray-700 hover:bg-gray-200"
+          data-testid={`view-all-${mode}-button`}
           onClick={() => {
             if (isMobile && onOpenAllFiles) {
               onOpenAllFiles(mode);
@@ -737,15 +755,20 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         onClose={handleCloseShowAll}
         title="Tất cả file trong nhóm chat"
         maxWidth="max-w-5xl"
+        testId="all-files-modal"
       >
         {/* FILTER BAR - Using native HTML select instead of Radix Select */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div
+          className="flex flex-wrap items-center gap-3"
+          data-testid="all-files-modal-filter-bar"
+        >
           {/* Người gửi - Native select */}
           <div>
             <select
               value={senderFilter}
               onChange={(e) => setSenderFilter(e.target.value)}
               className="h-8 w-[140px] text-xs border border-gray-300 rounded-md px-2"
+              data-testid="all-files-modal-sender-filter"
             >
               <option value="all">Tất cả người gửi</option>
               {senders.map((s) => (
@@ -766,6 +789,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 if (v !== "custom") setDateRange({});
               }}
               className="h-8 w-[140px] text-xs border border-gray-300 rounded-md px-2"
+              data-testid="all-files-modal-date-filter"
             >
               <option value="all">Tất cả</option>
               <option value="7">7 ngày gần đây</option>
@@ -777,7 +801,10 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
 
           {/* Custom date range using native date inputs */}
           {datePreset === "custom" && (
-            <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2"
+              data-testid="all-files-modal-custom-date-range"
+            >
               <input
                 type="date"
                 value={dateRange.from || ""}
@@ -786,6 +813,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 }
                 className="h-8 text-xs border border-gray-300 rounded-md px-2"
                 placeholder="Từ ngày"
+                data-testid="all-files-modal-date-from"
               />
               <span className="text-xs text-gray-500">đến</span>
               <input
@@ -796,13 +824,17 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 }
                 className="h-8 text-xs border border-gray-300 rounded-md px-2"
                 placeholder="Đến ngày"
+                data-testid="all-files-modal-date-to"
               />
             </div>
           )}
         </div>
 
         {/* Tabs đơn giản */}
-        <div className="mt-3 flex items-center gap-2 border-b border-gray-200 pb-2">
+        <div
+          className="mt-3 flex items-center gap-2 border-b border-gray-200 pb-2"
+          data-testid="all-files-modal-tabs"
+        >
           <button
             type="button"
             className={`rounded-full px-3 py-1 text-xs ${
@@ -811,6 +843,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 : "text-gray-600 hover:bg-gray-100"
             }`}
             onClick={() => setAllTab("media")}
+            data-testid="all-files-modal-tab-media"
           >
             Ảnh / Video ({mediaFiles.length})
           </button>
@@ -822,12 +855,16 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
                 : "text-gray-600 hover:bg-gray-100"
             }`}
             onClick={() => setAllTab("docs")}
+            data-testid="all-files-modal-tab-docs"
           >
             Tài liệu ({docFiles.length})
           </button>
         </div>
 
-        <div className="mt-3 max-h-[60vh] overflow-y-auto">
+        <div
+          className="mt-3 max-h-[60vh] overflow-y-auto"
+          data-testid="all-files-modal-list"
+        >
           {(() => {
             let source = allTab === "media" ? mediaFiles : docFiles;
 
@@ -932,6 +969,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
         onClose={handleClosePreview}
         title={previewFile?.name || "Xem trước"}
         maxWidth="max-w-4xl"
+        testId="file-preview-modal"
       >
         {previewFile && previewFile.kind === "image" && (
           <BlobImage
@@ -949,6 +987,7 @@ export const FileManagerPhase1A: React.FC<FileManagerPhase1AProps> = ({
             src={previewFile.url}
             className="w-full max-h-[70vh] rounded-lg"
             controls
+            data-testid="file-preview-video"
           />
         )}
 
