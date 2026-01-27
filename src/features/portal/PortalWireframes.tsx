@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
+import { useCreateTaskStore } from "@/stores/createTaskStore";
 import { hasLeaderPermissions, getViewModeFromRoles } from "@/utils/roleUtils";
 import { getCurrentUserIdSync } from "@/utils/getCurrentUser";
 import { ToastContainer, CloseNoteModal, FilePreviewModal } from "./components";
@@ -30,11 +32,17 @@ import { GroupTransferSheet } from "@/components/sheet/GroupTransferSheet";
 import type { ChecklistTemplateMap, ChecklistTemplateItem } from "./types";
 import { TaskLogThreadSheet } from "./workspace/TaskLogThreadSheet";
 import { usePinnedMessages } from "@/hooks/queries/usePinnedMessages";
-import { usePinMessage, useUnpinMessage } from "@/hooks/mutations/usePinMessage";
-import { useStarMessage, useUnstarMessage } from "@/hooks/mutations/useStarMessage";
+import {
+  usePinMessage,
+  useUnpinMessage,
+} from "@/hooks/mutations/usePinMessage";
+import {
+  useStarMessage,
+  useUnstarMessage,
+} from "@/hooks/mutations/useStarMessage";
 import { useGroups, flattenGroups } from "@/hooks/queries/useGroups";
 import { useConversationMembers } from "@/hooks/queries/useConversationMembers";
-import { WorkTypeManagerDialog } from './components/WorkTypeManagerDialog';
+import { WorkTypeManagerDialog } from "./components/WorkTypeManagerDialog";
 
 type PortalMode = "desktop" | "mobile";
 
@@ -42,12 +50,34 @@ interface PortalWireframesProps {
   portalMode?: PortalMode;
 }
 
+
+
 export default function PortalWireframes({
   portalMode = "desktop",
 }: PortalWireframesProps) {
   // ---------- auth & navigation ----------
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const closeModal = useCreateTaskStore((state) => state.closeModal);
+  const queryClient = useQueryClient();
+
+  // Handle task creation - invalidate queries and close modal
+  const handleTaskCreated = () => {
+    // Invalidate conversation-related queries to refresh the detail panel
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        // Invalidate any query keys that might contain conversation data
+        const queryKey = query.queryKey;
+        return (
+          queryKey.includes('conversation') ||
+          queryKey.includes('tasks') ||
+          queryKey.includes('messages')
+        );
+      },
+    });
+    // Close the modal
+    closeModal();
+  };
 
   // ---------- shared UI state ----------
   const [tab, setTab] = useState<"info" | "order" | "tasks" | "chat">("info");
@@ -57,13 +87,15 @@ export default function PortalWireframes({
   const [showMyWork, setShowMyWork] = useState(false);
   const [view, setView] = useState<"workspace" | "lead">("workspace");
   const [workspaceMode, setWorkspaceMode] = useState<"default" | "pinned">(
-    "default"
+    "default",
   );
   const [showRight, setShowRight] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [q, setQ] = useState("");
   // const [showPinned, setShowPinned] = useState(false);
-  const [viewMode, setViewMode] = React.useState<"lead" | "staff">(getViewModeFromRoles());
+  const [viewMode, setViewMode] = React.useState<"lead" | "staff">(
+    getViewModeFromRoles(),
+  );
 
   const [receivedInfos, setReceivedInfos] = useState<ReceivedInfo[]>([]);
 
@@ -81,7 +113,6 @@ export default function PortalWireframes({
 
   // WorkType Manager state
   const [showWorkTypeManager, setShowWorkTypeManager] = useState(false);
- 
 
   // sẽ tính workTypes theo selectedGroup bên dưới
   // const workTypesFull = mockGroup_VH_Kho.workTypes ?? [];
@@ -101,7 +132,7 @@ export default function PortalWireframes({
   const { data: groupsData, isLoading: isGroupsLoading } = useGroups();
 
   const groupsMerged: GroupChat[] = React.useMemo(() => {
-    return (flattenGroups(groupsData) as unknown) as GroupChat[];
+    return flattenGroups(groupsData) as unknown as GroupChat[];
   }, [groupsData]);
 
   const [selectedGroup, setSelectedGroup] = React.useState<
@@ -153,7 +184,7 @@ export default function PortalWireframes({
   }>({ open: false });
 
   const [taskLogs, setTaskLogs] = useState<Record<string, TaskLogMessage[]>>(
-    {}
+    {},
   );
   const pushToast = (msg: string, kind: ToastKind = "info") => {
     const id = Math.random().toString(36).slice(2);
@@ -176,7 +207,7 @@ export default function PortalWireframes({
     type: "group" | "dm";
     id: string;
   } | null>(null);
-console.log(selectedChat);
+  // console.log(selectedChat);
   const onClearSelectedChat = () => setSelectedChat(null);
   const nowIso = () => new Date().toISOString();
 
@@ -198,13 +229,17 @@ console.log(selectedChat);
       return user.identifier;
     }
     // Fallback based on role permissions
-    return hasLeaderPermissions() ? 'Thanh Trúc' : 'Diễm Chi';
+    return hasLeaderPermissions() ? "Thanh Trúc" : "Diễm Chi";
   };
 
   // Dynamic user based on role permissions
   const currentUser = getCurrentUserName();
-  const currentUserId = hasLeaderPermissions() ? getCurrentUserIdSync() : 'u_diem_chi';
-  const currentUserDepartment = hasLeaderPermissions() ? 'Quản lý vận hành' : 'Nhân viên kho';
+  const currentUserId = hasLeaderPermissions()
+    ? getCurrentUserIdSync()
+    : "u_diem_chi";
+  const currentUserDepartment = hasLeaderPermissions()
+    ? "Quản lý vận hành"
+    : "Nhân viên kho";
 
   //const now = new Date().toISOString();
 
@@ -262,8 +297,8 @@ console.log(selectedChat);
         pinned.message.contentType === "IMG"
           ? "image"
           : pinned.message.contentType === "FILE"
-          ? "file"
-          : "text",
+            ? "file"
+            : "text",
       content: pinned.message.content || "",
       preview: pinned.message.content || "",
       time: pinned.pinnedAt,
@@ -381,12 +416,9 @@ console.log(selectedChat);
 
   // Dùng chung cho các nơi muốn "xem tin nhắn gốc"
   // (pinned message, xem từ tab Thông tin, v.v.)
-  const handleOpenSourceMessage = React.useCallback(
-    (messageId: string) => {
-      setScrollToMessageId(messageId);
-    },
-    []
-  );
+  const handleOpenSourceMessage = React.useCallback((messageId: string) => {
+    setScrollToMessageId(messageId);
+  }, []);
 
   // Callback to reset scroll state (called from ChatMain after scroll completes)
   const handleScrollComplete = React.useCallback(() => {
@@ -416,11 +448,11 @@ console.log(selectedChat);
   // helpers
   const setThreadOwner = (id: string, owner: string) =>
     setLeadThreads((rows) =>
-      rows.map((r) => (r.id === id ? { ...r, owner, at: "vừa xong" } : r))
+      rows.map((r) => (r.id === id ? { ...r, owner, at: "vừa xong" } : r)),
     );
   const setThreadStatus = (id: string, label: LeadThread["st"]) =>
     setLeadThreads((rows) =>
-      rows.map((r) => (r.id === id ? { ...r, st: label, at: "vừa xong" } : r))
+      rows.map((r) => (r.id === id ? { ...r, st: label, at: "vừa xong" } : r)),
     );
 
   function enrichTasks(tasks: Task[], workTypes: WorkType[]) {
@@ -455,7 +487,7 @@ console.log(selectedChat);
               } mục`
             : "Không có checklist",
         };
-      })
+      }),
     );
   }, [selectedGroup]);
 
@@ -484,7 +516,7 @@ console.log(selectedChat);
     title: string,
     status: TaskStatusObject,
     currentUser: string,
-    newOwner?: string
+    newOwner?: string,
   ): Task => ({
     id,
     groupId: "grp-vanhanh-kho",
@@ -495,7 +527,13 @@ console.log(selectedChat);
     assignTo: newOwner || currentUser,
     assignFrom: currentUser,
     status,
-    priority: { id: "2", code: "normal", label: "Bình thường", level: 2, color: "#ffcc00" },
+    priority: {
+      id: "2",
+      code: "normal",
+      label: "Bình thường",
+      level: 2,
+      color: "#ffcc00",
+    },
     createdAt: nowIso(),
     updatedAt: nowIso(),
     checklist: [],
@@ -503,23 +541,20 @@ console.log(selectedChat);
   });
 
   // Handlers cập nhật Task (status & checklist)
-  const handleChangeTaskStatus = (
-    id: string,
-    nextStatus: Task['status']
-  ) => {
+  const handleChangeTaskStatus = (id: string, nextStatus: Task["status"]) => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id
           ? { ...t, status: nextStatus, updatedAt: new Date().toISOString() }
-          : t
-      )
+          : t,
+      ),
     );
   };
 
   const handleToggleChecklist = (
     taskId: string,
     itemId: string,
-    done: boolean
+    done: boolean,
   ) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -527,12 +562,12 @@ console.log(selectedChat);
           ? {
               ...t,
               checklist: t.checklist?.map((c) =>
-                c.id === itemId ? { ...c, done } : c
+                c.id === itemId ? { ...c, done } : c,
               ),
               updatedAt: new Date().toISOString(),
             }
-          : t
-      )
+          : t,
+      ),
     );
   };
 
@@ -549,7 +584,7 @@ console.log(selectedChat);
 
         // enrich progressText ngay lập tức
         const wt = selectedGroup?.workTypes?.find(
-          (w) => w.id === updated.workTypeId
+          (w) => w.id === updated.workTypeId,
         );
         return {
           ...updated,
@@ -567,7 +602,7 @@ console.log(selectedChat);
   // Áp dụng template mới cho tất cả Task.todo thuộc workType
   const applyTemplateToTasks = (
     workTypeId: string,
-    tpl: ChecklistTemplateItem[]
+    tpl: ChecklistTemplateItem[],
   ) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -580,15 +615,21 @@ console.log(selectedChat);
                 done: false,
               })),
             }
-          : t
-      )
+          : t,
+      ),
     );
   };
 
   const handleClaim = (task: Task) => {
     const updated: Task = {
       ...task,
-      status: { id: "2", code: "doing", label: "Đang làm", level: 2, color: "#ffa500" },
+      status: {
+        id: "2",
+        code: "doing",
+        label: "Đang làm",
+        level: 2,
+        color: "#ffa500",
+      },
       updatedAt: new Date().toISOString(),
       history: [
         ...(task.history ?? []),
@@ -615,8 +656,20 @@ console.log(selectedChat);
           ? prev
           : [
               ...prev,
-              createMockTask(id, title || id, { id: "1", code: "todo", label: "Chưa làm", level: 1, color: "#999" }, currentUser, newOwner),
-            ]
+              createMockTask(
+                id,
+                title || id,
+                {
+                  id: "1",
+                  code: "todo",
+                  label: "Chưa làm",
+                  level: 1,
+                  color: "#999",
+                },
+                currentUser,
+                newOwner,
+              ),
+            ],
       );
       pushToast(`Đã chuyển ${title || id} → ${newOwner}`, "info");
     } else {
@@ -625,9 +678,20 @@ console.log(selectedChat);
         prev.some((x) => x.id === id)
           ? prev
           : [
-              createMockTask(id, title || id, { id: "2", code: "doing", label: "Đang làm", level: 2, color: "#ffa500" }, currentUser),
+              createMockTask(
+                id,
+                title || id,
+                {
+                  id: "2",
+                  code: "doing",
+                  label: "Đang làm",
+                  level: 2,
+                  color: "#ffa500",
+                },
+                currentUser,
+              ),
               ...prev,
-            ]
+            ],
       );
       setAvailable((prev) => prev.filter((x) => x.id !== id));
       pushToast(`Đã nhận lại ${title || id}`, "success");
@@ -638,9 +702,19 @@ console.log(selectedChat);
     setMyWork((prev) =>
       prev.map((t) =>
         t.id === id
-          ? { ...t, status: { id: "4", code: "finished", label: "Đã hoàn thành", level: 4, color: "#00cc00" }, updatedAt: new Date().toISOString() }
-          : t
-      )
+          ? {
+              ...t,
+              status: {
+                id: "4",
+                code: "finished",
+                label: "Đã hoàn thành",
+                level: 4,
+                color: "#00cc00",
+              },
+              updatedAt: new Date().toISOString(),
+            }
+          : t,
+      ),
     );
     pushToast(`Đã đóng: ${id}`, "success");
   };
@@ -654,7 +728,21 @@ console.log(selectedChat);
       setMyWork((prev) =>
         prev.some((x) => x.id === id)
           ? prev
-          : [createMockTask(id, title || id, { id: "1", code: "todo", label: "Chưa làm", level: 1, color: "#999" }, currentUser), ...prev]
+          : [
+              createMockTask(
+                id,
+                title || id,
+                {
+                  id: "1",
+                  code: "todo",
+                  label: "Chưa làm",
+                  level: 1,
+                  color: "#999",
+                },
+                currentUser,
+              ),
+              ...prev,
+            ],
       );
       setAvailable((prev) => prev.filter((x) => x.id !== id));
     } else {
@@ -665,8 +753,20 @@ console.log(selectedChat);
           ? prev
           : [
               ...prev,
-              createMockTask(id, title || id, { id: "1", code: "todo", label: "Chưa làm", level: 1, color: "#999" }, currentUser, newOwner),
-            ]
+              createMockTask(
+                id,
+                title || id,
+                {
+                  id: "1",
+                  code: "todo",
+                  label: "Chưa làm",
+                  level: 1,
+                  color: "#999",
+                },
+                currentUser,
+                newOwner,
+              ),
+            ],
       );
     }
 
@@ -683,18 +783,16 @@ console.log(selectedChat);
     setSelectedGroup(g);
     setSelectedChat({ type: "group", id: g.id });
     setSelectedWorkTypeId(
-      g.defaultWorkTypeId ?? g.workTypes?.[0]?.id ?? selectedWorkTypeId
+      g.defaultWorkTypeId ?? g.workTypes?.[0]?.id ?? selectedWorkTypeId,
     );
   };
 
   // Subscribe to auth changes and update viewMode based on roles
   React.useEffect(() => {
-    const unsubscribe = useAuthStore.subscribe(
-      (state) => {
-        const newViewMode = getViewModeFromRoles();
-        setViewMode(newViewMode);
-      }
-    );
+    const unsubscribe = useAuthStore.subscribe((state) => {
+      const newViewMode = getViewModeFromRoles();
+      setViewMode(newViewMode);
+    });
     return unsubscribe;
   }, []);
 
@@ -794,13 +892,13 @@ console.log(selectedChat);
     const excerpt =
       (message.content ?? "").length > 40
         ? (message.content ?? "").slice(0, 40) + "…"
-        : message.content ?? "";
+        : (message.content ?? "");
 
     const systemMsg: Message = {
       id: "sys_" + Date.now(),
       type: "system",
       content: `${excerpt} được tiếp nhận bởi ${currentUser} lúc ${new Date(
-        nowIso
+        nowIso,
       ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
       sender: "system",
       senderId: "system",
@@ -858,8 +956,8 @@ console.log(selectedChat);
       prev.map((i) =>
         i.id === infoId
           ? { ...i, status: "transferred", transferredTo: departmentId }
-          : i
-      )
+          : i,
+      ),
     );
 
     pushToast("Đã chuyển thông tin sang phòng ban.", "success");
@@ -880,7 +978,7 @@ console.log(selectedChat);
   }): void => {
     // Xác định WorkType & variant (ưu tiên variant được chọn từ AssignTaskSheet)
     const wt = selectedGroup?.workTypes?.find(
-      (w) => w.id === selectedWorkTypeId
+      (w) => w.id === selectedWorkTypeId,
     );
 
     let variantId = checklistVariantId;
@@ -912,7 +1010,13 @@ console.log(selectedChat);
       workTypeName: wt?.name,
       checklistVariantId: variantId,
       checklistVariantName: variantName,
-      status: { id: "1", code: "todo", label: "Chưa làm", level: 1, color: "#999" },
+      status: {
+        id: "1",
+        code: "todo",
+        label: "Chưa làm",
+        level: 1,
+        color: "#999",
+      },
       checklist: tplItems.map((it) => ({
         id: "chk_" + Math.random().toString(36).slice(2),
         label: it.label,
@@ -935,8 +1039,8 @@ console.log(selectedChat);
     if (sourceMessageId) {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === sourceMessageId ? { ...m, taskId: newTask.id } : m
-        )
+          m.id === sourceMessageId ? { ...m, taskId: newTask.id } : m,
+        ),
       );
     }
 
@@ -948,23 +1052,26 @@ console.log(selectedChat);
     if (assignSheet.source === "receivedInfo" && assignSheet.info) {
       setReceivedInfos((prev) =>
         prev.map((i) =>
-          i.id === assignSheet.info!.id ? { ...i, status: "assigned" } : i
-        )
+          i.id === assignSheet.info!.id ? { ...i, status: "assigned" } : i,
+        ),
       );
     }
 
     pushToast("Đã giao công việc.", "success");
     // 🆕 Close mobile received info screen if open
     setAssignSheet({ open: false });
-    
-    pushToast("Đã giao công việc.", 'success');
+
+    pushToast("Đã giao công việc.", "success");
   };
 
   // Handler:  Update group's workTypes
-  const handleUpdateGroupWorkTypes = (groupId: string, updatedWorkTypes: WorkType[]) => {
+  const handleUpdateGroupWorkTypes = (
+    groupId: string,
+    updatedWorkTypes: WorkType[],
+  ) => {
     // 1. Update groups array
     const newGroups = groups.map((g) =>
-      g.id === groupId ? { ...g, workTypes: updatedWorkTypes } : g
+      g.id === groupId ? { ...g, workTypes: updatedWorkTypes } : g,
     );
 
     // Update groups state so ConversationDetailPanel sees the changes
@@ -979,13 +1086,14 @@ console.log(selectedChat);
 
       // If current workType no longer exists, switch to first available or default
       const currentWorkTypeStillExists = updatedWorkTypes.some(
-        (wt) => wt.id === selectedWorkTypeId
+        (wt) => wt.id === selectedWorkTypeId,
       );
 
       if (!currentWorkTypeStillExists) {
         const newDefaultId =
-          updatedWorkTypes.find((wt) => wt.id === selectedGroup.defaultWorkTypeId)?.id ??
-          updatedWorkTypes[0]?.id;
+          updatedWorkTypes.find(
+            (wt) => wt.id === selectedGroup.defaultWorkTypeId,
+          )?.id ?? updatedWorkTypes[0]?.id;
 
         if (newDefaultId) {
           setSelectedWorkTypeId(newDefaultId);
@@ -1021,8 +1129,8 @@ console.log(selectedChat);
               transferredToGroupName: toGroupName,
               transferredWorkTypeName: toWorkTypeName,
             }
-          : inf
-      )
+          : inf,
+      ),
     );
 
     pushToast("Đã chuyển thông tin sang nhóm mới.", "success");
@@ -1118,7 +1226,7 @@ console.log(selectedChat);
       taskLogSheet.taskId
         ? tasks.find((t) => t.id === taskLogSheet.taskId)
         : undefined,
-    [tasks, taskLogSheet.taskId]
+    [tasks, taskLogSheet.taskId],
   );
 
   const activeTaskLogSourceMessage = React.useMemo(() => {
@@ -1138,7 +1246,6 @@ console.log(selectedChat);
   };
 
   return (
-    
     <div
       className={`${
         portalMode === "mobile" ? "w-full h-full" : "w-screen h-screen"
@@ -1272,7 +1379,7 @@ console.log(selectedChat);
               // Mobile: tạm hiển thị toast, có thể thay bằng mở QuickMessageManager khi bạn muốn mount ở mobile
               pushToast(
                 "Tin nhắn nhanh: tính năng đang phát triển cho mobile.",
-                "info"
+                "info",
               );
             }}
             onOpenPinned={() => {
@@ -1281,17 +1388,26 @@ console.log(selectedChat);
             onOpenTodoList={() => {
               pushToast(
                 "Việc cần làm: tính năng đang phát triển cho mobile.",
-                "info"
+                "info",
               );
             }}
             checklistVariants={checklistVariants}
             defaultChecklistVariantId={defaultChecklistVariantId}
-            onCreateTaskFromMessage={handleCreateTask}
-            
-            onReassignTask={undefined}  // hoặc implement nếu cần
-            
+            onCreateTaskFromMessage={(payload) => {
+              // Open AssignTaskSheet from ChatMainContainer
+              setAssignSheet({
+                open: true,
+                source: "message",
+                message: {
+                  id: payload.messageId,
+                  content: payload.messageContent,
+                } as Message,
+                info: undefined,
+              });
+            }}
+            onReassignTask={undefined} // hoặc implement nếu cần
             onOpenWorkTypeManager={() => setShowWorkTypeManager(true)}
-          />          
+          />
         ) : (
           <TeamMonitorView
             leadThreads={leadThreads}
@@ -1320,11 +1436,14 @@ console.log(selectedChat);
 
         <AssignTaskSheet
           open={assignSheet.open}
-          conversationId={selectedGroup?.id}
+          conversationId={currentConversationId}
           messageId={assignSheet.message?.id}
           messageContent={assignSheet.message?.content}
           onClose={() => setAssignSheet({ open: false })}
-          onTaskCreated={() => setAssignSheet({ open: false })}
+          onTaskCreated={() => {
+            setAssignSheet({ open: false });
+            handleTaskCreated();
+          }}
           onTabChange={(tab) => setTab(tab)}
         />
 
@@ -1353,7 +1472,6 @@ console.log(selectedChat);
         {/* Toasts */}
         <ToastContainer toasts={toasts} onClose={removeToast} />
       </div>
-
 
       {/* WorkType Manager Dialog (Desktop only) */}
       {portalMode !== "mobile" && (

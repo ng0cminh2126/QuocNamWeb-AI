@@ -3,10 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { hasLeaderPermissions } from "@/utils/roleUtils";
 import { RightAccordion } from "../components";
-import {
-  FileManagerPhase1A,
-  MessageLike,
-} from "../components/FileManagerPhase1A";
+import { FileManagerPhase1A, MessageLike } from "../components/FileManagerPhase1A";
 import { Users, Plus, FileText } from "lucide-react";
 import { ViewAllFilesModal } from "@/components/files";
 import { useViewFiles } from "@/hooks/useViewFiles";

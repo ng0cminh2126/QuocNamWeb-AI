@@ -2,32 +2,11 @@ import "./App.css";
 import { AppRouter } from "./routes";
 import { Toaster } from "sonner";
 import { SignalRProvider } from "./providers/SignalRProvider";
-import { AssignTaskSheet } from "./components/sheet/AssignTaskSheet";
-import { useCreateTaskStore } from "./stores/createTaskStore";
 import { useSecurity } from "./hooks/useSecurity";
-import { useQueryClient } from "@tanstack/react-query";
 
 export default function App() {
-  const { isOpen, messageContent, conversationId, messageId, closeModal } =
-    useCreateTaskStore();
-  const queryClient = useQueryClient();
   // Initialize client-side security protections
   const { isWhitelisted } = useSecurity();
-
-  const handleTaskCreated = () => {
-    // Invalidate conversation-related queries to refresh the detail panel
-    queryClient.invalidateQueries({
-      predicate: (query) => {
-        // Invalidate any query keys that might contain conversation data
-        const queryKey = query.queryKey;
-        return (
-          queryKey.includes('conversation') ||
-          queryKey.includes('tasks') ||
-          queryKey.includes('messages')
-        );
-      },
-    });
-  };
 
   return (
     <SignalRProvider>
@@ -40,14 +19,6 @@ export default function App() {
 
       <AppRouter />
       <Toaster position="top-center" richColors />
-      <AssignTaskSheet
-        open={isOpen}
-        conversationId={conversationId || undefined}
-        messageId={messageId || undefined}
-        messageContent={messageContent || undefined}
-        onClose={closeModal}
-        onTaskCreated={handleTaskCreated}
-      />
     </SignalRProvider>
   );
 }

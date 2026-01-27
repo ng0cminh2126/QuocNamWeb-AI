@@ -546,7 +546,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
     },
     [onSelectChat, setSelectedConversation],
   );
-  console.log(selectedConversation);
+  // console.log(selectedConversation);
   const resolvePinnedTime = (msg: Message) => {
     if (msg.createdAt && !isNaN(Date.parse(msg.createdAt)))
       return msg.createdAt;
@@ -664,6 +664,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                             }
                           : undefined
                       }
+                      onCreateTaskFromMessage={onCreateTaskFromMessage}
                     />
                   ) : (
                     <EmptyChatState isMobile={true} />
@@ -886,6 +887,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
                   }
                 : undefined
             }
+            onCreateTaskFromMessage={onCreateTaskFromMessage}
           />
         ) : (
           <EmptyChatState isMobile={false} />

@@ -1,7 +1,13 @@
 import React from "react";
 import { ChecklistTemplateItem, ChecklistVariant } from "../types";
 import { Plus, X as XIcon, Trash, Save } from "lucide-react";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { useChecklistTemplates } from "@/hooks/queries/useChecklistTemplates";
 import { transformTemplateItems } from "@/utils/checklistTemplateTransform";
 import { useUpdateChecklistTemplate } from "@/hooks/mutations/useTaskMutations";
@@ -12,7 +18,8 @@ type Props = {
   onClose: () => void;
   workTypeName: string;
   template: ChecklistTemplateItem[];
-  onChange: (next: ChecklistTemplateItem[]) => void;  conversationId?: string; // Current active conversation/group chat ID
+  onChange: (next: ChecklistTemplateItem[]) => void;
+  conversationId?: string; // Current active conversation/group chat ID
   // Optional – danh sách “Dạng checklist” cho Loại việc hiện tại
   checklistVariants?: ChecklistVariant[];
   // Variant đang được chọn (ví dụ khi lead vừa chọn sub-work-type trong AssignTaskSheet)
@@ -33,21 +40,25 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   onChangeVariant,
 }) => {
   // Fetch templates from API filtered by conversationId
-  const { data: apiTemplates, isLoading: templatesLoading } = useChecklistTemplates();
-  
+  const { data: apiTemplates, isLoading: templatesLoading } =
+    useChecklistTemplates();
+
   // Update template mutation
   const updateTemplateMutation = useUpdateChecklistTemplate();
-  
+
   // State for selected API template
-  const [selectedApiTemplateId, setSelectedApiTemplateId] = React.useState<string>("");
-  const [selectedTemplateName, setSelectedTemplateName] = React.useState<string>("");
-  const [selectedTemplateDescription, setSelectedTemplateDescription] = React.useState<string>("");
-  
+  const [selectedApiTemplateId, setSelectedApiTemplateId] =
+    React.useState<string>("");
+  const [selectedTemplateName, setSelectedTemplateName] =
+    React.useState<string>("");
+  const [selectedTemplateDescription, setSelectedTemplateDescription] =
+    React.useState<string>("");
+
   const [items, setItems] = React.useState<ChecklistTemplateItem[]>(template);
   const inputRefs = React.useRef<Record<string, HTMLInputElement | null>>({});
   const newItemRef = React.useRef<HTMLInputElement | null>(null);
   const [selectedVariantId, setSelectedVariantId] = React.useState(
-    activeVariantId ?? checklistVariants?.[0]?.id ?? ""
+    activeVariantId ?? checklistVariants?.[0]?.id ?? "",
   );
 
   // Đồng bộ lại khi props activeVariantId hoặc danh sách variant thay đổi
@@ -66,11 +77,13 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   React.useEffect(() => {
     setItems(template);
   }, [template]);
-  
+
   // Load template when API template is selected
   const handleLoadApiTemplate = (templateId: string) => {
     setSelectedApiTemplateId(templateId);
-    const selectedTemplate = apiTemplates?.find((t: CheckListTemplateResponse) => t.id === templateId);
+    const selectedTemplate = apiTemplates?.find(
+      (t: CheckListTemplateResponse) => t.id === templateId,
+    );
     if (selectedTemplate) {
       const transformed = transformTemplateItems(selectedTemplate);
       setItems(transformed);
@@ -80,9 +93,7 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   };
 
   const update = (id: string, label: string) => {
-    setItems((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, label } : c))
-    );
+    setItems((prev) => prev.map((c) => (c.id === id ? { ...c, label } : c)));
   };
 
   const remove = (id: string) => {
@@ -92,10 +103,7 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
   const add = () => {
     const newId = "tpl_" + Date.now().toString(36);
 
-    setItems((prev) => [
-      ...prev,
-      { id: newId, label: "" },
-    ]);
+    setItems((prev) => [...prev, { id: newId, label: "" }]);
 
     // Sau khi state cập nhật, focus vào input mới
     setTimeout(() => {
@@ -107,20 +115,21 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
     }, 0);
   };
 
-
   const save = async () => {
     // If a template is selected from API, update it via API
     if (selectedApiTemplateId && selectedApiTemplateId !== "new") {
       try {
-        const itemLabels = items.map(item => item.label).filter(label => label.trim() !== "");
-        
+        const itemLabels = items
+          .map((item) => item.label)
+          .filter((label) => label.trim() !== "");
+
         await updateTemplateMutation.mutateAsync({
           templateId: selectedApiTemplateId,
           name: selectedTemplateName,
           description: selectedTemplateDescription || null,
           items: itemLabels.length > 0 ? itemLabels : null,
         });
-        
+
         // Notify parent and close
         onChange(items);
         onClose();
@@ -135,12 +144,11 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
     }
   };
 
-  if (!open) return null;  
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[999] flex justify-end bg-black/30">
       <div className="w-[400px] max-w-full h-full bg-white shadow-2xl border-l border-emerald-50 animate-slide-left flex flex-col">
-        
         {/* Header – Linear Style */}
         <div
           className="
@@ -152,10 +160,14 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
           {/* Top row: Title + Close */}
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Checklist Mặc Định</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Checklist Mặc Định
+              </h2>
               <p className="text-xs text-gray-500 mt-1">
                 Áp dụng cho loại việc:{" "}
-                <span className="font-medium text-gray-700">{workTypeName}</span>
+                <span className="font-medium text-gray-700">
+                  {workTypeName}
+                </span>
               </p>
             </div>
 
@@ -187,7 +199,13 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
                   disabled={templatesLoading}
                 >
                   <SelectTrigger className="w-full h-8 text-xs rounded-md border border-gray-300 bg-white px-2 shadow-sm focus:border-emerald-500 focus:ring-emerald-500">
-                    <SelectValue placeholder={templatesLoading ? "Đang tải..." : "Chọn template để chỉnh sửa..."} />
+                    <SelectValue
+                      placeholder={
+                        templatesLoading
+                          ? "Đang tải..."
+                          : "Chọn template để chỉnh sửa..."
+                      }
+                    />
                   </SelectTrigger>
 
                   <SelectContent position="popper" className="z-[9999]">
@@ -310,14 +328,15 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
                       <Trash className="h-3 h-3" />
                     </button>
                   </div>
-
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-400">
               <p className="text-sm">Chưa có mục nào</p>
-              <p className="text-xs mt-1">Chọn template từ danh sách hoặc nhấn "Thêm mục" để bắt đầu</p>
+              <p className="text-xs mt-1">
+                Chọn template từ danh sách hoặc nhấn "Thêm mục" để bắt đầu
+              </p>
             </div>
           )}
 
@@ -328,7 +347,6 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
             <Plus className="w-3 h-3" /> Thêm mục
           </button>
         </div>
-
 
         {/* Footer */}
         <div className="mt-auto px-4 pt-3 pb-3 border-t border-gray-200 bg-white/95 flex items-center justify-between">
@@ -346,15 +364,19 @@ export const ChecklistTemplateSlideOver: React.FC<Props> = ({
 
             <button
               onClick={save}
-              disabled={items.length === 0 || updateTemplateMutation.isPending || !selectedApiTemplateId}
+              disabled={
+                items.length === 0 ||
+                updateTemplateMutation.isPending ||
+                !selectedApiTemplateId
+              }
               className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[12px] font-medium hover:bg-emerald-700 shadow-sm flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="save-checklist-button"
             >
               <Save className="w-3 h-3" />
               {updateTemplateMutation.isPending ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>
-
       </div>
 
       {/* ANIMATION */}

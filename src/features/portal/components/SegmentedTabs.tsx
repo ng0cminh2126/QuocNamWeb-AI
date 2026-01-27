@@ -36,6 +36,7 @@ export const SegmentedTabs = ({
           <button
             key={tab.key}
             onClick={() => onChange(tab.key)}
+            data-testid={`segmented-tab-${tab.key}`}
             className={`
               relative z-10 flex-1 px-3 py-1.5 rounded-lg transition-all select-none outline-none
               ${noWrap ? "text-nowrap" : ""}

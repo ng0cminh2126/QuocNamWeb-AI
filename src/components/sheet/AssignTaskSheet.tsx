@@ -1,8 +1,20 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import React, { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTaskConfig } from "@/hooks/queries/useTaskConfig";
@@ -43,10 +55,10 @@ interface FormErrors {
 
 /**
  * AssignTaskSheet Component
- * 
+ *
  * Sheet component for creating tasks from messages
  * Fetches members, priorities, and templates from API
- * 
+ *
  * Features:
  * - Auto-fill task title from message content
  * - Select assignee from conversation members
@@ -68,13 +80,18 @@ export function AssignTaskSheet({
   const queryClient = useQueryClient();
 
   // Fetch task configuration data
-  const { priorities, templates, isLoading: configLoading } = useTaskConfig(open);
+  const {
+    priorities,
+    templates,
+    isLoading: configLoading,
+  } = useTaskConfig(open);
 
   // Fetch conversation members
-  const { data: membersData, isLoading: membersLoading } = useConversationMembers({
-    conversationId: conversationId || '',
-    enabled: open && !!conversationId,
-  });
+  const { data: membersData, isLoading: membersLoading } =
+    useConversationMembers({
+      conversationId: conversationId || "",
+      enabled: open && !!conversationId,
+    });
 
   // Members data is array directly from API
   const members = membersData || [];
@@ -88,15 +105,15 @@ export function AssignTaskSheet({
         queryClient.invalidateQueries({
           queryKey: taskKeys.linkedTasks(conversationId),
         });
-        
+
         // Explicitly refetch to update the UI immediately
         await queryClient.refetchQueries({
           queryKey: taskKeys.linkedTasks(conversationId),
         });
       }
-      
-      toast.success('Công việc đã được giao thành công');
-      
+
+      toast.success("Công việc đã được giao thành công");
+
       // Switch to tasks tab
       onTabChange?.("order");
 
@@ -110,17 +127,17 @@ export function AssignTaskSheet({
           };
           await sendMessage(systemMessageData);
         } catch (error) {
-          console.error('Failed to send system message:', error);
+          console.error("Failed to send system message:", error);
           // Don't fail the whole operation if system message fails
         }
       }
-      
+
       // Call onTaskCreated callback to refresh parent component
       onTaskCreated?.();
       onClose();
     },
     onError: (error) => {
-      console.error('Failed to link task to message:', error);
+      console.error("Failed to link task to message:", error);
       // Task was created but linking failed - still close the sheet
       // User can manually link later if needed
       if (conversationId) {
@@ -128,7 +145,9 @@ export function AssignTaskSheet({
           queryKey: taskKeys.linkedTasks(conversationId),
         });
       }
-      toast.error('Công việc đã được tạo nhưng không thể liên kết với tin nhắn');
+      toast.error(
+        "Công việc đã được tạo nhưng không thể liên kết với tin nhắn",
+      );
       // Still call onTaskCreated since task was created (even if linking failed)
       onTaskCreated?.();
       onClose();
@@ -138,43 +157,43 @@ export function AssignTaskSheet({
   // Create task mutation
   const createTaskMutation = useCreateTask({
     onSuccess: (createdTaskId) => {
-      console.log('Task created with ID:', createdTaskId);
-      console.log('messageId:', messageId);
-      console.log('conversationId:', conversationId);
-      
+      console.log("Task created with ID:", createdTaskId);
+      console.log("messageId:", messageId);
+      console.log("conversationId:", conversationId);
+
       // Task created successfully - now link it to the message if messageId exists
       if (messageId && createdTaskId) {
-        console.log('Linking task to message...');
+        console.log("Linking task to message...");
         linkTaskMutation.mutate({
           messageId,
           taskId: createdTaskId,
         });
       } else {
         // No message to link - just close and invalidate
-        console.log('No message to link, just invalidating...');
+        console.log("No message to link, just invalidating...");
         if (conversationId) {
           queryClient.invalidateQueries({
             queryKey: taskKeys.linkedTasks(conversationId),
           });
         }
-        toast.success('Công việc đã được tạo thành công');
+        toast.success("Công việc đã được tạo thành công");
         // Call onTaskCreated callback to refresh parent component
         onTaskCreated?.();
         onClose();
       }
     },
     onError: (error) => {
-      console.error('Failed to create task:', error);
-      toast.error('Không thể tạo công việc. Vui lòng thử lại.');
+      console.error("Failed to create task:", error);
+      toast.error("Không thể tạo công việc. Vui lòng thử lại.");
     },
   });
 
   // Form state
   const [formData, setFormData] = useState<FormData>({
-    title: '',
-    assignTo: '',
-    priority: '',
-    checklistTemplateId: '',
+    title: "",
+    assignTo: "",
+    priority: "",
+    checklistTemplateId: "",
   });
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -201,7 +220,7 @@ export function AssignTaskSheet({
   // Set default assignee when sheet opens and user is available
   useEffect(() => {
     if (!open || !currentUser?.id || formData.assignTo) return;
-    
+
     setFormData((prev) => ({
       ...prev,
       assignTo: currentUser.id,
@@ -211,7 +230,7 @@ export function AssignTaskSheet({
   // Set default priority when priorities load
   useEffect(() => {
     if (!open || priorities.length === 0 || formData.priority) return;
-    
+
     setFormData((prev) => ({
       ...prev,
       priority: priorities[0].code || priorities[0].id,
@@ -221,7 +240,7 @@ export function AssignTaskSheet({
   // Set default checklist template when templates load
   useEffect(() => {
     if (!open || templates.length === 0 || formData.checklistTemplateId) return;
-    
+
     setFormData((prev) => ({
       ...prev,
       checklistTemplateId: templates[0].id,
@@ -232,10 +251,10 @@ export function AssignTaskSheet({
   useEffect(() => {
     if (!open) {
       setFormData({
-        title: '',
-        assignTo: '',
-        priority: '',
-        checklistTemplateId: '',
+        title: "",
+        assignTo: "",
+        priority: "",
+        checklistTemplateId: "",
       });
       setFormErrors({});
     }
@@ -246,21 +265,21 @@ export function AssignTaskSheet({
     const errors: FormErrors = {};
 
     if (!formData.title.trim()) {
-      errors.title = 'Tên công việc là bắt buộc';
+      errors.title = "Tên công việc là bắt buộc";
     } else if (formData.title.length > 255) {
-      errors.title = 'Tên công việc phải ít hơn 255 ký tự';
+      errors.title = "Tên công việc phải ít hơn 255 ký tự";
     }
 
     if (!formData.assignTo) {
-      errors.assignTo = 'Vui lòng chọn người thực hiện';
+      errors.assignTo = "Vui lòng chọn người thực hiện";
     }
 
     if (!formData.priority) {
-      errors.priority = 'Vui lòng chọn độ ưu tiên';
+      errors.priority = "Vui lòng chọn độ ưu tiên";
     }
 
     if (!formData.checklistTemplateId) {
-      errors.checklistTemplateId = 'Vui lòng chọn mẫu checklist';
+      errors.checklistTemplateId = "Vui lòng chọn mẫu checklist";
     }
 
     setFormErrors(errors);
@@ -274,7 +293,7 @@ export function AssignTaskSheet({
     }
 
     if (!conversationId) {
-      console.error('Missing conversationId');
+      console.error("Missing conversationId");
       return;
     }
 
@@ -300,7 +319,11 @@ export function AssignTaskSheet({
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-[420px] overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-[420px] overflow-y-auto"
+        data-testid="create-task-dialog"
+      >
         <SheetHeader className="pb-3 border-b border-gray-100">
           <SheetTitle className="text-base font-semibold text-gray-900">
             Giao Công Việc
@@ -310,7 +333,7 @@ export function AssignTaskSheet({
           </p>
         </SheetHeader>
 
-        {(configLoading || membersLoading) ? (
+        {configLoading || membersLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
           </div>
@@ -318,16 +341,19 @@ export function AssignTaskSheet({
           <div className="mt-4 space-y-4">
             {/* Task Name */}
             <div className="space-y-2">
-              <Label htmlFor="task-name" className="text-xs font-medium text-gray-700">
+              <Label
+                htmlFor="task-name"
+                className="text-xs font-medium text-gray-700"
+              >
                 Tên công việc <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="task-name"
                 value={formData.title}
-                onChange={(e) => handleFieldChange('title', e.target.value)}
+                onChange={(e) => handleFieldChange("title", e.target.value)}
                 placeholder="Nhập tên công việc"
                 maxLength={255}
-                className={formErrors.title ? 'border-red-500' : ''}
+                className={formErrors.title ? "border-red-500" : ""}
               />
               {formErrors.title && (
                 <p className="text-xs text-red-500">{formErrors.title}</p>
@@ -336,16 +362,19 @@ export function AssignTaskSheet({
 
             {/* Assign To */}
             <div className="space-y-2">
-              <Label htmlFor="assign-to" className="text-xs font-medium text-gray-700">
+              <Label
+                htmlFor="assign-to"
+                className="text-xs font-medium text-gray-700"
+              >
                 Giao cho <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.assignTo || undefined}
-                onValueChange={(value) => handleFieldChange('assignTo', value)}
+                onValueChange={(value) => handleFieldChange("assignTo", value)}
               >
                 <SelectTrigger
                   id="assign-to"
-                  className={formErrors.assignTo ? 'border-red-500' : ''}
+                  className={formErrors.assignTo ? "border-red-500" : ""}
                 >
                   <SelectValue placeholder="Chọn nhân viên" />
                 </SelectTrigger>
@@ -353,7 +382,7 @@ export function AssignTaskSheet({
                   {members.map((member) => (
                     <SelectItem key={member.userId} value={member.userId}>
                       {member.userName}
-                      {member.userId === currentUser?.id && ' (Tôi)'}
+                      {member.userId === currentUser?.id && " (Tôi)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -365,16 +394,19 @@ export function AssignTaskSheet({
 
             {/* Priority */}
             <div className="space-y-2">
-              <Label htmlFor="priority" className="text-xs font-medium text-gray-700">
+              <Label
+                htmlFor="priority"
+                className="text-xs font-medium text-gray-700"
+              >
                 Độ ưu tiên <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.priority || undefined}
-                onValueChange={(value) => handleFieldChange('priority', value)}
+                onValueChange={(value) => handleFieldChange("priority", value)}
               >
                 <SelectTrigger
                   id="priority"
-                  className={formErrors.priority ? 'border-red-500' : ''}
+                  className={formErrors.priority ? "border-red-500" : ""}
                 >
                   <SelectValue placeholder="Chọn độ ưu tiên" />
                 </SelectTrigger>
@@ -387,7 +419,7 @@ export function AssignTaskSheet({
                       <div className="flex items-center gap-2">
                         <div
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: priority.color || '#gray' }}
+                          style={{ backgroundColor: priority.color || "#gray" }}
                         />
                         {priority.label}
                       </div>
@@ -402,16 +434,24 @@ export function AssignTaskSheet({
 
             {/* Checklist Template */}
             <div className="space-y-2">
-              <Label htmlFor="checklist-template" className="text-xs font-medium text-gray-700">
+              <Label
+                htmlFor="checklist-template"
+                className="text-xs font-medium text-gray-700"
+              >
                 Mẫu checklist <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.checklistTemplateId || undefined}
-                onValueChange={(value) => handleFieldChange('checklistTemplateId', value || '')}
+                onValueChange={(value) =>
+                  handleFieldChange("checklistTemplateId", value || "")
+                }
               >
                 <SelectTrigger
                   id="checklist-template"
-                  className={formErrors.checklistTemplateId ? 'border-red-500' : ''}
+                  className={
+                    formErrors.checklistTemplateId ? "border-red-500" : ""
+                  }
+                  data-testid="checklist-template-dropdown"
                 >
                   <SelectValue placeholder="Chọn mẫu checklist" />
                 </SelectTrigger>
@@ -424,31 +464,35 @@ export function AssignTaskSheet({
                 </SelectContent>
               </Select>
               {formErrors.checklistTemplateId && (
-                <p className="text-xs text-red-500">{formErrors.checklistTemplateId}</p>
+                <p className="text-xs text-red-500">
+                  {formErrors.checklistTemplateId}
+                </p>
               )}
             </div>
 
             {/* Template Items Preview */}
-            {selectedTemplate && selectedTemplate.items && selectedTemplate.items.length > 0 && (
-              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs font-medium text-gray-700">
-                  Các mục checklist ({selectedTemplate.items.length})
+            {selectedTemplate &&
+              selectedTemplate.items &&
+              selectedTemplate.items.length > 0 && (
+                <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div className="text-xs font-medium text-gray-700">
+                    Các mục checklist ({selectedTemplate.items.length})
+                  </div>
+                  <ul className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {selectedTemplate.items
+                      .sort((a, b) => a.order - b.order)
+                      .map((item) => (
+                        <li
+                          key={item.id}
+                          className="flex items-start gap-2 text-xs text-gray-600"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <span>{item.content}</span>
+                        </li>
+                      ))}
+                  </ul>
                 </div>
-                <ul className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {selectedTemplate.items
-                    .sort((a, b) => a.order - b.order)
-                    .map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-start gap-2 text-xs text-gray-600"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span>{item.content}</span>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            )}
+              )}
           </div>
         )}
 
@@ -456,21 +500,31 @@ export function AssignTaskSheet({
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={createTaskMutation.isPending || linkTaskMutation.isPending}
+            disabled={
+              createTaskMutation.isPending || linkTaskMutation.isPending
+            }
           >
             Huỷ
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createTaskMutation.isPending || linkTaskMutation.isPending || configLoading || membersLoading}
+            disabled={
+              createTaskMutation.isPending ||
+              linkTaskMutation.isPending ||
+              configLoading ||
+              membersLoading
+            }
+            data-testid="submit-task-button"
           >
-            {(createTaskMutation.isPending || linkTaskMutation.isPending) ? (
+            {createTaskMutation.isPending || linkTaskMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {createTaskMutation.isPending ? 'Đang tạo...' : 'Đang liên kết...'}
+                {createTaskMutation.isPending
+                  ? "Đang tạo..."
+                  : "Đang liên kết..."}
               </>
             ) : (
-              'Giao việc'
+              "Giao việc"
             )}
           </Button>
         </SheetFooter>

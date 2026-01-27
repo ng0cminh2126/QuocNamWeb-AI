@@ -270,9 +270,10 @@ const TaskCard: React.FC<{
           duration-200
           hover:-translate-y-[1px]
         "
+        data-testid={`task-item-${t.id}`}
       >
         {/* Floating status badge góc phải trên */}
-        <div className="absolute -top-3 right-2">
+        <div className="absolute -top-3 right-2" data-testid="task-status">
           <StatusBadge s={t.status} />
         </div>
 
@@ -322,6 +323,7 @@ const TaskCard: React.FC<{
                     : "⚠️ Không có tin nhắn nguồn"
                 }
                 aria-disabled={!t.sourceMessageId}
+                data-testid="task-title"
               >
                 {truncateMessageTitle(t.title || t.description)}
               </a>
@@ -994,16 +996,16 @@ export const ConversationDetailPanel: React.FC<{
   const effectiveUserId = currentUserId ?? authUser?.id;
 
   // Filter leader's own tasks
-  console.log("currentUserId", currentUserId);
-  console.log("authUser", authUser);
-  console.log("effectiveUserId", effectiveUserId);
+  // console.log("currentUserId", currentUserId);
+  // console.log("authUser", authUser);
+  // console.log("effectiveUserId", effectiveUserId);
   const leaderOwnTasks = React.useMemo(() => {
     if (!hasLeaderPermissions() || !effectiveUserId) return [];
 
     return tasksByWorkRaw.filter((t) => t.assignTo === effectiveUserId);
   }, [tasksByWorkRaw, viewMode, effectiveUserId]);
 
-  console.log("Leader own tasks:", leaderOwnTasks);
+  // console.log("Leader own tasks:", leaderOwnTasks);
   // Group leader own tasks by status
   const leaderOwnBuckets = React.useMemo(
     () => ({
@@ -1544,6 +1546,7 @@ export const ConversationDetailPanel: React.FC<{
                   >
                     <ToggleGroupItem
                       value="team"
+                      data-testid="team-filter-button"
                       className="
                         flex items-center justify-center gap-2
                         data-[state=on]:bg-brand-600 data-[state=on]:text-white
@@ -1558,6 +1561,7 @@ export const ConversationDetailPanel: React.FC<{
                     </ToggleGroupItem>
                     <ToggleGroupItem
                       value="mine"
+                      data-testid="personal-filter-button"
                       className="
                         flex items-center justify-center gap-2
                         data-[state=on]:bg-brand-600 data-[state=on]:text-white
@@ -1641,6 +1645,7 @@ export const ConversationDetailPanel: React.FC<{
                           <span
                             className="ml-auto mt-2 text-[12px] text-emerald-700 cursor-pointer hover:underline select-none"
                             onClick={() => setTemplateOpen(true)}
+                            data-testid="default-checklist-link"
                           >
                             Checklist mặc định
                           </span>

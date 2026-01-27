@@ -7,7 +7,10 @@ type EditorProps = {
   onChange: (items: ChecklistItem[]) => void;
 };
 
-export const TaskChecklistEditor: React.FC<EditorProps> = ({ items, onChange }) => {
+export const TaskChecklistEditor: React.FC<EditorProps> = ({
+  items,
+  onChange,
+}) => {
   const update = (id: string, label: string) => {
     onChange(items.map((c) => (c.id === id ? { ...c, label } : c)));
   };
@@ -24,13 +27,18 @@ export const TaskChecklistEditor: React.FC<EditorProps> = ({ items, onChange }) 
   };
 
   return (
-    <div className="mt-2 space-y-1">
-      {items.map((c) => (
-        <div key={c.id} className="flex items-center gap-2 text-[12px]">
+    <div className="mt-2 space-y-1" data-testid="checklist-editor">
+      {items.map((c, index) => (
+        <div
+          key={c.id}
+          className="flex items-center gap-2 text-[12px]"
+          data-testid={`checklist-item-${index}`}
+        >
           <input
             className="flex-1 rounded border px-2 py-1 text-[11px]"
             value={c.label}
             onChange={(e) => update(c.id, e.target.value)}
+            data-testid={`checklist-item-input-${index}`}
           />
           <button onClick={() => remove(c.id)} className="text-rose-600">
             <X className="w-3 h-3" />
@@ -41,6 +49,7 @@ export const TaskChecklistEditor: React.FC<EditorProps> = ({ items, onChange }) 
       <button
         onClick={add}
         className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:underline"
+        data-testid="add-checklist-item-button"
       >
         <Plus className="w-3 h-3" /> Thêm mục
       </button>
@@ -58,13 +67,18 @@ export const TaskChecklistViewer: React.FC<ViewerProps> = ({
   onToggle,
 }) => {
   return (
-    <div className="mt-2 space-y-1">
-      {items.map((c) => (
-        <div key={c.id} className="flex items-start gap-2 text-[12px]">
+    <div className="mt-2 space-y-1" data-testid="checklist-viewer">
+      {items.map((c, index) => (
+        <div
+          key={c.id}
+          className="flex items-start gap-2 text-[12px]"
+          data-testid={`checklist-item-${index}`}
+        >
           {/* check icon */}
           <button
             onClick={() => onToggle(c.id, !c.done)}
             className="h-4 w-4 flex items-center justify-center rounded-full border border-emerald-300"
+            data-testid={`checklist-checkbox-${index}`}
           >
             {c.done ? "✔" : ""}
           </button>

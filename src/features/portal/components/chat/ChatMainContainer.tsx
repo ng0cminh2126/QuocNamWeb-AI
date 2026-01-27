@@ -21,7 +21,6 @@ import { useConversationRealtime } from "@/hooks/useConversationRealtime"; // �
 import { useSendTypingIndicator } from "@/hooks/useSendTypingIndicator";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useAuthStore } from "@/stores/authStore";
-import { useCreateTaskStore } from "@/stores/createTaskStore";
 import { useCategories } from "@/hooks/queries/useCategories"; // 🆕 NEW (CBN-002)
 import { useGroups, flattenGroups } from "@/hooks/queries/useGroups"; // 🆕 NEW (v2.1.2): Realtime unread count
 import {
@@ -157,6 +156,13 @@ interface ChatMainContainerProps {
   // 🆕 NEW (CBN-002): Category-based navigation
   selectedCategoryId?: string; // If provided, enables conversation selector
   conversationCategory?: string; // Category name for display (optional, can be derived from selectedCategoryId)
+
+  // 🆕 NEW: Handle task creation from message (open AssignTaskSheet in parent)
+  onCreateTaskFromMessage?: (payload: {
+    messageId: string;
+    messageContent: string;
+    conversationId: string;
+  }) => void;
 }
 
 /**
@@ -191,9 +197,11 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
   // 🆕 NEW (CBN-002): Category-based navigation
   selectedCategoryId,
   conversationCategory: conversationCategoryProp,
+
+  // 🆕 NEW: Handle task creation (delegate to parent - PortalWireframes)
+  onCreateTaskFromMessage,
 }) => {
   const user = useAuthStore((state) => state.user);
-  const openCreateTaskModal = useCreateTaskStore((state) => state.openModal);
 
   // 🆕 NEW: Category state with localStorage persistence
   const [internalSelectedCategoryId, setInternalSelectedCategoryId] = useState<
@@ -791,11 +799,6 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles]);
 
-      // Show success toast only if no warning was shown
-      if (!showWarning) {
-        toast.success(`Đã thêm ${validFiles.length} file`);
-      }
-
       // Auto-focus input after file selection
       setTimeout(() => {
         inputRef.current?.focus();
@@ -916,14 +919,15 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
       )?.message;
       if (!message) return;
 
-      openCreateTaskModal({
+      // Delegate to parent component (PortalWireframes) to open AssignTaskSheet
+      onCreateTaskFromMessage?.({
         messageId,
         messageContent:
           message.content || message.attachments?.[0]?.fileName || "",
         conversationId,
       });
     },
-    [conversationId, openCreateTaskModal, groupedMessages],
+    [conversationId, onCreateTaskFromMessage, groupedMessages],
   );
 
   // Get display name from DM format
@@ -1139,7 +1143,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
         ) : (
           groupedMessages.map((groupedMsg) => {
             const message = groupedMsg.message;
-
+            
             // Render system messages differently
             if (message.contentType === "SYS") {
               return (
@@ -1150,7 +1154,7 @@ export const ChatMainContainer: React.FC<ChatMainContainerProps> = ({
                 />
               );
             }
-
+            
             // Render regular messages
             return (
               <MessageBubbleSimple
