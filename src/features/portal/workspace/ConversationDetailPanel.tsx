@@ -1093,11 +1093,15 @@ export const ConversationDetailPanel: React.FC<{
     mergedChecklistTemplates?.[workTypeKey]?.[activeVariantId] ?? [];
 
   return (
-    <aside className="bg-white shadow-sm flex flex-col min-h-0">
+    <aside
+      className="bg-white shadow-sm flex flex-col min-h-0"
+      data-testid="conversation-detail-panel"
+    >
       {/* Header: chỉ còn Tabs, bỏ dropdown CSKH/THU MUA */}
       <div
         className="flex items-center gap-3 border border-gray-300
         border-b-[2px] border-b-[#38AE3C] rounded-tl-2xl rounded-tr-2xl bg-white p-3 sticky top-0 z-10"
+        data-testid="detail-panel-header"
       >
         <SegmentedTabs
           tabs={[
@@ -1110,12 +1114,18 @@ export const ConversationDetailPanel: React.FC<{
       </div>
 
       {/* CONTENT — SCROLLABLE */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-0 pt-3">
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-0 pt-3"
+        data-testid="detail-panel-content"
+      >
         {/* INFO TAB */}
         {!isTasksTab ? (
-          <div className="space-y-4 min-h-0">
+          <div className="space-y-4 min-h-0" data-testid="info-tab-content">
             {/* Group + WorkType */}
-            <div className="rounded-xl border p-6 bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50">
+            <div
+              className="rounded-xl border p-6 bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50"
+              data-testid="conversation-info-card"
+            >
               <div className="flex flex-col items-center text-center gap-1">
                 <div className="text-sm font-semibold">{categoryName}</div>
                 <div className="text-xs text-gray-700">
@@ -1197,7 +1207,7 @@ export const ConversationDetailPanel: React.FC<{
           </div>
         ) : (
           /* TASKS TAB */
-          <div className="space-y-4 min-h-0">
+          <div className="space-y-4 min-h-0" data-testid="tasks-tab-content">
             {/* NEW: Linked Tasks Panel - Show for all users */}
             {/* {groupId && (
               <LinkedTasksPanel
@@ -1241,7 +1251,10 @@ export const ConversationDetailPanel: React.FC<{
             {hasStaffPermissions() ? (
               <>
                 {/* Primary: Chưa xử lý + Đang xử lý */}
-                <div className="premium-accordion-wrapper">
+                <div
+                  className="premium-accordion-wrapper"
+                  data-testid="staff-my-tasks-section"
+                >
                   <RightAccordion
                     icon={<ClipboardList className="h-4 w-4 text-brand-600" />}
                     title="Công Việc Của Tôi"
@@ -1297,7 +1310,10 @@ export const ConversationDetailPanel: React.FC<{
                 </div>
 
                 {/* Secondary: Chờ duyệt */}
-                <div className="premium-accordion-wrapper">
+                <div
+                  className="premium-accordion-wrapper"
+                  data-testid="staff-awaiting-section"
+                >
                   <RightAccordion
                     icon={<SquarePen className="h-4 w-4 text-gray-400" />}
                     title="Chờ Duyệt"
@@ -1329,6 +1345,7 @@ export const ConversationDetailPanel: React.FC<{
                       <button
                         className="text-xs text-brand-700 hover:underline"
                         onClick={() => setShowCompleted(true)}
+                        data-testid="staff-view-all-completed-button"
                       >
                         Xem tất cả công việc đã hoàn thành
                       </button>
@@ -1336,8 +1353,14 @@ export const ConversationDetailPanel: React.FC<{
                   </RightAccordion>
                 </div>
                 {showCompleted && (
-                  <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-                    <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
+                  <div
+                    className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4"
+                    data-testid="staff-completed-modal-backdrop"
+                  >
+                    <div
+                      className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+                      data-testid="staff-completed-modal"
+                    >
                       {/* ============================================
                             HEADER (consistent với leader modal)
                             ============================================ */}
@@ -1615,7 +1638,10 @@ export const ConversationDetailPanel: React.FC<{
                 {leaderMode === "team" && (
                   <>
                     {/* Lead: lọc theo assignee */}
-                    <div className="rounded-xl border bg-white p-4 shadow-sm mb-3">
+                    <div
+                      className="rounded-xl border bg-white p-4 shadow-sm mb-3"
+                      data-testid="leader-team-header"
+                    >
                       <div className="flex flex-col gap-1">
                         {/* Title + Group + WorkType */}
                         <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -1642,6 +1668,7 @@ export const ConversationDetailPanel: React.FC<{
                               onChange={(e) =>
                                 setAssigneeFilter(e.target.value)
                               }
+                              data-testid="assignee-filter-select"
                             >
                               <option value="all">Tất cả</option>
                               {members.map((m) => (
@@ -1691,7 +1718,7 @@ export const ConversationDetailPanel: React.FC<{
                       <div className="space-y-6">
                         {/* AWAITING REVIEW */}
                         {leadBuckets.awaiting.length > 0 && (
-                          <section>
+                          <section data-testid="leader-awaiting-section">
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
                               onClick={() => {
@@ -1747,7 +1774,7 @@ export const ConversationDetailPanel: React.FC<{
 
                         {/* TODO */}
                         {leadBuckets.todo.length > 0 && (
-                          <section>
+                          <section data-testid="leader-todo-section">
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
                               onClick={() => setShowLeadTodo((v) => !v)}
@@ -1787,7 +1814,7 @@ export const ConversationDetailPanel: React.FC<{
 
                         {/* IN PROGRESS */}
                         {leadBuckets.inProgress.length > 0 && (
-                          <section>
+                          <section data-testid="leader-inprogress-section">
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
                               onClick={() => setShowLeadInProgress((v) => !v)}
@@ -1825,7 +1852,7 @@ export const ConversationDetailPanel: React.FC<{
 
                         {/* DONE TODAY */}
                         {leadBuckets.done.length > 0 && (
-                          <section>
+                          <section data-testid="leader-done-section">
                             <div
                               className="mb-1 flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer select-none"
                               onClick={() => setShowLeadDone((v) => !v)}
@@ -1863,6 +1890,7 @@ export const ConversationDetailPanel: React.FC<{
                               <button
                                 className="text-xs text-brand-700 hover:underline"
                                 onClick={() => setShowLeadCompletedAll(true)}
+                                data-testid="leader-view-all-completed-button"
                               >
                                 Xem tất cả công việc đã hoàn thành
                               </button>
@@ -1874,8 +1902,14 @@ export const ConversationDetailPanel: React.FC<{
 
                     {/* Modal:  All completed tasks */}
                     {showLeadCompletedAll && (
-                      <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-                        <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
+                      <div
+                        className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4"
+                        data-testid="leader-team-completed-modal-backdrop"
+                      >
+                        <div
+                          className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+                          data-testid="leader-team-completed-modal"
+                        >
                           {/* Header */}
                           <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
                             <div className="flex items-center gap-2">
@@ -2048,9 +2082,15 @@ export const ConversationDetailPanel: React.FC<{
                     MINE MODE (NEW)
                     ============================================ */}
                 {leaderMode === "mine" && (
-                  <div className="space-y-4">
+                  <div
+                    className="space-y-4"
+                    data-testid="leader-mine-mode-content"
+                  >
                     {/* Summary card */}
-                    <div className="rounded-xl border bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50 p-4 shadow-sm">
+                    <div
+                      className="rounded-xl border bg-gradient-to-r from-brand-50 via-emerald-50 to-cyan-50 p-4 shadow-sm"
+                      data-testid="leader-mine-summary-card"
+                    >
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <UserIcon className="h-5 w-5 text-brand-600" />
                         <span className="text-sm font-semibold text-gray-900">
@@ -2108,7 +2148,10 @@ export const ConversationDetailPanel: React.FC<{
                         t.status.code !== "finished",
                     ).length === 0 &&
                       leaderOwnBuckets.doneToday.length === 0 && (
-                        <div className="rounded-xl border border-dashed bg-white/60 p-8 text-center">
+                        <div
+                          className="rounded-xl border border-dashed bg-white/60 p-8 text-center"
+                          data-testid="leader-mine-empty-state"
+                        >
                           <UserIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
                           <p className="text-sm text-gray-500 font-medium mb-1">
                             Bạn chưa có công việc nào cần làm
@@ -2123,7 +2166,7 @@ export const ConversationDetailPanel: React.FC<{
                             TODO SECTION (Collapsible)
                             ============================================ */}
                     {leaderOwnBuckets.todo.length > 0 && (
-                      <section>
+                      <section data-testid="leader-mine-todo-section">
                         <div
                           className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
                           onClick={() => setShowLeaderOwnTodo((v) => !v)}
@@ -2177,7 +2220,7 @@ export const ConversationDetailPanel: React.FC<{
                             IN_PROGRESS SECTION (Collapsible)
                             ============================================ */}
                     {leaderOwnBuckets.inProgress.length > 0 && (
-                      <section>
+                      <section data-testid="leader-mine-inprogress-section">
                         <div
                           className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
                           onClick={() => setShowLeaderOwnInProgress((v) => !v)}
@@ -2220,7 +2263,7 @@ export const ConversationDetailPanel: React.FC<{
                             DONE TODAY SECTION (Collapsible)
                             ============================================ */}
                     {leaderOwnBuckets.doneToday.length > 0 && (
-                      <section>
+                      <section data-testid="leader-mine-done-section">
                         <div
                           className="mb-2 flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none hover:text-brand-700 transition-colors"
                           onClick={() => setShowLeaderOwnDone((v) => !v)}
@@ -2268,6 +2311,7 @@ export const ConversationDetailPanel: React.FC<{
                         <button
                           className="text-xs text-brand-700 hover:text-brand-800 hover:underline font-medium"
                           onClick={() => setShowLeaderOwnCompletedAll(true)}
+                          data-testid="leader-mine-view-all-completed-button"
                         >
                           Xem tất cả công việc đã hoàn thành (
                           {leaderOwnAllCompleted.length}) →
@@ -2281,8 +2325,14 @@ export const ConversationDetailPanel: React.FC<{
                         MODAL:  All Completed Tasks (Leader Own)
                         ============================================ */}
                 {showLeaderOwnCompletedAll && (
-                  <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-                    <div className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col">
+                  <div
+                    className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4"
+                    data-testid="leader-mine-completed-modal-backdrop"
+                  >
+                    <div
+                      className="rounded-xl bg-white shadow-2xl w-full max-w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+                      data-testid="leader-mine-completed-modal"
+                    >
                       {/* Header */}
                       <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-brand-50 to-emerald-50">
                         <div className="flex items-center gap-2">

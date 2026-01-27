@@ -911,7 +911,10 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = (props) => {
 
       {/* Right */}
       {showRight && (
-        <div className="h-full min-h-0 min-w-0 overflow-hidden flex flex-col rounded-2xl border border-gray-300 bg-white">
+        <div
+          className="h-full min-h-0 min-w-0 overflow-hidden flex flex-col rounded-2xl border border-gray-300 bg-white"
+          data-testid="conversation-detail-panel-container"
+        >
           <ConversationDetailPanel
             tab={tab}
             setTab={setTab}
